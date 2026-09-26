@@ -3,7 +3,8 @@ import { Server, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import { ENV } from '../config';
 import { prisma } from '../prisma';
-import { UserRole, UserStatus } from '@dfz/types';
+import { UserRole, UserStatus, CallStatus } from '@dfz/types';
+import { callsService } from '../calls/calls.service';
 
 interface AuthenticatedSocket extends Socket {
   userId: string;
@@ -143,35 +144,63 @@ export class WebSocketGateway {
       });
 
       // 5. WebRTC Calling Signaling
-      socket.on('call:initiate', (payload: {
+      socket.on('call:initiate', async (payload: {
         chatId: string;
         receiverId: string;
         callType: 'AUDIO' | 'VIDEO';
       }) => {
-        this.io.to(`user:${payload.receiverId}`).emit('call:incoming', {
-          callId: socket.id,
-          chatId: payload.chatId,
-          callerId: userId,
-          callerUsername: username,
-          callType: payload.callType,
-        });
+        try {
+          const perm = await callsService.checkCallPermission(userId, payload.receiverId);
+          if (!perm.allowed) {
+            socket.emit('call:error', { message: perm.reason || 'Звонок недоступен' });
+            return;
+          }
+
+          const callRecord = await callsService.logCallStart({
+            chatId: payload.chatId,
+            callerId: userId,
+            receiverId: payload.receiverId,
+            type: payload.callType as any,
+          });
+
+          this.io.to(`user:${payload.receiverId}`).emit('call:incoming', {
+            callId: callRecord.id,
+            chatId: payload.chatId,
+            callerId: userId,
+            callerUsername: username,
+            callType: payload.callType,
+          });
+        } catch (err: any) {
+          socket.emit('call:error', { message: err.message || 'Ошибка инициализации звонка' });
+        }
       });
 
-      socket.on('call:accept', (payload: { callerId: string; callId: string }) => {
+      socket.on('call:accept', async (payload: { callerId: string; callId: string }) => {
+        try {
+          await callsService.updateCallStatus(payload.callId, CallStatus.CONNECTED);
+        } catch {}
         this.io.to(`user:${payload.callerId}`).emit('call:accepted', {
           receiverId: userId,
           callId: payload.callId,
         });
       });
 
-      socket.on('call:reject', (payload: { callerId: string; callId: string }) => {
+      socket.on('call:reject', async (payload: { callerId: string; callId: string }) => {
+        try {
+          await callsService.updateCallStatus(payload.callId, CallStatus.REJECTED);
+        } catch {}
         this.io.to(`user:${payload.callerId}`).emit('call:rejected', {
           receiverId: userId,
           callId: payload.callId,
         });
       });
 
-      socket.on('call:end', (payload: { targetUserId: string }) => {
+      socket.on('call:end', async (payload: { targetUserId: string; callId?: string; durationSeconds?: number }) => {
+        try {
+          if (payload.callId) {
+            await callsService.updateCallStatus(payload.callId, CallStatus.ENDED, payload.durationSeconds || 0);
+          }
+        } catch {}
         this.io.to(`user:${payload.targetUserId}`).emit('call:ended', {
           userId,
         });

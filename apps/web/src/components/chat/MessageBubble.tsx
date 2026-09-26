@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { Check, CheckCheck, Clock, AlertCircle, FileText, Download, Smile, Reply, Edit3, Trash2, Copy } from 'lucide-react';
+import { Check, CheckCheck, Clock, AlertCircle, FileText, Download, Smile, Reply, Edit3, Trash2, Copy, Pin, Share2, CheckSquare, Square, Flag } from 'lucide-react';
 import { Message, MessageType } from '@dfz/types';
 import { Avatar } from '../ui/Avatar';
 import { VoicePlayer } from './VoicePlayer';
@@ -11,6 +11,7 @@ import { PollBubble } from './PollBubble';
 import { LinkPreviewBubble } from './LinkPreviewBubble';
 import { StarTransferBubble } from './StarTransferBubble';
 import { GiftCardBubble } from './GiftCardBubble';
+import { useChatStore } from '../../stores/chatStore';
 
 interface MessageBubbleProps {
   message: Message;
@@ -35,6 +36,18 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 }) => {
   const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const {
+    activeChat,
+    pinMessage,
+    unpinMessage,
+    openForward,
+    isSelectMode,
+    selectedMessageIds,
+    toggleSelectMessage,
+  } = useChatStore();
+
+  const isSelected = selectedMessageIds.includes(message.id);
+  const isPinned = activeChat?.pinnedMessages?.some((p) => p.id === message.id) || false;
 
   const formattedTime = message.createdAt
     ? format(new Date(message.createdAt), 'HH:mm', { locale: ru })
@@ -61,10 +74,28 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       onClick: () => onReply(message),
     },
     {
+      id: 'forward',
+      label: 'Переслать',
+      icon: <Share2 size={15} />,
+      onClick: () => openForward(message),
+    },
+    {
       id: 'copy',
-      label: 'Копировать',
+      label: 'Копировать текст',
       icon: <Copy size={15} />,
       onClick: handleCopy,
+    },
+    {
+      id: 'pin',
+      label: isPinned ? 'Открепить' : 'Закрепить',
+      icon: <Pin size={15} />,
+      onClick: () => (isPinned ? unpinMessage(message.chatId, message.id) : pinMessage(message.chatId, message.id)),
+    },
+    {
+      id: 'select',
+      label: 'Выбрать',
+      icon: <CheckSquare size={15} />,
+      onClick: () => toggleSelectMessage(message.id),
     },
     ...(isOutgoing && message.type === MessageType.TEXT
       ? [
@@ -73,6 +104,16 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             label: 'Изменить',
             icon: <Edit3 size={15} />,
             onClick: () => onEdit(message),
+          },
+        ]
+      : []),
+    ...(!isOutgoing
+      ? [
+          {
+            id: 'report',
+            label: 'Пожаловаться',
+            icon: <Flag size={15} />,
+            onClick: () => alert('Жалоба на сообщение отправлена модераторам'),
           },
         ]
       : []),
@@ -111,17 +152,33 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   return (
     <div
-      onContextMenu={handleContextMenu}
-      className={`group relative flex gap-2.5 my-1 max-w-[85%] md:max-w-[70%] select-text animate-message-in ${
-        isOutgoing ? 'ml-auto flex-row-reverse' : 'mr-auto'
+      onClick={() => isSelectMode && toggleSelectMessage(message.id)}
+      className={`flex items-center gap-2.5 w-full ${
+        isSelectMode ? 'cursor-pointer hover:bg-white/[0.02] px-2 py-0.5 rounded transition-colors' : ''
       }`}
     >
-      {/* Sender Avatar for incoming grouped messages */}
-      {!isOutgoing && (
-        <div className="w-8 flex-shrink-0 self-end">
-          {showAvatar ? (
-            <Avatar
-              src={message.sender?.profile?.avatarUrl}
+      {isSelectMode && (
+        <div className="flex-shrink-0">
+          {isSelected ? (
+            <CheckSquare size={18} className="text-[#2a8dd4]" />
+          ) : (
+            <Square size={18} className="text-dfz-text-muted" />
+          )}
+        </div>
+      )}
+
+      <div
+        onContextMenu={handleContextMenu}
+        className={`group relative flex gap-2.5 my-1 max-w-[85%] md:max-w-[70%] select-text animate-message-in ${
+          isOutgoing ? 'ml-auto flex-row-reverse' : 'mr-auto'
+        }`}
+      >
+        {/* Sender Avatar for incoming grouped messages */}
+        {!isOutgoing && (
+          <div className="w-8 flex-shrink-0 self-end">
+            {showAvatar ? (
+              <Avatar
+                src={message.sender?.profile?.avatarUrl}
               name={message.sender?.profile?.displayName || message.sender?.username || 'U'}
               size="sm"
             />
@@ -383,6 +440,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           onClose={() => setContextMenuPos(null)}
         />
       )}
+      </div>
     </div>
   );
 };

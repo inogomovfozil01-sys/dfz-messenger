@@ -47,6 +47,10 @@ export const ChatList: React.FC<ChatListProps> = ({
     isLoadingChats,
     togglePinChat,
     toggleMuteChat,
+    toggleArchiveChat,
+    clearChatHistory,
+    deleteChat,
+    markAsRead,
     typingUsers,
   } = useChatStore();
 
@@ -57,27 +61,27 @@ export const ChatList: React.FC<ChatListProps> = ({
     {
       id: 'all',
       label: 'Все',
-      count: chats.reduce((sum, c) => sum + (c.unreadCount || 0), 0),
+      count: chats.filter((c) => !c.isArchived).reduce((sum, c) => sum + (c.unreadCount || 0), 0),
     },
     {
       id: 'personal',
       label: 'Личные',
       count: chats
-        .filter((c) => c.type === ChatType.DIRECT)
+        .filter((c) => !c.isArchived && c.type === ChatType.DIRECT)
         .reduce((sum, c) => sum + (c.unreadCount || 0), 0),
     },
     {
       id: 'groups',
       label: 'Группы',
       count: chats
-        .filter((c) => c.type === ChatType.GROUP)
+        .filter((c) => !c.isArchived && c.type === ChatType.GROUP)
         .reduce((sum, c) => sum + (c.unreadCount || 0), 0),
     },
     {
       id: 'channels',
       label: 'Каналы',
       count: chats
-        .filter((c) => c.type === ChatType.CHANNEL)
+        .filter((c) => !c.isArchived && c.type === ChatType.CHANNEL)
         .reduce((sum, c) => sum + (c.unreadCount || 0), 0),
     },
   ];
@@ -95,10 +99,10 @@ export const ChatList: React.FC<ChatListProps> = ({
         }
 
         // Folder filter
-        if (activeFolder === 'personal') return chat.type === ChatType.DIRECT;
-        if (activeFolder === 'groups') return chat.type === ChatType.GROUP;
-        if (activeFolder === 'channels') return chat.type === ChatType.CHANNEL;
-        return true;
+        if (activeFolder === 'personal') return !chat.isArchived && chat.type === ChatType.DIRECT;
+        if (activeFolder === 'groups') return !chat.isArchived && chat.type === ChatType.GROUP;
+        if (activeFolder === 'channels') return !chat.isArchived && chat.type === ChatType.CHANNEL;
+        return !chat.isArchived;
       })
       .sort((a, b) => {
         // Pinned first
@@ -124,6 +128,15 @@ export const ChatList: React.FC<ChatListProps> = ({
   const contextMenuItems: ContextMenuItem[] = contextMenu
     ? [
         {
+          id: 'read',
+          label:
+            contextMenu.chat.unreadCount && contextMenu.chat.unreadCount > 0
+              ? 'Пометить как прочитанное'
+              : 'Пометить как прочитанное',
+          icon: <Check size={15} />,
+          onClick: () => markAsRead(contextMenu.chat.id),
+        },
+        {
           id: 'pin',
           label: contextMenu.chat.isPinned ? 'Открепить' : 'Закрепить',
           icon: <Pin size={15} />,
@@ -134,6 +147,33 @@ export const ChatList: React.FC<ChatListProps> = ({
           label: contextMenu.chat.isMuted ? 'Включить звук' : 'Без звука',
           icon: <BellOff size={15} />,
           onClick: () => toggleMuteChat(contextMenu.chat.id, !contextMenu.chat.isMuted),
+        },
+        {
+          id: 'archive',
+          label: contextMenu.chat.isArchived ? 'Извлечь из архива' : 'В архив',
+          icon: <Radio size={15} />,
+          onClick: () => toggleArchiveChat(contextMenu.chat.id, !contextMenu.chat.isArchived),
+        },
+        {
+          id: 'clear',
+          label: 'Очистить историю',
+          icon: <X size={15} />,
+          onClick: () => {
+            if (confirm('Очистить историю сообщений?')) {
+              clearChatHistory(contextMenu.chat.id);
+            }
+          },
+        },
+        {
+          id: 'delete',
+          label: contextMenu.chat.type === ChatType.DIRECT ? 'Удалить чат' : 'Покинуть чат',
+          icon: <X size={15} />,
+          danger: true,
+          onClick: () => {
+            if (confirm('Удалить этот чат?')) {
+              deleteChat(contextMenu.chat.id);
+            }
+          },
         },
       ]
     : [];

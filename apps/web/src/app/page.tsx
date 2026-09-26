@@ -20,6 +20,10 @@ import { NewChannelModal } from '../components/modals/NewChannelModal';
 import { SettingsModal } from '../components/modals/SettingsModal';
 import { UserProfileModal } from '../components/modals/UserProfileModal';
 import { CallOverlay } from '../components/modals/CallOverlay';
+import { CallsHistoryModal } from '../components/modals/CallsHistoryModal';
+import { GroupManageModal } from '../components/modals/GroupManageModal';
+import { ChannelManageModal } from '../components/modals/ChannelManageModal';
+import { ForwardModal } from '../components/chat/ForwardModal';
 import { StoryViewerModal } from '../components/stories/StoryViewerModal';
 import { StoryCreatorModal } from '../components/stories/StoryCreatorModal';
 import { StoryAnalyticsModal } from '../components/stories/StoryAnalyticsModal';
@@ -43,6 +47,10 @@ export default function TelegramMessengerPage() {
     isInfoPanelOpen,
     toggleInfoPanel,
     setupSocketListeners,
+    activeGroupManageChat,
+    setGroupManageChat,
+    activeChannelManageChat,
+    setChannelManageChat,
   } = useChatStore();
   const { setupCallListeners } = useCallStore();
   const { toastMessage } = useEconomyStore();
@@ -53,6 +61,7 @@ export default function TelegramMessengerPage() {
   const [isNewGroupOpen, setIsNewGroupOpen] = useState(false);
   const [isNewChannelOpen, setIsNewChannelOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isCallsOpen, setIsCallsOpen] = useState(false);
   const [inspectedUserId, setInspectedUserId] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(false);
 
@@ -200,8 +209,11 @@ export default function TelegramMessengerPage() {
         onOpenProfile={() => setInspectedUserId(user.id)}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenContacts={() => setCurrentView('contacts')}
-        onOpenCalls={() => {}}
+        onOpenCalls={() => setIsCallsOpen(true)}
         onOpenSavedMessages={handleOpenSavedMessages}
+        onNewGroup={() => setIsNewGroupOpen(true)}
+        onNewChannel={() => setIsNewChannelOpen(true)}
+        onOpenStories={() => useStoriesStore.getState().openCreator()}
       />
 
       {/* Dialogs and Modals */}
@@ -209,8 +221,24 @@ export default function TelegramMessengerPage() {
       <NewGroupModal isOpen={isNewGroupOpen} onClose={() => setIsNewGroupOpen(false)} />
       <NewChannelModal isOpen={isNewChannelOpen} onClose={() => setIsNewChannelOpen(false)} />
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      <CallsHistoryModal isOpen={isCallsOpen} onClose={() => setIsCallsOpen(false)} />
       <UserProfileModal userId={inspectedUserId} onClose={() => setInspectedUserId(null)} />
       <CallOverlay />
+
+      {/* Group & Channel Management Modals */}
+      <GroupManageModal
+        isOpen={!!activeGroupManageChat}
+        onClose={() => setGroupManageChat(null)}
+        chat={activeGroupManageChat}
+      />
+      <ChannelManageModal
+        isOpen={!!activeChannelManageChat}
+        onClose={() => setChannelManageChat(null)}
+        chat={activeChannelManageChat}
+      />
+
+      {/* Forward Modal */}
+      <ForwardModal />
 
       {/* Stories Modals */}
       <StoryViewerModal />

@@ -21,6 +21,21 @@ interface ChatState {
   isLoadingChats: boolean;
   isLoadingMessages: boolean;
 
+  // In-chat Search
+  isSearchingInChat: boolean;
+  inChatSearchQuery: string;
+  inChatSearchResults: any[];
+
+  // Multi-select & Forward
+  isSelectMode: boolean;
+  selectedMessageIds: string[];
+  forwardingMessage: Message | null;
+  isForwardOpen: boolean;
+
+  // Management modals
+  activeGroupManageChat: Chat | null;
+  activeChannelManageChat: Chat | null;
+
   // Actions
   fetchChats: () => Promise<void>;
   selectChat: (chatId: string) => Promise<void>;
@@ -33,12 +48,34 @@ interface ChatState {
   markAsRead: (chatId: string) => Promise<void>;
   togglePinChat: (chatId: string, isPinned: boolean) => Promise<void>;
   toggleMuteChat: (chatId: string, isMuted: boolean) => Promise<void>;
+  toggleArchiveChat: (chatId: string, isArchived: boolean) => Promise<void>;
+  clearChatHistory: (chatId: string) => Promise<void>;
+  deleteChat: (chatId: string) => Promise<void>;
+  pinMessage: (chatId: string, messageId: string) => Promise<void>;
+  unpinMessage: (chatId: string, messageId: string) => Promise<void>;
   setActiveFolder: (folder: FolderFilter) => void;
   setSearchQuery: (q: string) => void;
   setReplyTo: (msg: Message | null) => void;
   setEditingMessage: (msg: Message | null) => void;
   toggleInfoPanel: () => void;
   setTyping: (chatId: string, isTyping: boolean) => void;
+
+  // In-Chat Search Actions
+  toggleSearchInChat: () => void;
+  searchInChat: (query: string) => Promise<void>;
+
+  // Selection & Forwarding Actions
+  setSelectMode: (enabled: boolean) => void;
+  toggleSelectMessage: (id: string) => void;
+  clearSelectedMessages: () => void;
+  bulkDeleteMessages: () => Promise<void>;
+  openForward: (msg: Message) => void;
+  closeForward: () => void;
+  forwardToChat: (targetChatId: string) => Promise<void>;
+
+  // Manage modals
+  setGroupManageChat: (chat: Chat | null) => void;
+  setChannelManageChat: (chat: Chat | null) => void;
 
   // Socket event dispatchers
   onMessageReceived: (message: Message) => void;
@@ -65,6 +102,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
   searchQuery: '',
   isLoadingChats: false,
   isLoadingMessages: false,
+
+  // In-chat Search
+  isSearchingInChat: false,
+  inChatSearchQuery: '',
+  inChatSearchResults: [],
+
+  // Multi-select & Forward
+  isSelectMode: false,
+  selectedMessageIds: [],
+  forwardingMessage: null,
+  isForwardOpen: false,
+
+  // Management modals
+  activeGroupManageChat: null,
+  activeChannelManageChat: null,
 
   fetchChats: async () => {
     set({ isLoadingChats: true });
@@ -343,6 +395,151 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }));
     }
   },
+
+  toggleArchiveChat: async (chatId: string, isArchived: boolean) => {
+    const res = await apiRequest(`/api/chats/${chatId}/archive`, {
+      method: 'POST',
+      body: JSON.stringify({ isArchived }),
+    });
+    if (res.success) {
+      set((state) => ({
+        chats: state.chats.map((c) => (c.id === chatId ? { ...c, isArchived } : c)),
+      }));
+    }
+  },
+
+  clearChatHistory: async (chatId: string) => {
+    const res = await apiRequest(`/api/chats/${chatId}/clear`, { method: 'POST' });
+    if (res.success) {
+      set((state) => ({
+        messages: { ...state.messages, [chatId]: [] },
+      }));
+    }
+  },
+
+  deleteChat: async (chatId: string) => {
+    const res = await apiRequest(`/api/chats/${chatId}`, { method: 'DELETE' });
+    if (res.success) {
+      set((state) => ({
+        chats: state.chats.filter((c) => c.id !== chatId),
+        activeChatId: state.activeChatId === chatId ? null : state.activeChatId,
+        activeChat: state.activeChatId === chatId ? null : state.activeChat,
+      }));
+    }
+  },
+
+  pinMessage: async (chatId: string, messageId: string) => {
+    const res = await apiRequest(`/api/messages/${messageId}/pin`, {
+      method: 'POST',
+      body: JSON.stringify({ chatId }),
+    });
+    if (res.success) {
+      const chatRes = await apiRequest<Chat>(`/api/chats/${chatId}`);
+      if (chatRes.success && chatRes.data) {
+        set({ activeChat: chatRes.data });
+      }
+    }
+  },
+
+  unpinMessage: async (chatId: string, messageId: string) => {
+    const res = await apiRequest(`/api/messages/${messageId}/pin?chatId=${chatId}`, {
+      method: 'DELETE',
+    });
+    if (res.success) {
+      const chatRes = await apiRequest<Chat>(`/api/chats/${chatId}`);
+      if (chatRes.success && chatRes.data) {
+        set({ activeChat: chatRes.data });
+      }
+    }
+  },
+
+  toggleSearchInChat: () => {
+    set((state) => ({
+      isSearchingInChat: !state.isSearchingInChat,
+      inChatSearchQuery: '',
+      inChatSearchResults: [],
+    }));
+  },
+
+  searchInChat: async (query: string) => {
+    const { activeChatId } = get();
+    if (!activeChatId || !query.trim()) {
+      set({ inChatSearchQuery: query, inChatSearchResults: [] });
+      return;
+    }
+    set({ inChatSearchQuery: query });
+    const res = await apiRequest<any[]>(`/api/search/chat/${activeChatId}?q=${encodeURIComponent(query.trim())}`);
+    if (res.success && res.data) {
+      set({ inChatSearchResults: res.data });
+    }
+  },
+
+  setSelectMode: (enabled: boolean) => {
+    set({ isSelectMode: enabled, selectedMessageIds: enabled ? get().selectedMessageIds : [] });
+  },
+
+  toggleSelectMessage: (id: string) => {
+    set((state) => {
+      const exists = state.selectedMessageIds.includes(id);
+      const updated = exists
+        ? state.selectedMessageIds.filter((mId) => mId !== id)
+        : [...state.selectedMessageIds, id];
+      return {
+        selectedMessageIds: updated,
+        isSelectMode: updated.length > 0,
+      };
+    });
+  },
+
+  clearSelectedMessages: () => {
+    set({ isSelectMode: false, selectedMessageIds: [] });
+  },
+
+  bulkDeleteMessages: async () => {
+    const { selectedMessageIds, activeChatId } = get();
+    if (!selectedMessageIds.length) return;
+    for (const id of selectedMessageIds) {
+      await apiRequest(`/api/messages/${id}`, { method: 'DELETE' });
+    }
+    if (activeChatId) {
+      set((state) => ({
+        messages: {
+          ...state.messages,
+          [activeChatId]: (state.messages[activeChatId] || []).filter(
+            (m) => !selectedMessageIds.includes(m.id)
+          ),
+        },
+        selectedMessageIds: [],
+        isSelectMode: false,
+      }));
+    }
+  },
+
+  openForward: (msg: Message) => {
+    set({ forwardingMessage: msg, isForwardOpen: true });
+  },
+
+  closeForward: () => {
+    set({ forwardingMessage: null, isForwardOpen: false });
+  },
+
+  forwardToChat: async (targetChatId: string) => {
+    const { forwardingMessage } = get();
+    if (!forwardingMessage) return;
+    await apiRequest('/api/messages', {
+      method: 'POST',
+      body: JSON.stringify({
+        chatId: targetChatId,
+        content: forwardingMessage.content,
+        type: forwardingMessage.type,
+        attachments: forwardingMessage.attachments,
+      }),
+    });
+    set({ forwardingMessage: null, isForwardOpen: false });
+  },
+
+  setGroupManageChat: (chat: Chat | null) => set({ activeGroupManageChat: chat }),
+  setChannelManageChat: (chat: Chat | null) => set({ activeChannelManageChat: chat }),
 
   setActiveFolder: (folder) => set({ activeFolder: folder }),
   setSearchQuery: (q) => set({ searchQuery: q }),

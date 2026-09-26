@@ -570,6 +570,212 @@ export class ChatsService {
 
     return updated;
   }
+
+  async updateChat(chatId: string, userId: string, data: {
+    title?: string;
+    description?: string;
+    avatarUrl?: string;
+    isPublic?: boolean;
+    isForum?: boolean;
+  }) {
+    const membership = await prisma.chatMember.findUnique({
+      where: { chatId_userId: { chatId, userId } },
+    });
+
+    if (!membership || (membership.role !== MemberRole.OWNER && membership.role !== MemberRole.ADMIN)) {
+      const err: any = new Error('Permission denied to update settings');
+      err.status = 403;
+      throw err;
+    }
+
+    const updated = await prisma.chat.update({
+      where: { id: chatId },
+      data: {
+        ...(data.title !== undefined && { title: data.title.trim() }),
+        ...(data.description !== undefined && { description: data.description?.trim() || null }),
+        ...(data.avatarUrl !== undefined && { avatarUrl: data.avatarUrl }),
+        ...(data.isPublic !== undefined && { isPublic: data.isPublic }),
+        ...(data.isForum !== undefined && { isForum: data.isForum }),
+      },
+    });
+
+    return this.getChatById(chatId, userId);
+  }
+
+  async updateMember(chatId: string, actorId: string, targetUserId: string, data: {
+    role?: MemberRole;
+    customTitle?: string;
+    permissions?: any;
+  }) {
+    const chat = await prisma.chat.findUnique({
+      where: { id: chatId },
+      include: { members: true },
+    });
+
+    if (!chat) {
+      const err: any = new Error('Chat not found');
+      err.status = 404;
+      throw err;
+    }
+
+    const actor = chat.members.find(m => m.userId === actorId);
+    if (!actor || actor.role !== MemberRole.OWNER) {
+      const err: any = new Error('Only the group owner can update administrator rights and roles');
+      err.status = 403;
+      throw err;
+    }
+
+    const updated = await prisma.chatMember.update({
+      where: { chatId_userId: { chatId, userId: targetUserId } },
+      data: {
+        ...(data.role && { role: data.role }),
+        ...(data.customTitle !== undefined && { customTitle: data.customTitle }),
+        ...(data.permissions !== undefined && { permissions: data.permissions }),
+      },
+      include: {
+        user: { include: { profile: true } },
+      },
+    });
+
+    return updated;
+  }
+
+  async deleteChat(chatId: string, userId: string) {
+    const chat = await prisma.chat.findUnique({
+      where: { id: chatId },
+      include: { members: true },
+    });
+
+    if (!chat) {
+      const err: any = new Error('Chat not found');
+      err.status = 404;
+      throw err;
+    }
+
+    if (chat.type === ChatType.DIRECT) {
+      // Both members can delete direct chat
+      const isMember = chat.members.some(m => m.userId === userId);
+      if (!isMember) {
+        const err: any = new Error('Access denied');
+        err.status = 403;
+        throw err;
+      }
+    } else {
+      // Group or Channel: only owner can delete
+      if (chat.ownerId !== userId) {
+        const err: any = new Error('Only the creator can delete this conversation');
+        err.status = 403;
+        throw err;
+      }
+    }
+
+    await prisma.chat.delete({
+      where: { id: chatId },
+    });
+
+    return { success: true, message: 'Chat deleted permanently' };
+  }
+
+  async clearHistory(chatId: string, userId: string) {
+    const membership = await prisma.chatMember.findUnique({
+      where: { chatId_userId: { chatId, userId } },
+    });
+
+    if (!membership) {
+      const err: any = new Error('Access denied');
+      err.status = 403;
+      throw err;
+    }
+
+    // Set member's joinedAt to now, so messages before now are not considered unread/visible
+    await prisma.chatMember.update({
+      where: { chatId_userId: { chatId, userId } },
+      data: { joinedAt: new Date() },
+    });
+
+    return { success: true, message: 'Chat history cleared' };
+  }
+
+  async regenerateInviteCode(chatId: string, userId: string) {
+    const membership = await prisma.chatMember.findUnique({
+      where: { chatId_userId: { chatId, userId } },
+    });
+
+    if (!membership || (membership.role !== MemberRole.OWNER && membership.role !== MemberRole.ADMIN)) {
+      const err: any = new Error('Permission denied');
+      err.status = 403;
+      throw err;
+    }
+
+    const newCode = uuidv4().substring(0, 8);
+    const updated = await prisma.chat.update({
+      where: { id: chatId },
+      data: { inviteCode: newCode },
+      select: { inviteCode: true },
+    });
+
+    return updated;
+  }
+
+  async getChatMedia(chatId: string, userId: string, category: 'media' | 'files' | 'voice' | 'links') {
+    const membership = await prisma.chatMember.findUnique({
+      where: { chatId_userId: { chatId, userId } },
+    });
+
+    if (!membership) {
+      const err: any = new Error('Access denied');
+      err.status = 403;
+      throw err;
+    }
+
+    if (category === 'links') {
+      const messages = await prisma.message.findMany({
+        where: {
+          chatId,
+          isDeleted: false,
+          content: { contains: 'http', mode: 'insensitive' },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      });
+
+      return messages.map(m => ({
+        id: m.id,
+        content: m.content,
+        createdAt: m.createdAt.toISOString(),
+      }));
+    }
+
+    // Attachment-based queries
+    const mimeFilter: any = {};
+    if (category === 'media') {
+      mimeFilter.startsWith = 'image/';
+    } else if (category === 'voice') {
+      mimeFilter.startsWith = 'audio/';
+    } else if (category === 'files') {
+      mimeFilter.not = { startsWith: 'image/' };
+    }
+
+    const attachments = await prisma.attachment.findMany({
+      where: {
+        message: { chatId, isDeleted: false },
+        mimeType: mimeFilter,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+
+    return attachments.map(a => ({
+      id: a.id,
+      originalName: a.originalName,
+      mimeType: a.mimeType,
+      sizeBytes: a.sizeBytes,
+      url: a.url,
+      thumbnailUrl: a.thumbnailUrl,
+      duration: a.duration,
+      createdAt: a.createdAt.toISOString(),
+    }));
+  }
 }
 
 export const chatsService = new ChatsService();

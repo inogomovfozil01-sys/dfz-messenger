@@ -26,6 +26,8 @@ import { pollsRouter } from './polls/polls.controller';
 import { stickersRouter } from './stickers/stickers.controller';
 import { previewRouter } from './preview/preview.controller';
 import { economyRouter } from './economy/economy.controller';
+import { callsRouter } from './calls/calls.controller';
+import { foldersRouter } from './chats/folders.controller';
 
 const app = express();
 const server = http.createServer(app);
@@ -87,6 +89,8 @@ app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/contacts', contactsRouter);
 app.use('/api/chats', chatsRouter);
+app.use('/api/folders', foldersRouter);
+app.use('/api/calls', callsRouter);
 app.use('/api/messages', messagesRouter);
 app.use('/api/media', mediaRouter);
 app.use('/api/search', searchRouter);
@@ -101,12 +105,15 @@ app.use('/api/economy', economyRouter);
 // Central Error Handler
 app.use(errorHandler);
 
+import { dbMaintenanceService } from './common/cleanup.service';
+
 // Start Server
 const PORT = ENV.PORT;
 server.listen(PORT, () => {
   console.log(`🚀 ${APP_CONFIG.name} API & Gateway running on port ${PORT}`);
   console.log(`📡 WebSocket Gateway ready on ws://localhost:${PORT}`);
   console.log(`📂 Uploads directory: ${ENV.UPLOAD_DIR}`);
+  dbMaintenanceService.startScheduledMaintenance(30);
 });
 
 export { app, server, wsGateway };

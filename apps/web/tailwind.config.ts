@@ -13,6 +13,7 @@ const config: Config = {
         dfz: {
           bg: 'var(--bg-main)',
           surface: 'var(--bg-surface)',
+          'surface-secondary': 'var(--bg-surface-secondary)',
           'surface-hover': 'var(--bg-surface-hover)',
           'surface-active': 'var(--bg-surface-active)',
           border: 'var(--border-subtle)',

@@ -15,6 +15,9 @@ import {
   LogOut,
   ChevronRight,
   ShieldCheck,
+  UsersRound,
+  Megaphone,
+  CirclePlay,
 } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
 import { useAuthStore } from '../../stores/authStore';
@@ -29,6 +32,9 @@ interface TelegramDrawerProps {
   onOpenContacts: () => void;
   onOpenCalls: () => void;
   onOpenSavedMessages: () => void;
+  onNewGroup?: () => void;
+  onNewChannel?: () => void;
+  onOpenStories?: () => void;
 }
 
 export const TelegramDrawer: React.FC<TelegramDrawerProps> = ({
@@ -39,6 +45,9 @@ export const TelegramDrawer: React.FC<TelegramDrawerProps> = ({
   onOpenContacts,
   onOpenCalls,
   onOpenSavedMessages,
+  onNewGroup,
+  onNewChannel,
+  onOpenStories,
 }) => {
   const drawerRef = useRef<HTMLDivElement>(null);
   const { user, profile, logout } = useAuthStore();
@@ -177,6 +186,54 @@ export const TelegramDrawer: React.FC<TelegramDrawerProps> = ({
             <span className="flex-1">Мой профиль</span>
           </button>
 
+          {onNewGroup && (
+            <button
+              onClick={() => {
+                onClose();
+                onNewGroup();
+              }}
+              className="w-full flex items-center gap-3.5 px-3 py-2.5 rounded-dfz-xl hover:bg-dfz-surface-hover transition-colors text-left"
+            >
+              <UsersRound size={18} className="text-dfz-text-muted" />
+              <span className="flex-1">Создать группу</span>
+            </button>
+          )}
+
+          {onNewChannel && (
+            <button
+              onClick={() => {
+                onClose();
+                onNewChannel();
+              }}
+              className="w-full flex items-center gap-3.5 px-3 py-2.5 rounded-dfz-xl hover:bg-dfz-surface-hover transition-colors text-left"
+            >
+              <Megaphone size={18} className="text-dfz-text-muted" />
+              <span className="flex-1">Создать канал</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => {
+              onClose();
+              onOpenContacts();
+            }}
+            className="w-full flex items-center gap-3.5 px-3 py-2.5 rounded-dfz-xl hover:bg-dfz-surface-hover transition-colors text-left"
+          >
+            <Users size={18} className="text-dfz-text-muted" />
+            <span className="flex-1">Контакты</span>
+          </button>
+
+          <button
+            onClick={() => {
+              onClose();
+              onOpenCalls();
+            }}
+            className="w-full flex items-center gap-3.5 px-3 py-2.5 rounded-dfz-xl hover:bg-dfz-surface-hover transition-colors text-left"
+          >
+            <Phone size={18} className="text-dfz-text-muted" />
+            <span className="flex-1">Звонки</span>
+          </button>
+
           <button
             onClick={() => {
               onClose();
@@ -187,6 +244,21 @@ export const TelegramDrawer: React.FC<TelegramDrawerProps> = ({
             <Bookmark size={18} className="text-[#2481cc]" />
             <span className="flex-1">Избранное</span>
           </button>
+
+          {onOpenStories && (
+            <button
+              onClick={() => {
+                onClose();
+                onOpenStories();
+              }}
+              className="w-full flex items-center gap-3.5 px-3 py-2.5 rounded-dfz-xl hover:bg-dfz-surface-hover transition-colors text-left"
+            >
+              <CirclePlay size={18} className="text-cyan-400" />
+              <span className="flex-1">Истории</span>
+            </button>
+          )}
+
+          <div className="my-1 border-t border-dfz-border/60" />
 
           <button
             onClick={() => {
@@ -227,30 +299,6 @@ export const TelegramDrawer: React.FC<TelegramDrawerProps> = ({
           >
             <Gift size={18} className="text-purple-400" />
             <span className="flex-1">Магазин подарков</span>
-          </button>
-
-          <div className="my-1 border-t border-dfz-border/60" />
-
-          <button
-            onClick={() => {
-              onClose();
-              onOpenContacts();
-            }}
-            className="w-full flex items-center gap-3.5 px-3 py-2.5 rounded-dfz-xl hover:bg-dfz-surface-hover transition-colors text-left"
-          >
-            <Users size={18} className="text-dfz-text-muted" />
-            <span className="flex-1">Контакты</span>
-          </button>
-
-          <button
-            onClick={() => {
-              onClose();
-              onOpenCalls();
-            }}
-            className="w-full flex items-center gap-3.5 px-3 py-2.5 rounded-dfz-xl hover:bg-dfz-surface-hover transition-colors text-left"
-          >
-            <Phone size={18} className="text-dfz-text-muted" />
-            <span className="flex-1">Звонки</span>
           </button>
 
           <button

@@ -9,6 +9,7 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   Shield,
+  ShieldCheck,
   Eye,
   EyeOff,
   CheckCircle,
@@ -117,35 +118,35 @@ export const MyStarsModal: React.FC = () => {
     >
       <div className="space-y-5">
         {/* Balance Hero Card */}
-        <div className="p-5 rounded-dfz-2xl bg-gradient-to-br from-amber-500/20 via-orange-500/10 to-transparent border border-amber-500/30 shadow-lg relative overflow-hidden">
-          <div className="absolute top-0 right-0 -mr-6 -mt-6 w-32 h-32 rounded-full bg-amber-500/10 blur-2xl pointer-events-none" />
+        <div className="p-5 rounded-dfz-2xl bg-dfz-surface-secondary border border-dfz-border shadow-lg relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs uppercase tracking-wider font-bold text-amber-400/80">
-              Ваш баланс Stars
+            <span className="text-xs uppercase tracking-wider font-semibold text-dfz-text-muted flex items-center gap-1.5">
+              <Star size={13} className="text-amber-400 fill-amber-400" />
+              <span>Баланс кошелька DFZ Stars</span>
             </span>
             {isUnlimitedStars && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
                 Административный безлимит
               </span>
             )}
           </div>
 
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-3xl sm:text-4xl font-extrabold text-amber-300 font-mono tracking-tight drop-shadow-sm">
+          <div className="mt-2.5 flex items-baseline gap-2">
+            <span className="text-3xl sm:text-4xl font-extrabold text-amber-300 font-mono tracking-tight">
               {isUnlimitedStars ? '★ ∞' : `★ ${starBalance.toLocaleString()}`}
             </span>
-            <span className="text-xs text-amber-400/70 font-medium">Stars</span>
+            <span className="text-xs text-amber-400/80 font-medium">Stars</span>
           </div>
 
           <p className="mt-1 text-xs text-dfz-text-muted">
-            Внутренняя единица DFZ Messenger для подарков, премиума и поощрений.
+            Внутренняя валюта DFZ Messenger для поощрений, подарков и подписки DFZ Premium.
           </p>
 
           {/* Quick Actions Bar */}
           <div className="mt-4 flex flex-wrap gap-2">
             <button
               onClick={() => setActiveTab('send')}
-              className="py-1.5 px-3 rounded-dfz-lg bg-amber-500 hover:bg-amber-400 text-black font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-sm"
+              className="py-1.5 px-3 rounded-dfz-lg bg-dfz-accent hover:bg-dfz-accent-hover text-white font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-sm"
             >
               <Send size={13} />
               <span>Перевести</span>
@@ -156,7 +157,7 @@ export const MyStarsModal: React.FC = () => {
               className="py-1.5 px-3 rounded-dfz-lg bg-dfz-surface hover:bg-dfz-surface-hover border border-dfz-border text-dfz-text font-medium text-xs transition-colors flex items-center gap-1.5"
             >
               <Sparkles size={13} className="text-amber-400" />
-              <span>Заработать</span>
+              <span>Награды</span>
             </button>
 
             <button
@@ -276,16 +277,22 @@ export const MyStarsModal: React.FC = () => {
 
             {/* Quick explanation */}
             <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="p-3 rounded-dfz-xl bg-dfz-surface/60 border border-dfz-border space-y-1">
-                <span className="font-semibold text-dfz-text">★ Без плавающего курса</span>
+              <div className="p-3 rounded-dfz-xl bg-dfz-surface-secondary border border-dfz-border space-y-1">
+                <span className="font-semibold text-dfz-text flex items-center gap-1.5">
+                  <ShieldCheck size={14} className="text-emerald-400" />
+                  <span>Гарантия реестра</span>
+                </span>
                 <p className="text-[11px] text-dfz-text-muted">
-                  Stars — это целые единицы, гарантированные двойной проводкой в реестре.
+                  Stars — это фиксированные учетные единицы с двойной записью в транзакционном журнале.
                 </p>
               </div>
-              <div className="p-3 rounded-dfz-xl bg-dfz-surface/60 border border-dfz-border space-y-1">
-                <span className="font-semibold text-dfz-text">💎 Подарки и NFT</span>
+              <div className="p-3 rounded-dfz-xl bg-dfz-surface-secondary border border-dfz-border space-y-1">
+                <span className="font-semibold text-dfz-text flex items-center gap-1.5">
+                  <Gift size={14} className="text-purple-400" />
+                  <span>Коллекции и подарки</span>
+                </span>
                 <p className="text-[11px] text-dfz-text-muted">
-                  Используйте Stars для отправки редких анимированных подарков друзьям.
+                  Отправляйте авторские подарки с персональными пожеланиями в личные чаты.
                 </p>
               </div>
             </div>

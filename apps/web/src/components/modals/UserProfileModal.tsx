@@ -1,5 +1,19 @@
 import React, { useState } from 'react';
-import { MessageSquare, Phone, Video, Ban, AlertTriangle, ShieldCheck, Star, Gift, Shield } from 'lucide-react';
+import {
+  MessageSquare,
+  Phone,
+  Video,
+  Ban,
+  AlertTriangle,
+  Star,
+  Gift,
+  Shield,
+  UserPlus,
+  UserMinus,
+  Share2,
+  Check,
+  ShieldAlert,
+} from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Avatar } from '../ui/Avatar';
 import { apiRequest } from '../../lib/api';
@@ -20,11 +34,14 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ userId, onCl
   const { setSendGiftOpen, setSendStarsOpen, setAdminQuickActionOpen } = useEconomyStore();
   const [profile, setProfile] = useState<any>(null);
   const [userGifts, setUserGifts] = useState<any[]>([]);
+  const [isContact, setIsContact] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isReporting, setIsReporting] = useState(false);
   const [reportReason, setReportReason] = useState<ReportReason>(ReportReason.SPAM);
   const [reportComment, setReportComment] = useState('');
   const [reportSuccess, setReportSuccess] = useState(false);
+  const [showBlockConfirm, setShowBlockConfirm] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   const { selectChat, fetchChats } = useChatStore();
   const { startCall } = useCallStore();
@@ -39,7 +56,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ userId, onCl
     setIsLoading(true);
     const res = await apiRequest<any>(`/api/users/profile/${id}`);
     const giftsRes = await apiRequest<any>(`/api/economy/gifts/user/${id}`);
+    const contactsRes = await apiRequest<any[]>('/api/contacts');
     setIsLoading(false);
+
     if (res.success && res.data) {
       setProfile(res.data);
     }
@@ -47,6 +66,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ userId, onCl
       setUserGifts(giftsRes.data.gifts);
     } else {
       setUserGifts([]);
+    }
+    if (contactsRes.success && contactsRes.data) {
+      setIsContact(contactsRes.data.some((c) => c.contactUserId === id || c.contactUser?.id === id));
     }
   };
 
@@ -63,21 +85,45 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ userId, onCl
     }
   };
 
-  const handleToggleBlock = async () => {
+  const handleToggleContact = async () => {
     if (!profile) return;
-    if (profile.isBlocked) {
-      await apiRequest('/api/users/unblock', {
-        method: 'POST',
-        body: JSON.stringify({ targetUserId: profile.id }),
-      });
-      setProfile({ ...profile, isBlocked: false });
+    if (isContact) {
+      await apiRequest(`/api/contacts/${profile.id}`, { method: 'DELETE' });
+      setIsContact(false);
     } else {
-      await apiRequest('/api/users/block', {
+      await apiRequest('/api/contacts', {
         method: 'POST',
-        body: JSON.stringify({ targetUserId: profile.id }),
+        body: JSON.stringify({ contactUserId: profile.id }),
       });
-      setProfile({ ...profile, isBlocked: true });
+      setIsContact(true);
     }
+  };
+
+  const handleConfirmBlock = async () => {
+    if (!profile) return;
+    await apiRequest('/api/users/block', {
+      method: 'POST',
+      body: JSON.stringify({ targetUserId: profile.id }),
+    });
+    setProfile({ ...profile, isBlocked: true });
+    setShowBlockConfirm(false);
+  };
+
+  const handleUnblock = async () => {
+    if (!profile) return;
+    await apiRequest('/api/users/unblock', {
+      method: 'POST',
+      body: JSON.stringify({ targetUserId: profile.id }),
+    });
+    setProfile({ ...profile, isBlocked: false });
+  };
+
+  const handleShareProfile = () => {
+    if (!profile) return;
+    const shareUrl = `${window.location.origin}/@${profile.username}`;
+    navigator.clipboard.writeText(shareUrl);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
   };
 
   const handleSubmitReport = async (e: React.FormEvent) => {
@@ -104,10 +150,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ userId, onCl
   if (!userId) return null;
 
   const isSelf = currentUser?.id === profile?.id;
-  const isCurrentUserAdmin = currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.SUPERADMIN;
+  const isCurrentUserAdmin =
+    currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.SUPERADMIN;
 
   return (
-    <Modal isOpen={!!userId} onClose={onClose} title="Профиль пользователя">
+    <Modal isOpen={!!userId} onClose={onClose} title="Профиль пользователя" maxWidth="md">
       {isLoading || !profile ? (
         <div className="p-8 text-center text-xs text-dfz-text-muted">Загрузка профиля...</div>
       ) : isReporting ? (
@@ -165,12 +212,14 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ userId, onCl
         </form>
       ) : (
         <div className="space-y-5 text-center">
-          <Avatar
-            src={profile.avatarUrl}
-            name={profile.displayName || profile.username}
-            size="xl"
-            className="mx-auto"
-          />
+          {/* User Hero */}
+          <div className="relative inline-block mx-auto">
+            <Avatar
+              src={profile.avatarUrl}
+              name={profile.displayName || profile.username}
+              size="xl"
+            />
+          </div>
 
           <div>
             <div className="flex items-center justify-center gap-1.5 flex-wrap">
@@ -180,7 +229,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ userId, onCl
               {profile.isPremium && (
                 <span
                   title="DFZ Premium"
-                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-[10px] font-bold text-cyan-400"
+                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-[10px] font-bold text-cyan-400"
                 >
                   <span>◆</span>
                   <span>PREMIUM</span>
@@ -203,7 +252,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ userId, onCl
               </p>
             )}
             <p className="text-[11px] text-dfz-text-muted mt-2">
-              {profile.lastSeenAt ? `Был(а) в сети: ${new Date(profile.lastSeenAt).toLocaleDateString()}` : 'Не в сети'}
+              {profile.lastSeenAt
+                ? `Был(а) в сети: ${new Date(profile.lastSeenAt).toLocaleDateString()}`
+                : 'Не в сети'}
             </p>
           </div>
 
@@ -213,7 +264,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ userId, onCl
               <>
                 <button
                   onClick={handleStartMessage}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-dfz-accent hover:bg-dfz-accent-hover text-white text-xs font-semibold rounded-dfz-md transition-colors shadow-dfz-sm"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#2a8dd4] hover:bg-[#2481cc] text-white text-xs font-semibold rounded-dfz-md transition-colors shadow-dfz-sm"
                 >
                   <MessageSquare size={14} />
                   <span>Сообщение</span>
@@ -239,6 +290,27 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ userId, onCl
                   title="Видеозвонок"
                 >
                   <Video size={15} />
+                </button>
+
+                <button
+                  onClick={handleToggleContact}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-dfz-md border transition-colors ${
+                    isContact
+                      ? 'bg-dfz-surface text-dfz-text-muted border-dfz-border hover:text-dfz-danger'
+                      : 'bg-dfz-surface-hover text-dfz-text border-dfz-border hover:bg-dfz-border'
+                  }`}
+                  title={isContact ? 'Удалить из контактов' : 'Добавить в контакты'}
+                >
+                  {isContact ? <UserMinus size={14} /> : <UserPlus size={14} />}
+                  <span>{isContact ? 'В контактах' : 'В контакт'}</span>
+                </button>
+
+                <button
+                  onClick={handleShareProfile}
+                  className="p-2 bg-dfz-surface-hover hover:bg-dfz-border text-dfz-text rounded-dfz-md transition-colors"
+                  title="Поделиться профилем"
+                >
+                  {copiedLink ? <Check size={15} className="text-emerald-400" /> : <Share2 size={15} />}
                 </button>
 
                 <button
@@ -272,7 +344,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ userId, onCl
                       setAdminQuickActionOpen(true, profile.id);
                     }}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-400 text-xs font-semibold rounded-dfz-md transition-colors"
-                    title="Админские действия над пользователем"
+                    title="Админские действия"
                   >
                     <Shield size={13} />
                     <span>Admin</span>
@@ -282,13 +354,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ userId, onCl
             )}
           </div>
 
-          {/* User Gifts Showcase */}
+          {/* User Gifts Collection */}
           {userGifts.length > 0 && (
             <div className="pt-3 border-t border-dfz-border text-left">
               <div className="flex items-center justify-between mb-2.5 px-1">
                 <h4 className="text-xs font-bold text-dfz-text flex items-center gap-1.5">
                   <Gift size={14} className="text-purple-400" />
-                  <span>Коллекция подарков ({userGifts.length})</span>
+                  <span>Подарки ({userGifts.length})</span>
                 </h4>
               </div>
               <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto pr-1">
@@ -321,15 +393,23 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ userId, onCl
           {/* Block / Report actions */}
           {!isSelf && (
             <div className="flex items-center justify-center gap-4 pt-2 text-xs">
-              <button
-                onClick={handleToggleBlock}
-                className={`flex items-center gap-1 hover:underline ${
-                  profile.isBlocked ? 'text-dfz-success' : 'text-dfz-danger'
-                }`}
-              >
-                <Ban size={14} />
-                <span>{profile.isBlocked ? 'Разблокировать' : 'Заблокировать'}</span>
-              </button>
+              {profile.isBlocked ? (
+                <button
+                  onClick={handleUnblock}
+                  className="flex items-center gap-1 text-emerald-400 hover:underline"
+                >
+                  <Ban size={14} />
+                  <span>Разблокировать пользователя</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowBlockConfirm(true)}
+                  className="flex items-center gap-1 text-dfz-danger hover:underline"
+                >
+                  <Ban size={14} />
+                  <span>Заблокировать</span>
+                </button>
+              )}
 
               <button
                 onClick={() => setIsReporting(true)}
@@ -340,6 +420,37 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ userId, onCl
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Block Confirmation Modal */}
+      {showBlockConfirm && profile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-dfz-surface border border-dfz-border rounded-dfz-xl p-5 w-full max-w-sm shadow-2xl space-y-3 text-left">
+            <div className="flex items-center gap-2.5 text-dfz-danger">
+              <ShieldAlert size={20} />
+              <h3 className="font-bold text-sm text-dfz-text">Заблокировать @{profile.username}?</h3>
+            </div>
+            <p className="text-xs text-dfz-text-muted leading-relaxed">
+              Пользователь больше не сможет отправлять вам личные сообщения, совершать звонки или видеть ваше присутствие.
+            </p>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowBlockConfirm(false)}
+                className="px-3 py-1.5 text-xs text-dfz-text-muted hover:text-dfz-text rounded-dfz-md"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmBlock}
+                className="px-3.5 py-1.5 text-xs font-semibold bg-dfz-danger hover:bg-dfz-danger-hover text-white rounded-dfz-md transition-colors"
+              >
+                Заблокировать
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </Modal>

@@ -213,3 +213,70 @@ chatsRouter.post('/:id/topics/:topicId/close', async (req: Request, res: Respons
     next(err);
   }
 });
+
+// 14. Update Chat (Group / Channel settings)
+chatsRouter.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const updated = await chatsService.updateChat(req.params.id, req.user!.userId, req.body);
+    return res.json({ success: true, data: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 15. Update Member role & permissions
+chatsRouter.put('/:id/members/:targetUserId/role', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { role, customTitle, permissions } = req.body;
+    const updated = await chatsService.updateMember(req.params.id, req.user!.userId, req.params.targetUserId, {
+      role,
+      customTitle,
+      permissions,
+    });
+    return res.json({ success: true, data: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 16. Delete Chat
+chatsRouter.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await chatsService.deleteChat(req.params.id, req.user!.userId);
+    return res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 17. Clear History
+chatsRouter.post('/:id/clear', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await chatsService.clearHistory(req.params.id, req.user!.userId);
+    return res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 18. Regenerate invite code
+chatsRouter.post('/:id/invite-link', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await chatsService.regenerateInviteCode(req.params.id, req.user!.userId);
+    return res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 19. Get Chat Shared Media
+chatsRouter.get('/:id/media', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const category = (req.query.category as 'media' | 'files' | 'voice' | 'links') || 'media';
+    const items = await chatsService.getChatMedia(req.params.id, req.user!.userId, category);
+    return res.json({ success: true, data: items });
+  } catch (err) {
+    next(err);
+  }
+});
+
