@@ -87,7 +87,7 @@ adminRouter.get('/users', async (req: Request, res: Response, next: NextFunction
     return res.json({
       success: true,
       data: {
-        items: users.map(u => ({
+        items: users.map((u: any) => ({
           id: u.id,
           username: u.username,
           displayName: u.profile?.displayName || u.username,
@@ -204,7 +204,7 @@ adminRouter.get('/users/:id', async (req: Request, res: Response, next: NextFunc
           isUnlimited: user.starAccount?.isUnlimited || false,
           totalEarned: user.starAccount?.totalEarned || 0,
           totalSpent: user.starAccount?.totalSpent || 0,
-          recentTransactions: user.starAccount?.transactions.map(t => ({
+          recentTransactions: user.starAccount?.transactions.map((t: any) => ({
             id: t.id,
             type: t.type,
             amount: t.amount,
@@ -212,7 +212,7 @@ adminRouter.get('/users/:id', async (req: Request, res: Response, next: NextFunc
             createdAt: t.createdAt.toISOString(),
           })) || [],
         },
-        gifts: user.ownedGifts.map(g => ({
+        gifts: user.ownedGifts.map((g: any) => ({
           id: g.id,
           name: g.giftDefinition.name,
           artwork: g.giftDefinition.artwork,
@@ -221,7 +221,7 @@ adminRouter.get('/users/:id', async (req: Request, res: Response, next: NextFunc
           message: g.message,
           receivedAt: g.receivedAt.toISOString(),
         })),
-        collectibles: user.ownedCollectibles.map(c => ({
+        collectibles: user.ownedCollectibles.map((c: any) => ({
           id: c.id,
           editionName: c.editionName,
           uniqueNumber: c.uniqueNumber,
@@ -230,7 +230,7 @@ adminRouter.get('/users/:id', async (req: Request, res: Response, next: NextFunc
         })),
         security: {
           activeSessionsCount: user.sessions.length,
-          recentSessions: user.sessions.map(s => ({
+          recentSessions: user.sessions.map((s: any) => ({
             id: s.id,
             deviceName: s.deviceName,
             browser: s.browser,
@@ -239,7 +239,7 @@ adminRouter.get('/users/:id', async (req: Request, res: Response, next: NextFunc
             lastActiveAt: s.lastActiveAt.toISOString(),
           })),
         },
-        auditHistory: auditHistory.map(a => ({
+        auditHistory: auditHistory.map((a: any) => ({
           id: a.id,
           action: a.action,
           actorUsername: a.actor.username,
@@ -403,7 +403,7 @@ adminRouter.get('/audit-logs', async (req: Request, res: Response, next: NextFun
 
     return res.json({
       success: true,
-      data: logs.map(l => ({
+      data: logs.map((l: any) => ({
         id: l.id,
         actor: {
           id: l.actor.id,
