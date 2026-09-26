@@ -245,10 +245,10 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
   }
 
   return (
-    <div className="p-3 bg-dfz-surface border-t border-dfz-border select-none relative">
+    <div className="p-2 sm:p-3 bg-dfz-surface border-t border-dfz-border/80 select-none relative">
       {/* Uploading progress indicator */}
       {isUploading && (
-        <div className="absolute top-0 left-0 right-0 h-0.5 bg-dfz-accent overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#2481cc] overflow-hidden">
           <div
             className="h-full bg-white/60 transition-all duration-300"
             style={{ width: `${uploadProgress}%` }}
@@ -258,12 +258,12 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
 
       {/* Editing or Reply Preview Banner */}
       {(replyTo || editingMessage) && (
-        <div className="flex items-center justify-between px-3 py-1.5 mb-2 bg-dfz-surface border border-dfz-border rounded-dfz-lg text-xs animate-slide-up">
+        <div className="flex items-center justify-between px-3 py-1.5 mb-2 bg-dfz-surface border-l-4 border-[#2481cc] rounded-r-dfz-lg text-xs animate-slide-up bg-black/20">
           <div className="flex items-center gap-2 overflow-hidden">
             {editingMessage ? (
-              <Edit3 size={14} className="text-dfz-accent flex-shrink-0" />
+              <Edit3 size={14} className="text-[#2481cc] flex-shrink-0" />
             ) : (
-              <Reply size={14} className="text-dfz-accent flex-shrink-0" />
+              <Reply size={14} className="text-[#2481cc] flex-shrink-0" />
             )}
             <div className="truncate">
               <span className="font-semibold text-dfz-text">
@@ -303,8 +303,9 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
         className="hidden"
       />
 
-      {/* Composer Input Box */}
-      <div className="flex items-end gap-1.5 bg-dfz-surface border border-dfz-border rounded-dfz-xl px-2 py-1.5 focus-within:border-dfz-border-focus transition-colors">
+      {/* Telegram Composer Input Bar */}
+      <div className="flex items-end gap-2">
+        <div className="flex-1 flex items-end gap-1.5 bg-dfz-bg border border-dfz-border/60 rounded-[22px] px-2 py-1 focus-within:border-[#2481cc] transition-colors shadow-inner">
         {/* Attachment Button & Popup Menu */}
         <div className="relative">
           <button
@@ -462,36 +463,38 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
           className="flex-1 max-h-36 min-h-[24px] py-1.5 px-1 bg-transparent text-dfz-text placeholder:text-dfz-text-muted text-sm resize-none focus:outline-none leading-relaxed"
         />
 
-        {/* Action Buttons: Send OR Voice & Video Note */}
+        </div>
+
+        {/* Telegram Action Button: Round Send OR Voice & Video Note */}
         {text.trim() || editingMessage ? (
           <button
             type="button"
             onClick={handleSend}
-            className="p-2 bg-dfz-accent hover:bg-dfz-accent-hover text-white rounded-full transition-colors flex-shrink-0 mb-0.5 shadow-dfz-sm animate-scale-in"
-            title="Отправить"
+            className="w-11 h-11 bg-[#2481cc] hover:bg-[#1c74b8] text-white rounded-full transition-transform active:scale-95 flex items-center justify-center flex-shrink-0 shadow-md animate-scale-in"
+            title="Отправить (Enter)"
           >
-            <Send size={16} />
+            <Send size={18} className="translate-x-0.5 -translate-y-0.5" />
           </button>
         ) : (
-          <div className="flex items-center gap-1 flex-shrink-0 mb-0.5">
+          <div className="flex items-center gap-0.5 flex-shrink-0">
             {/* Round Video Note Button */}
             <button
               type="button"
               onClick={() => setIsVideoRecording(true)}
-              className="p-2 text-dfz-text-muted hover:text-dfz-accent hover:bg-dfz-surface-hover rounded-full transition-colors"
+              className="p-2.5 text-dfz-text-muted hover:text-[#2481cc] hover:bg-dfz-surface-hover rounded-full transition-colors"
               title="Записать видеосообщение (кружок)"
             >
-              <Video size={18} />
+              <Video size={19} />
             </button>
 
             {/* Voice Message Button */}
             <button
               type="button"
               onClick={() => setIsRecording(true)}
-              className="p-2 text-dfz-text-muted hover:text-dfz-accent hover:bg-dfz-surface-hover rounded-full transition-colors"
+              className="w-11 h-11 bg-[#2481cc] hover:bg-[#1c74b8] text-white rounded-full transition-transform active:scale-95 flex items-center justify-center flex-shrink-0 shadow-md"
               title="Записать голосовое сообщение"
             >
-              <Mic size={18} />
+              <Mic size={19} />
             </button>
           </div>
         )}

@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '../stores/authStore';
 import { useChatStore } from '../stores/chatStore';
 import { useCallStore } from '../stores/callStore';
-import { LeftSidebar } from '../components/layout/LeftSidebar';
+import { useStoriesStore } from '../stores/storiesStore';
+import { useEconomyStore } from '../stores/economyStore';
+import { TelegramDrawer } from '../components/layout/TelegramDrawer';
 import { ChatList } from '../components/layout/ChatList';
 import { ChatHeader } from '../components/chat/ChatHeader';
 import { MessageList } from '../components/chat/MessageList';
@@ -18,21 +20,18 @@ import { NewChannelModal } from '../components/modals/NewChannelModal';
 import { SettingsModal } from '../components/modals/SettingsModal';
 import { UserProfileModal } from '../components/modals/UserProfileModal';
 import { CallOverlay } from '../components/modals/CallOverlay';
-import { MobileBottomNav } from '../components/layout/MobileBottomNav';
 import { StoryViewerModal } from '../components/stories/StoryViewerModal';
 import { StoryCreatorModal } from '../components/stories/StoryCreatorModal';
 import { StoryAnalyticsModal } from '../components/stories/StoryAnalyticsModal';
-import { useStoriesStore } from '../stores/storiesStore';
-import { useEconomyStore } from '../stores/economyStore';
 import { MyStarsModal } from '../components/economy/MyStarsModal';
 import { GiftStoreModal } from '../components/economy/GiftStoreModal';
 import { CollectibleViewerModal } from '../components/economy/CollectibleViewerModal';
 import { PremiumModal } from '../components/economy/PremiumModal';
 import { AdminQuickActionsModal } from '../components/economy/AdminQuickActionsModal';
-import { socketService } from '../lib/socket';
-import { ShieldCheck, MessageSquare, WifiOff } from 'lucide-react';
+import { apiRequest } from '../lib/api';
+import { ShieldCheck, MessageSquare, WifiOff, Lock } from 'lucide-react';
 
-export default function MessengerPage() {
+export default function TelegramMessengerPage() {
   const router = useRouter();
   const { user, profile, isAuthenticated, isLoading, checkAuth } = useAuthStore();
   const {
@@ -48,7 +47,8 @@ export default function MessengerPage() {
   const { setupCallListeners } = useCallStore();
   const { toastMessage } = useEconomyStore();
 
-  const [currentNavTab, setCurrentNavTab] = useState<'chats' | 'contacts' | 'calls' | 'saved' | 'archive'>('chats');
+  const [isTelegramDrawerOpen, setIsTelegramDrawerOpen] = useState(false);
+  const [currentView, setCurrentView] = useState<'chats' | 'contacts'>('chats');
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
   const [isNewGroupOpen, setIsNewGroupOpen] = useState(false);
   const [isNewChannelOpen, setIsNewChannelOpen] = useState(false);
@@ -82,26 +82,33 @@ export default function MessengerPage() {
     };
   }, []);
 
-  // Handle "Saved Messages" click
-  const handleNavSelect = async (tab: 'chats' | 'contacts' | 'calls' | 'saved' | 'archive') => {
-    setCurrentNavTab(tab);
-    if (tab === 'saved') {
-      const savedChat = chats.find((c) => c.type === 'SAVED');
-      if (savedChat) {
-        await selectChat(savedChat.id);
-        setCurrentNavTab('chats');
+  // Handle "Saved Messages" click in Telegram Drawer
+  const handleOpenSavedMessages = async () => {
+    let savedChat = chats.find((c) => c.type === 'SAVED');
+    if (!savedChat && user) {
+      const res = await apiRequest<any>('/api/chats/direct', {
+        method: 'POST',
+        body: JSON.stringify({ targetUserId: user.id }),
+      });
+      if (res.success && res.data) {
+        await fetchChats();
+        savedChat = res.data;
       }
+    }
+    if (savedChat) {
+      await selectChat(savedChat.id);
+      setCurrentView('chats');
     }
   };
 
   if (isLoading) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-dfz-bg text-dfz-text select-none">
-        <div className="w-14 h-14 rounded-dfz-xl bg-dfz-accent flex items-center justify-center text-white shadow-dfz-md mb-4 animate-bounce">
-          <ShieldCheck size={32} />
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#0e1621] text-white select-none">
+        <div className="w-16 h-16 rounded-full bg-[#2481cc] flex items-center justify-center text-white shadow-xl mb-4 animate-bounce">
+          <ShieldCheck size={36} />
         </div>
         <h2 className="text-base font-bold tracking-tight">DFZ Messenger</h2>
-        <p className="text-xs text-dfz-text-muted mt-1">Загрузка безопасного сеанса...</p>
+        <p className="text-xs text-[#7f91a4] mt-1 font-medium">Безопасное соединение...</p>
       </div>
     );
   }
@@ -111,35 +118,29 @@ export default function MessengerPage() {
   }
 
   return (
-    <div className="flex h-[100dvh] w-screen bg-dfz-bg text-dfz-text overflow-hidden font-sans">
+    <div className="flex h-[100dvh] w-screen bg-[#0e1621] text-dfz-text overflow-hidden font-sans select-none">
       {/* Network Offline Alert Bar */}
       {isOffline && (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-dfz-danger text-white text-xs py-1 px-4 text-center flex items-center justify-center gap-2 font-medium">
+        <div className="fixed top-0 left-0 right-0 z-50 bg-[#e53935] text-white text-xs py-1 px-4 text-center flex items-center justify-center gap-2 font-medium shadow-md">
           <WifiOff size={14} />
-          <span>Подключение к сети прервано. Попытка восстановить соединение...</span>
+          <span>Подключение к сети прервано. Попытка восстановить связь...</span>
         </div>
       )}
 
-      {/* 1. Left Icon Sidebar (Desktop always, hidden on mobile in active chat) */}
-      <div className={`h-full ${activeChatId ? 'hidden md:flex' : 'flex'}`}>
-        <LeftSidebar
-          currentTab={currentNavTab}
-          onSelectTab={handleNavSelect}
-          onOpenSettings={() => setIsSettingsOpen(true)}
-          onOpenProfile={() => setInspectedUserId(user.id)}
-        />
-      </div>
-
-      {/* 2. Chat List OR Contacts View */}
+      {/* 1. Telegram Chat List Column (full width on mobile if no active chat) */}
       <div
         className={`h-full ${
           activeChatId ? 'hidden md:flex' : 'flex w-full md:w-auto'
         }`}
       >
-        {currentNavTab === 'contacts' ? (
-          <ContactsView onSelectUser={(id) => setInspectedUserId(id)} />
+        {currentView === 'contacts' ? (
+          <ContactsView
+            onSelectUser={(id) => setInspectedUserId(id)}
+            onBack={() => setCurrentView('chats')}
+          />
         ) : (
           <ChatList
+            onOpenMenu={() => setIsTelegramDrawerOpen(true)}
             onNewChat={() => setIsNewChatOpen(true)}
             onNewGroup={() => setIsNewGroupOpen(true)}
             onNewChannel={() => setIsNewChannelOpen(true)}
@@ -147,37 +148,43 @@ export default function MessengerPage() {
         )}
       </div>
 
-      {/* 3. Active Chat Area (or Empty Placeholder) */}
+      {/* 2. Telegram Main Chat Area (full width on mobile if chat is active) */}
       <div
-        className={`flex-1 h-full flex flex-col bg-dfz-bg ${
+        className={`flex-1 h-full flex flex-col bg-[#0e1621] relative overflow-hidden ${
           activeChatId ? 'flex' : 'hidden md:flex'
         }`}
       >
         {activeChat ? (
           <div className="flex-1 flex flex-col h-full overflow-hidden">
+            {/* Telegram Chat Header */}
             <ChatHeader
               chat={activeChat}
               onBackMobile={() => useChatStore.setState({ activeChatId: null, activeChat: null })}
               onToggleInfo={toggleInfoPanel}
               onToggleSearch={() => {}}
             />
+
+            {/* Telegram Wallpaper Message Canvas */}
             <MessageList chatId={activeChat.id} />
+
+            {/* Telegram Message Composer */}
             <MessageComposer chatId={activeChat.id} />
           </div>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-dfz-text-muted select-none">
-            <div className="w-16 h-16 rounded-full bg-dfz-surface border border-dfz-border flex items-center justify-center text-dfz-accent mb-4 shadow-dfz-sm">
-              <MessageSquare size={28} />
+          /* Telegram Classic Empty State */
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center select-none tg-wallpaper">
+            <div className="px-4 py-2 rounded-full bg-black/40 backdrop-blur-md text-white/90 text-xs font-medium flex items-center gap-2 shadow-sm border border-white/5">
+              <Lock size={13} className="text-[#2481cc]" />
+              <span>Выберите, кому хотели бы написать</span>
             </div>
-            <h3 className="text-base font-bold text-dfz-text">Выберите чат для начала общения</h3>
-            <p className="text-xs text-dfz-text-muted mt-1 max-w-sm">
-              Отправляйте текстовые и голосовые сообщения, файлы, делитесь медиа или звоните через WebRTC.
+            <p className="text-[11px] text-[#7f91a4] mt-3">
+              Сообщения и звонки защищены протоколом сквозного шифрования
             </p>
           </div>
         )}
       </div>
 
-      {/* 4. Chat Info Panel (Right Drawer) */}
+      {/* 3. Telegram Right Info Panel (Sliding Drawer) */}
       {isInfoPanelOpen && activeChat && (
         <ChatInfoPanel
           chat={activeChat}
@@ -186,7 +193,18 @@ export default function MessengerPage() {
         />
       )}
 
-      {/* Modals & Dialogs */}
+      {/* Telegram Sliding Drawer Menu (☰ Hamburger Menu) */}
+      <TelegramDrawer
+        isOpen={isTelegramDrawerOpen}
+        onClose={() => setIsTelegramDrawerOpen(false)}
+        onOpenProfile={() => setInspectedUserId(user.id)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenContacts={() => setCurrentView('contacts')}
+        onOpenCalls={() => {}}
+        onOpenSavedMessages={handleOpenSavedMessages}
+      />
+
+      {/* Dialogs and Modals */}
       <NewChatModal isOpen={isNewChatOpen} onClose={() => setIsNewChatOpen(false)} />
       <NewGroupModal isOpen={isNewGroupOpen} onClose={() => setIsNewGroupOpen(false)} />
       <NewChannelModal isOpen={isNewChannelOpen} onClose={() => setIsNewChannelOpen(false)} />
@@ -199,27 +217,20 @@ export default function MessengerPage() {
       <StoryCreatorModal />
       <StoryAnalyticsModal />
 
-      {/* Economy & Administration Modals */}
+      {/* Economy Modals */}
       <MyStarsModal />
       <GiftStoreModal />
       <CollectibleViewerModal />
       <PremiumModal />
       <AdminQuickActionsModal />
 
-      {/* Toast Notifications */}
+      {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 animate-bounce p-3 px-4 rounded-dfz-xl bg-dfz-surface border border-dfz-border shadow-dfz-lg flex items-center gap-2.5 text-xs font-semibold text-dfz-text">
+        <div className="fixed bottom-6 right-6 z-50 animate-bounce p-3 px-4 rounded-full bg-[#17212b] border border-[#2481cc]/40 shadow-2xl flex items-center gap-2.5 text-xs font-semibold text-white">
           <span className="text-amber-400 font-bold">★</span>
           <span>{toastMessage.text}</span>
         </div>
       )}
-
-      {/* Mobile-first Bottom Navigation Bar */}
-      <MobileBottomNav
-        currentTab={currentNavTab as any}
-        onSelectTab={handleNavSelect}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-      />
     </div>
   );
 }

@@ -198,32 +198,32 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           </div>
         </div>
       ) : (
-        /* Standard Bubble Container */
+        /* Telegram Bubble Container */
         <div
-          className={`relative rounded-dfz-xl px-3.5 py-2 text-sm leading-relaxed transition-all shadow-dfz-sm ${
+          className={`relative rounded-[16px] px-3.5 py-2 text-sm leading-relaxed transition-all shadow-sm max-w-[88%] sm:max-w-[72%] ${
             isOutgoing
-              ? 'bg-dfz-accent text-white rounded-br-dfz-sm'
-              : 'bg-dfz-surface text-dfz-text border border-dfz-border rounded-bl-dfz-sm'
+              ? 'bg-[#2b5278] text-white rounded-br-[4px]'
+              : 'bg-[#182533] text-white rounded-bl-[4px]'
           }`}
         >
           {/* Sender Name in Group/Channel for incoming */}
           {!isOutgoing && showAvatar && (
-            <div className="text-[12px] font-semibold text-dfz-accent mb-0.5 truncate">
+            <div className="text-[12px] font-semibold text-[#2481cc] mb-0.5 truncate">
               {message.sender?.profile?.displayName || message.sender?.username}
             </div>
           )}
 
-          {/* Reply Quote preview */}
+          {/* Telegram Reply Quote preview */}
           {message.replyTo && (
             <div
-              className={`border-l-2 pl-2.5 py-0.5 mb-1.5 rounded-dfz-sm text-xs cursor-pointer ${
-                isOutgoing ? 'border-white/60 bg-white/10' : 'border-dfz-accent bg-dfz-surface-hover/70'
+              className={`border-l-[3px] border-[#2481cc] pl-2.5 py-0.5 mb-1.5 rounded-r bg-black/20 text-xs cursor-pointer ${
+                isOutgoing ? 'bg-black/20' : 'bg-black/20'
               }`}
             >
-              <div className="font-semibold truncate">
+              <div className="font-semibold text-[#6eb4f7] text-[11px] truncate">
                 {message.replyTo.senderName || 'Сообщение'}
               </div>
-              <div className="truncate opacity-80">{message.replyTo.content}</div>
+              <div className="truncate text-white/80 text-[12px]">{message.replyTo.content}</div>
             </div>
           )}
 
@@ -272,10 +272,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   <div
                     key={att.id || att.url}
                     className={`flex items-center gap-3 p-2.5 rounded-dfz-md ${
-                      isOutgoing ? 'bg-white/15' : 'bg-dfz-surface-hover border border-dfz-border'
+                      isOutgoing ? 'bg-white/10' : 'bg-black/20 border border-white/10'
                     }`}
                   >
-                    <div className="p-2 rounded-dfz-md bg-dfz-accent/20 text-dfz-accent flex-shrink-0">
+                    <div className="p-2 rounded-dfz-md bg-[#2481cc]/20 text-[#2481cc] flex-shrink-0">
                       <FileText size={20} />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -297,24 +297,20 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             </div>
           )}
 
-          {/* Text Content */}
+          {/* Text Content with Inline Floating Timestamp */}
           {message.content && (
-            <div className="whitespace-pre-wrap break-words">{message.content}</div>
+            <div className="whitespace-pre-wrap break-words leading-relaxed text-[13.5px]">
+              {message.content}
+              <span className="float-right ml-2.5 mt-1.5 inline-flex items-center gap-1 select-none text-[11px] leading-none text-white/60">
+                {message.isEdited && <span className="text-[10px] italic opacity-70">изм.</span>}
+                <span>{formattedTime}</span>
+                {isOutgoing && <span className="inline-block">{renderStatus()}</span>}
+              </span>
+            </div>
           )}
 
           {/* Safe Link Preview */}
           {detectedUrl && <LinkPreviewBubble url={detectedUrl} />}
-
-          {/* Footer info: Edited, Time, Delivery Status */}
-          <div
-            className={`flex items-center justify-end gap-1.5 mt-1 text-[11px] select-none ${
-              isOutgoing ? 'text-white/80' : 'text-dfz-text-muted'
-            }`}
-          >
-            {message.isEdited && <span className="text-[10px] italic opacity-75">изм.</span>}
-            <span>{formattedTime}</span>
-            {renderStatus()}
-          </div>
           {/* Reactions Pill List */}
           {message.reactions && message.reactions.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1.5 -mb-0.5">

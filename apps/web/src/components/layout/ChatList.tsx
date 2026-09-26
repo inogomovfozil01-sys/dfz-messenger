@@ -1,26 +1,41 @@
 import React, { useState, useMemo } from 'react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { Search, Plus, Pin, BellOff, MessageSquare, Users, Radio } from 'lucide-react';
+import {
+  Menu,
+  Search,
+  X,
+  Edit2,
+  Pin,
+  BellOff,
+  MessageSquare,
+  Users,
+  Radio,
+  Check,
+  CheckCheck,
+} from 'lucide-react';
 import { Chat, ChatType } from '@dfz/types';
 import { Avatar } from '../ui/Avatar';
-import { Badge } from '../ui/Badge';
 import { Skeleton } from '../ui/Skeleton';
 import { ContextMenu, ContextMenuItem } from '../ui/ContextMenu';
 import { useChatStore, FolderFilter } from '../../stores/chatStore';
+import { useAuthStore } from '../../stores/authStore';
 import { StoriesStrip } from '../stories/StoriesStrip';
 
 interface ChatListProps {
+  onOpenMenu: () => void;
   onNewChat: () => void;
   onNewGroup: () => void;
   onNewChannel: () => void;
 }
 
 export const ChatList: React.FC<ChatListProps> = ({
+  onOpenMenu,
   onNewChat,
   onNewGroup,
   onNewChannel,
 }) => {
+  const { user } = useAuthStore();
   const {
     chats,
     activeChatId,
@@ -35,15 +50,36 @@ export const ChatList: React.FC<ChatListProps> = ({
     typingUsers,
   } = useChatStore();
 
-  const [showPlusMenu, setShowPlusMenu] = useState(false);
+  const [isFabOpen, setIsFabOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; chat: Chat } | null>(null);
 
-  const folders: { id: FolderFilter; label: string }[] = [
-    { id: 'all', label: 'Все' },
-    { id: 'personal', label: 'Личные' },
-    { id: 'groups', label: 'Группы' },
-    { id: 'channels', label: 'Каналы' },
-    { id: 'unread', label: 'Новые' },
+  const folders: { id: FolderFilter; label: string; count?: number }[] = [
+    {
+      id: 'all',
+      label: 'Все',
+      count: chats.reduce((sum, c) => sum + (c.unreadCount || 0), 0),
+    },
+    {
+      id: 'personal',
+      label: 'Личные',
+      count: chats
+        .filter((c) => c.type === ChatType.DIRECT)
+        .reduce((sum, c) => sum + (c.unreadCount || 0), 0),
+    },
+    {
+      id: 'groups',
+      label: 'Группы',
+      count: chats
+        .filter((c) => c.type === ChatType.GROUP)
+        .reduce((sum, c) => sum + (c.unreadCount || 0), 0),
+    },
+    {
+      id: 'channels',
+      label: 'Каналы',
+      count: chats
+        .filter((c) => c.type === ChatType.CHANNEL)
+        .reduce((sum, c) => sum + (c.unreadCount || 0), 0),
+    },
   ];
 
   // Filter & sort chats
@@ -62,7 +98,6 @@ export const ChatList: React.FC<ChatListProps> = ({
         if (activeFolder === 'personal') return chat.type === ChatType.DIRECT;
         if (activeFolder === 'groups') return chat.type === ChatType.GROUP;
         if (activeFolder === 'channels') return chat.type === ChatType.CHANNEL;
-        if (activeFolder === 'unread') return (chat.unreadCount || 0) > 0;
         return true;
       })
       .sort((a, b) => {
@@ -104,70 +139,44 @@ export const ChatList: React.FC<ChatListProps> = ({
     : [];
 
   return (
-    <div className="w-full md:w-80 lg:w-96 h-full bg-dfz-surface border-r border-dfz-border flex flex-col select-none flex-shrink-0">
-      {/* Top Header & Search */}
-      <div className="p-3 pb-2 space-y-2.5 border-b border-dfz-border">
-        <div className="flex items-center justify-between">
-          <h1 className="text-base font-bold text-dfz-text tracking-tight">DFZ Messenger</h1>
-          {/* New Chat Dropdown Button */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowPlusMenu(!showPlusMenu)}
-              className="p-1.5 rounded-dfz-md bg-dfz-accent text-white hover:bg-dfz-accent-hover shadow-dfz-sm transition-colors"
-              title="Создать чат"
-            >
-              <Plus size={18} />
-            </button>
+    <div className="w-full md:w-[380px] lg:w-[410px] h-full bg-dfz-surface border-r border-dfz-border flex flex-col select-none flex-shrink-0 relative overflow-hidden">
+      {/* Telegram Top Header: Hamburger Menu + Search */}
+      <div className="p-2.5 pb-1 space-y-2 border-b border-dfz-border/80">
+        <div className="flex items-center gap-2">
+          {/* Hamburger Menu Button */}
+          <button
+            type="button"
+            onClick={onOpenMenu}
+            className="p-2 rounded-full text-dfz-text-muted hover:text-dfz-text hover:bg-dfz-surface-hover transition-colors flex-shrink-0"
+            title="Главное меню"
+          >
+            <Menu size={22} />
+          </button>
 
-            {showPlusMenu && (
-              <div
-                className="absolute right-0 top-9 w-44 bg-dfz-surface border border-dfz-border rounded-dfz-lg shadow-dfz-dropdown py-1 z-40 animate-scale-in"
-                onClick={() => setShowPlusMenu(false)}
+          {/* Telegram Rounded Search Input */}
+          <div className="relative flex-1 flex items-center">
+            <Search size={16} className="absolute left-3.5 text-dfz-text-muted pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Поиск"
+              className="w-full h-9 pl-10 pr-8 bg-dfz-bg border border-dfz-border/60 rounded-full text-xs text-dfz-text placeholder:text-dfz-text-muted focus:outline-none focus:border-[#2481cc] transition-colors"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 p-1 rounded-full text-dfz-text-muted hover:text-dfz-text"
               >
-                <button
-                  type="button"
-                  onClick={onNewChat}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-dfz-text hover:bg-dfz-surface-hover text-left"
-                >
-                  <MessageSquare size={16} className="text-dfz-accent" />
-                  <span>Новый диалог</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={onNewGroup}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-dfz-text hover:bg-dfz-surface-hover text-left"
-                >
-                  <Users size={16} className="text-dfz-accent" />
-                  <span>Новая группа</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={onNewChannel}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-dfz-text hover:bg-dfz-surface-hover text-left"
-                >
-                  <Radio size={16} className="text-dfz-accent" />
-                  <span>Новый канал</span>
-                </button>
-              </div>
+                <X size={14} />
+              </button>
             )}
           </div>
         </div>
 
-        {/* Search Input */}
-        <div className="relative flex items-center">
-          <Search size={16} className="absolute left-3 text-dfz-text-muted" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Поиск..."
-            className="w-full h-9 pl-9 pr-3 bg-dfz-bg border border-dfz-border rounded-dfz-lg text-xs text-dfz-text placeholder:text-dfz-text-muted focus:outline-none focus:border-dfz-border-focus transition-colors"
-          />
-        </div>
-
-        {/* Folders Tabs */}
-        <div className="flex items-center gap-1 overflow-x-auto pb-0.5 no-scrollbar">
+        {/* Telegram Folder Tabs with Unread Count Badges */}
+        <div className="flex items-center gap-1 overflow-x-auto pb-1 no-scrollbar pt-1">
           {folders.map((f) => {
             const isActive = activeFolder === f.id;
             return (
@@ -175,13 +184,22 @@ export const ChatList: React.FC<ChatListProps> = ({
                 key={f.id}
                 type="button"
                 onClick={() => setActiveFolder(f.id)}
-                className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+                className={`relative px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
                   isActive
-                    ? 'bg-dfz-accent text-white shadow-dfz-sm'
+                    ? 'bg-[#2481cc] text-white shadow-sm'
                     : 'text-dfz-text-muted hover:text-dfz-text hover:bg-dfz-surface-hover'
                 }`}
               >
-                {f.label}
+                <span>{f.label}</span>
+                {f.count !== undefined && f.count > 0 && (
+                  <span
+                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                      isActive ? 'bg-white/25 text-white' : 'bg-[#2481cc] text-white'
+                    }`}
+                  >
+                    {f.count > 99 ? '99+' : f.count}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -191,89 +209,150 @@ export const ChatList: React.FC<ChatListProps> = ({
       {/* 24-hour Stories Strip */}
       <StoriesStrip />
 
-      {/* Chat List Body */}
-      <div className="flex-1 overflow-y-auto divide-y divide-dfz-border/40">
+      {/* Telegram Chat List Body */}
+      <div className="flex-1 overflow-y-auto">
         {isLoadingChats && chats.length === 0 ? (
           <div className="p-3 space-y-3">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="flex items-center gap-3">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="flex items-center gap-3 px-2">
                 <Skeleton className="w-12 h-12 rounded-full" />
                 <div className="flex-1 space-y-2">
-                  <Skeleton className="w-28 h-4 rounded" />
-                  <Skeleton className="w-44 h-3 rounded" />
+                  <Skeleton className="w-32 h-4 rounded" />
+                  <Skeleton className="w-48 h-3 rounded" />
                 </div>
               </div>
             ))}
           </div>
         ) : filteredChats.length === 0 ? (
-          <div className="p-8 text-center text-xs text-dfz-text-muted">
+          <div className="p-12 text-center text-xs text-dfz-text-muted">
             Чаты не найдены
           </div>
         ) : (
           filteredChats.map((chat) => {
             const isActive = chat.id === activeChatId;
             const typing = typingUsers[chat.id];
+            const isLastMessageMine =
+              chat.lastMessage?.senderId === user?.id ||
+              chat.lastMessage?.senderName === user?.username;
 
             return (
               <div
                 key={chat.id}
                 onClick={() => selectChat(chat.id)}
                 onContextMenu={(e) => handleChatContextMenu(e, chat)}
-                className={`flex items-center gap-3 p-3 cursor-pointer transition-colors ${
+                className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors relative ${
                   isActive
-                    ? 'bg-dfz-accent/15 border-l-4 border-dfz-accent'
-                    : 'hover:bg-dfz-surface-hover'
+                    ? 'bg-[#2b5278] text-white'
+                    : 'hover:bg-dfz-surface-hover/80 text-dfz-text'
                 }`}
               >
-                {/* Chat Avatar */}
+                {/* 52px Telegram Avatar with Online Badge */}
                 <Avatar
                   src={chat.avatarUrl}
                   name={chat.title || 'Chat'}
                   size="md"
-                  isOnline={chat.type === ChatType.DIRECT && chat.members?.some((m) => !!m.lastSeenAt)}
+                  isOnline={
+                    chat.type === ChatType.DIRECT &&
+                    chat.members?.some((m) => m.userId !== user?.id && !!m.lastSeenAt)
+                  }
                 />
 
-                {/* Info & Last message snippet */}
-                <div className="flex-1 min-w-0">
+                {/* Content preview */}
+                <div className="flex-1 min-w-0 pr-1">
+                  {/* Top Line: Title + Timestamp */}
                   <div className="flex items-center justify-between gap-1 mb-0.5">
-                    <span className="text-xs font-semibold text-dfz-text truncate">
-                      {chat.title || 'Чат'}
-                    </span>
-                    <span className="text-[11px] text-dfz-text-muted flex-shrink-0 font-mono">
-                      {formatChatTimestamp(chat.lastMessage?.createdAt || chat.updatedAt)}
-                    </span>
+                    <div className="flex items-center gap-1.5 min-w-0 truncate">
+                      {chat.type === ChatType.CHANNEL && (
+                        <Radio size={14} className="text-[#2481cc] flex-shrink-0" />
+                      )}
+                      {chat.type === ChatType.GROUP && (
+                        <Users size={14} className="text-dfz-text-muted flex-shrink-0" />
+                      )}
+                      <span className="text-xs font-bold truncate">
+                        {chat.title || 'Чат'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {isLastMessageMine && (
+                        <span className="text-[#6eb4f7]">
+                          <CheckCheck size={14} />
+                        </span>
+                      )}
+                      <span
+                        className={`text-[11px] font-mono ${
+                          isActive ? 'text-white/80' : 'text-dfz-text-muted'
+                        }`}
+                      >
+                        {formatChatTimestamp(chat.lastMessage?.createdAt || chat.updatedAt)}
+                      </span>
+                    </div>
                   </div>
 
+                  {/* Bottom Line: Sender + Message preview + Status Badges */}
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs text-dfz-text-muted truncate">
+                    <p
+                      className={`text-xs truncate ${
+                        isActive ? 'text-white/90' : 'text-dfz-text-muted'
+                      }`}
+                    >
                       {typing && typing.length > 0 ? (
-                        <span className="text-dfz-accent italic">
+                        <span className="text-[#2481cc] font-medium italic animate-pulse">
                           {typing.join(', ')} печатает...
                         </span>
                       ) : chat.lastMessage ? (
                         <span>
-                          {chat.lastMessage.senderName && chat.type !== ChatType.DIRECT && (
-                            <span className="font-medium text-dfz-text">
-                              {chat.lastMessage.senderName}:{' '}
-                            </span>
+                          {isLastMessageMine ? (
+                            <span className="font-semibold text-dfz-text mr-1">Вы:</span>
+                          ) : (
+                            chat.lastMessage.senderName &&
+                            chat.type !== ChatType.DIRECT && (
+                              <span className="font-semibold text-dfz-text mr-1">
+                                {chat.lastMessage.senderName}:
+                              </span>
+                            )
                           )}
-                          {chat.lastMessage.content || 'Файл'}
+                          {chat.lastMessage.type === 'GIFT'
+                            ? '🎁 Подарок'
+                            : chat.lastMessage.type === 'STARS_TRANSFER'
+                            ? '⭐️ Перевод Stars'
+                            : chat.lastMessage.type === 'VOICE'
+                            ? '🎤 Голосовое сообщение'
+                            : chat.lastMessage.type === 'STICKER'
+                            ? '🖼️ Стикер'
+                            : chat.lastMessage.type === 'POLL'
+                            ? '📊 Опрос'
+                            : chat.lastMessage.content || 'Файл'}
                         </span>
                       ) : (
                         <span className="italic opacity-60">Нет сообщений</span>
                       )}
                     </p>
 
-                    {/* Indicators (Pin, Mute, Unread) */}
+                    {/* Right Badges: Pin, Mute, Unread Count */}
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       {chat.isMuted && (
-                        <BellOff size={13} className="text-dfz-text-muted" />
+                        <BellOff
+                          size={13}
+                          className={isActive ? 'text-white/70' : 'text-dfz-text-muted'}
+                        />
                       )}
                       {chat.isPinned && (
-                        <Pin size={13} className="text-dfz-accent rotate-45" />
+                        <Pin
+                          size={13}
+                          className="text-[#2481cc] rotate-45"
+                        />
                       )}
                       {(chat.unreadCount || 0) > 0 && (
-                        <Badge variant="accent">{chat.unreadCount}</Badge>
+                        <span
+                          className={`min-w-[20px] h-5 px-1.5 rounded-full flex items-center justify-center text-[11px] font-bold ${
+                            chat.isMuted
+                              ? 'bg-dfz-border text-dfz-text-muted'
+                              : 'bg-[#2481cc] text-white'
+                          }`}
+                        >
+                          {chat.unreadCount}
+                        </span>
                       )}
                     </div>
                   </div>
@@ -282,6 +361,65 @@ export const ChatList: React.FC<ChatListProps> = ({
             );
           })
         )}
+      </div>
+
+      {/* Telegram Floating Action Button (FAB) (✏️ Pencil Button) */}
+      <div className="absolute bottom-5 right-5 z-20">
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setIsFabOpen(!isFabOpen)}
+            className="w-13 h-13 p-3.5 rounded-full bg-[#2481cc] hover:bg-[#1c74b8] text-white shadow-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+            title="Создать чат"
+          >
+            <Edit2 size={22} />
+          </button>
+
+          {/* Telegram FAB Popup Menu */}
+          {isFabOpen && (
+            <>
+              <div
+                onClick={() => setIsFabOpen(false)}
+                className="fixed inset-0 z-30"
+              />
+              <div className="absolute right-0 bottom-16 w-52 bg-dfz-surface border border-dfz-border rounded-dfz-xl shadow-2xl py-1.5 z-40 animate-scale-in text-xs font-semibold text-dfz-text">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsFabOpen(false);
+                    onNewChat();
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-dfz-surface-hover text-left transition-colors"
+                >
+                  <MessageSquare size={17} className="text-[#2481cc]" />
+                  <span>Новый диалог</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsFabOpen(false);
+                    onNewGroup();
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-dfz-surface-hover text-left transition-colors"
+                >
+                  <Users size={17} className="text-[#2481cc]" />
+                  <span>Создать группу</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsFabOpen(false);
+                    onNewChannel();
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-dfz-surface-hover text-left transition-colors"
+                >
+                  <Radio size={17} className="text-[#2481cc]" />
+                  <span>Создать канал</span>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Context Menu */}

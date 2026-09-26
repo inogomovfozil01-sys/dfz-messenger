@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Search, UserPlus, Trash2, MessageSquare, Phone } from 'lucide-react';
+import { Search, UserPlus, Trash2, MessageSquare, Phone, ArrowLeft } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
 import { apiRequest } from '../../lib/api';
 import { useChatStore } from '../../stores/chatStore';
 
 interface ContactsViewProps {
   onSelectUser: (userId: string) => void;
+  onBack?: () => void;
 }
 
-export const ContactsView: React.FC<ContactsViewProps> = ({ onSelectUser }) => {
+export const ContactsView: React.FC<ContactsViewProps> = ({ onSelectUser, onBack }) => {
   const [contacts, setContacts] = useState<any[]>([]);
   const [query, setQuery] = useState('');
   const [showAdd, setShowAdd] = useState(false);
@@ -87,10 +88,22 @@ export const ContactsView: React.FC<ContactsViewProps> = ({ onSelectUser }) => {
       {/* Header */}
       <div className="p-3 pb-2 space-y-2.5 border-b border-dfz-border">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold text-dfz-text">Контакты</h2>
+          <div className="flex items-center gap-2">
+            {onBack && (
+              <button
+                type="button"
+                onClick={onBack}
+                className="p-1 -ml-1 text-dfz-text-muted hover:text-dfz-text rounded-full hover:bg-dfz-surface-hover transition-colors"
+                title="Назад к чатам"
+              >
+                <ArrowLeft size={18} />
+              </button>
+            )}
+            <h2 className="text-base font-bold text-dfz-text">Контакты</h2>
+          </div>
           <button
             onClick={() => setShowAdd(!showAdd)}
-            className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-dfz-accent text-white rounded-dfz-md hover:bg-dfz-accent-hover shadow-dfz-sm transition-colors"
+            className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-[#2481cc] text-white rounded-full hover:bg-[#1c74b8] shadow-dfz-sm transition-colors"
           >
             <UserPlus size={14} />
             <span>Добавить</span>
