@@ -1,6 +1,8 @@
 import dotenv from 'dotenv';
 import path from 'path';
 
+import os from 'os';
+
 // Load .env from root or current directory
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 dotenv.config();
@@ -18,7 +20,7 @@ export const ENV = {
   JWT_REFRESH_EXPIRES_IN_DAYS: parseInt(process.env.JWT_REFRESH_EXPIRES_IN_DAYS || '30', 10),
   
   STORAGE_DRIVER: process.env.STORAGE_DRIVER || 'local',
-  UPLOAD_DIR: path.resolve(process.cwd(), process.env.UPLOAD_DIR || './uploads'),
+  UPLOAD_DIR: process.env.VERCEL ? path.join(os.tmpdir(), 'uploads') : path.resolve(process.cwd(), process.env.UPLOAD_DIR || './uploads'),
   
   COOKIE_SECURE: process.env.COOKIE_SECURE === 'true',
   COOKIE_SAME_SITE: (process.env.COOKIE_SAME_SITE || 'lax') as 'lax' | 'strict' | 'none',

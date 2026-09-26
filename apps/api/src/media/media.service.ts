@@ -11,8 +11,12 @@ export class MediaService {
 
   constructor() {
     this.uploadDir = ENV.UPLOAD_DIR;
-    if (!fs.existsSync(this.uploadDir)) {
-      fs.mkdirSync(this.uploadDir, { recursive: true });
+    try {
+      if (!fs.existsSync(this.uploadDir)) {
+        fs.mkdirSync(this.uploadDir, { recursive: true });
+      }
+    } catch {
+      // Safe on read-only serverless filesystems
     }
   }
 
