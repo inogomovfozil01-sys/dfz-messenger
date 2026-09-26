@@ -13,7 +13,7 @@
     "dev:web": "npm run dev --workspace=@dfz/web",
     "build": "npm run build --workspaces --if-present",
     "build:api": "npm run build --workspace=@dfz/api",
-    "build:web": "npm run build --workspace=@dfz/web",
+    "build:web": "npm run db:generate && npm run build --workspace=@dfz/web",
     "db:generate": "npm run db:generate --workspace=@dfz/api",
     "db:push": "npm run db:push --workspace=@dfz/api",
     "db:migrate": "npm run db:migrate --workspace=@dfz/api",
