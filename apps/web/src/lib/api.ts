@@ -1,4 +1,11 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const getApiBase = () => {
+  if (typeof window !== 'undefined') {
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      return '';
+    }
+  }
+  return process.env.NEXT_PUBLIC_API_URL || '';
+};
 
 interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;
@@ -8,7 +15,7 @@ export async function apiRequest<T = any>(
   endpoint: string,
   options: RequestOptions = {}
 ): Promise<{ success: boolean; data?: T; error?: { code: string; message: string; details?: any } }> {
-  let url = `${API_BASE}${endpoint}`;
+  let url = `${getApiBase()}${endpoint}`;
 
   if (options.params) {
     const searchParams = new URLSearchParams();
@@ -42,7 +49,7 @@ export async function apiRequest<T = any>(
     // If 401 Unauthorized, try refreshing token once
     if (response.status === 401 && endpoint !== '/api/auth/login' && endpoint !== '/api/auth/refresh' && endpoint !== '/api/auth/register') {
       try {
-        const refreshRes = await fetch(`${API_BASE}/api/auth/refresh`, {
+        const refreshRes = await fetch(`${getApiBase()}/api/auth/refresh`, {
           method: 'POST',
           credentials: 'include',
         });
