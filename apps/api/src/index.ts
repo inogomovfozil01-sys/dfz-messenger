@@ -105,15 +105,12 @@ app.use('/api/economy', economyRouter);
 // Central Error Handler
 app.use(errorHandler);
 
-import { dbMaintenanceService } from './common/cleanup.service';
-
 // Start Server
 const PORT = ENV.PORT;
 server.listen(PORT, () => {
   console.log(`🚀 ${APP_CONFIG.name} API & Gateway running on port ${PORT}`);
   console.log(`📡 WebSocket Gateway ready on ws://localhost:${PORT}`);
   console.log(`📂 Uploads directory: ${ENV.UPLOAD_DIR}`);
-  dbMaintenanceService.startScheduledMaintenance(30);
 });
 
 export { app, server, wsGateway };
