@@ -25,6 +25,7 @@ import { storiesRouter } from './stories/stories.controller';
 import { pollsRouter } from './polls/polls.controller';
 import { stickersRouter } from './stickers/stickers.controller';
 import { previewRouter } from './preview/preview.controller';
+import { economyRouter } from './economy/economy.controller';
 
 const app = express();
 const server = http.createServer(app);
@@ -95,6 +96,7 @@ app.use('/api/stories', storiesRouter);
 app.use('/api/polls', pollsRouter);
 app.use('/api/stickers', stickersRouter);
 app.use('/api/preview', previewRouter);
+app.use('/api/economy', economyRouter);
 
 // Central Error Handler
 app.use(errorHandler);

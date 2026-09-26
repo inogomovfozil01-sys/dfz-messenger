@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { MessageSquare, Phone, Video, Ban, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { MessageSquare, Phone, Video, Ban, AlertTriangle, ShieldCheck, Star, Gift, Shield } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Avatar } from '../ui/Avatar';
 import { apiRequest } from '../../lib/api';
 import { useChatStore } from '../../stores/chatStore';
 import { useCallStore } from '../../stores/callStore';
-import { CallType, ReportReason } from '@dfz/types';
+import { useAuthStore } from '../../stores/authStore';
+import { useEconomyStore } from '../../stores/economyStore';
+import { GiftArtwork } from '../economy/GiftArtworks';
+import { CallType, ReportReason, UserRole } from '@dfz/types';
 
 interface UserProfileModalProps {
   userId: string | null;
@@ -13,7 +16,10 @@ interface UserProfileModalProps {
 }
 
 export const UserProfileModal: React.FC<UserProfileModalProps> = ({ userId, onClose }) => {
+  const { user: currentUser } = useAuthStore();
+  const { setSendGiftOpen, setSendStarsOpen, setAdminQuickActionOpen } = useEconomyStore();
   const [profile, setProfile] = useState<any>(null);
+  const [userGifts, setUserGifts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isReporting, setIsReporting] = useState(false);
   const [reportReason, setReportReason] = useState<ReportReason>(ReportReason.SPAM);
@@ -31,10 +37,16 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ userId, onCl
 
   const loadProfile = async (id: string) => {
     setIsLoading(true);
-    const res = await apiRequest(`/api/users/profile/${id}`);
+    const res = await apiRequest<any>(`/api/users/profile/${id}`);
+    const giftsRes = await apiRequest<any>(`/api/economy/gifts/user/${id}`);
     setIsLoading(false);
     if (res.success && res.data) {
       setProfile(res.data);
+    }
+    if (giftsRes.success && giftsRes.data?.gifts) {
+      setUserGifts(giftsRes.data.gifts);
+    } else {
+      setUserGifts([]);
     }
   };
 
@@ -90,6 +102,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ userId, onCl
   };
 
   if (!userId) return null;
+
+  const isSelf = currentUser?.id === profile?.id;
+  const isCurrentUserAdmin = currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.SUPERADMIN;
 
   return (
     <Modal isOpen={!!userId} onClose={onClose} title="Профиль пользователя">
@@ -158,9 +173,29 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ userId, onCl
           />
 
           <div>
-            <h3 className="text-base font-bold text-dfz-text">
-              {profile.displayName || profile.username}
-            </h3>
+            <div className="flex items-center justify-center gap-1.5 flex-wrap">
+              <h3 className="text-base font-bold text-dfz-text">
+                {profile.displayName || profile.username}
+              </h3>
+              {profile.isPremium && (
+                <span
+                  title="DFZ Premium"
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-[10px] font-bold text-cyan-400"
+                >
+                  <span>◆</span>
+                  <span>PREMIUM</span>
+                </span>
+              )}
+              {(profile.role === UserRole.ADMIN || profile.role === UserRole.SUPERADMIN) && (
+                <span
+                  title="Команда DFZ"
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-rose-500/15 border border-rose-500/30 text-[10px] font-bold text-rose-400"
+                >
+                  <Shield size={10} />
+                  <span>{profile.role === UserRole.SUPERADMIN ? 'SUPERADMIN' : 'ADMIN'}</span>
+                </span>
+              )}
+            </div>
             <p className="text-xs text-dfz-text-muted mt-0.5">@{profile.username}</p>
             {profile.bio && (
               <p className="text-xs text-dfz-text mt-2 px-4 leading-relaxed max-w-sm mx-auto">
@@ -173,58 +208,138 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ userId, onCl
           </div>
 
           {/* Action buttons */}
-          <div className="flex items-center justify-center gap-2 pt-2 border-t border-dfz-border">
-            <button
-              onClick={handleStartMessage}
-              className="flex items-center gap-1.5 px-4 py-2 bg-dfz-accent hover:bg-dfz-accent-hover text-white text-xs font-semibold rounded-dfz-md transition-colors shadow-dfz-sm"
-            >
-              <MessageSquare size={15} />
-              <span>Сообщение</span>
-            </button>
+          <div className="flex items-center justify-center gap-2 pt-2 border-t border-dfz-border flex-wrap">
+            {!isSelf && (
+              <>
+                <button
+                  onClick={handleStartMessage}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-dfz-accent hover:bg-dfz-accent-hover text-white text-xs font-semibold rounded-dfz-md transition-colors shadow-dfz-sm"
+                >
+                  <MessageSquare size={14} />
+                  <span>Сообщение</span>
+                </button>
 
-            <button
-              onClick={() => {
-                onClose();
-                startCall('direct', profile.id, profile.displayName || profile.username, CallType.AUDIO);
-              }}
-              className="p-2 bg-dfz-surface-hover hover:bg-dfz-border text-dfz-text rounded-dfz-md transition-colors"
-              title="Аудиозвонок"
-            >
-              <Phone size={16} />
-            </button>
+                <button
+                  onClick={() => {
+                    onClose();
+                    startCall('direct', profile.id, profile.displayName || profile.username, CallType.AUDIO);
+                  }}
+                  className="p-2 bg-dfz-surface-hover hover:bg-dfz-border text-dfz-text rounded-dfz-md transition-colors"
+                  title="Аудиозвонок"
+                >
+                  <Phone size={15} />
+                </button>
 
-            <button
-              onClick={() => {
-                onClose();
-                startCall('direct', profile.id, profile.displayName || profile.username, CallType.VIDEO);
-              }}
-              className="p-2 bg-dfz-surface-hover hover:bg-dfz-border text-dfz-text rounded-dfz-md transition-colors"
-              title="Видеозвонок"
-            >
-              <Video size={16} />
-            </button>
+                <button
+                  onClick={() => {
+                    onClose();
+                    startCall('direct', profile.id, profile.displayName || profile.username, CallType.VIDEO);
+                  }}
+                  className="p-2 bg-dfz-surface-hover hover:bg-dfz-border text-dfz-text rounded-dfz-md transition-colors"
+                  title="Видеозвонок"
+                >
+                  <Video size={15} />
+                </button>
+
+                <button
+                  onClick={() => {
+                    onClose();
+                    setSendStarsOpen(true, profile);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-400 text-xs font-semibold rounded-dfz-md transition-colors"
+                  title="Отправить Stars"
+                >
+                  <Star size={13} className="fill-amber-400" />
+                  <span>Stars</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    onClose();
+                    setSendGiftOpen(true, null, profile);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-purple-400 text-xs font-semibold rounded-dfz-md transition-colors"
+                  title="Подарить подарок"
+                >
+                  <Gift size={13} />
+                  <span>Подарок</span>
+                </button>
+
+                {isCurrentUserAdmin && (
+                  <button
+                    onClick={() => {
+                      onClose();
+                      setAdminQuickActionOpen(true, profile.id);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-400 text-xs font-semibold rounded-dfz-md transition-colors"
+                    title="Админские действия над пользователем"
+                  >
+                    <Shield size={13} />
+                    <span>Admin</span>
+                  </button>
+                )}
+              </>
+            )}
           </div>
+
+          {/* User Gifts Showcase */}
+          {userGifts.length > 0 && (
+            <div className="pt-3 border-t border-dfz-border text-left">
+              <div className="flex items-center justify-between mb-2.5 px-1">
+                <h4 className="text-xs font-bold text-dfz-text flex items-center gap-1.5">
+                  <Gift size={14} className="text-purple-400" />
+                  <span>Коллекция подарков ({userGifts.length})</span>
+                </h4>
+              </div>
+              <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto pr-1">
+                {userGifts.map((giftInstance: any) => (
+                  <div
+                    key={giftInstance.id}
+                    className="p-2 rounded-dfz-lg bg-dfz-surface/60 border border-dfz-border/50 flex flex-col items-center text-center hover:border-purple-500/40 transition-colors"
+                  >
+                    <div className="w-10 h-10 mb-1 flex items-center justify-center">
+                      <GiftArtwork
+                        artworkKey={giftInstance.gift?.artworkKey || 'neon_rose'}
+                        rarity={giftInstance.gift?.rarity || 'COMMON'}
+                        size={36}
+                      />
+                    </div>
+                    <span className="text-[11px] font-semibold text-dfz-text truncate w-full">
+                      {giftInstance.gift?.name || 'Подарок'}
+                    </span>
+                    {giftInstance.serialNumber && (
+                      <span className="text-[9px] font-mono text-purple-400 font-bold">
+                        #{String(giftInstance.serialNumber).padStart(4, '0')}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Block / Report actions */}
-          <div className="flex items-center justify-center gap-4 pt-3 text-xs">
-            <button
-              onClick={handleToggleBlock}
-              className={`flex items-center gap-1 hover:underline ${
-                profile.isBlocked ? 'text-dfz-success' : 'text-dfz-danger'
-              }`}
-            >
-              <Ban size={14} />
-              <span>{profile.isBlocked ? 'Разблокировать' : 'Заблокировать'}</span>
-            </button>
+          {!isSelf && (
+            <div className="flex items-center justify-center gap-4 pt-2 text-xs">
+              <button
+                onClick={handleToggleBlock}
+                className={`flex items-center gap-1 hover:underline ${
+                  profile.isBlocked ? 'text-dfz-success' : 'text-dfz-danger'
+                }`}
+              >
+                <Ban size={14} />
+                <span>{profile.isBlocked ? 'Разблокировать' : 'Заблокировать'}</span>
+              </button>
 
-            <button
-              onClick={() => setIsReporting(true)}
-              className="flex items-center gap-1 text-dfz-text-muted hover:text-dfz-text hover:underline"
-            >
-              <AlertTriangle size={14} />
-              <span>Пожаловаться</span>
-            </button>
-          </div>
+              <button
+                onClick={() => setIsReporting(true)}
+                className="flex items-center gap-1 text-dfz-text-muted hover:text-dfz-text hover:underline"
+              >
+                <AlertTriangle size={14} />
+                <span>Пожаловаться</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
     </Modal>

@@ -73,6 +73,7 @@ adminRouter.get('/users', async (req: Request, res: Response, next: NextFunction
         where,
         include: {
           profile: true,
+          starAccount: true,
           _count: {
             select: { messages: true, chatMemberships: true },
           },
@@ -90,17 +91,161 @@ adminRouter.get('/users', async (req: Request, res: Response, next: NextFunction
           id: u.id,
           username: u.username,
           displayName: u.profile?.displayName || u.username,
+          avatarUrl: u.profile?.avatarUrl,
           email: u.email,
           role: u.role,
           isBanned: u.isBanned,
           bannedReason: u.bannedReason,
+          isPremium: u.isPremium,
+          premiumUntil: u.premiumUntil ? u.premiumUntil.toISOString() : null,
+          starBalance: u.starAccount?.balance || 0,
+          isUnlimitedStars: u.starAccount?.isUnlimited || false,
           messagesCount: u._count.messages,
           chatsCount: u._count.chatMemberships,
           createdAt: u.createdAt.toISOString(),
+          lastSeenAt: u.profile?.lastSeenAt?.toISOString() || null,
         })),
         total,
         page,
         limit,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 2.1 Administrative User Profile (Section 7)
+adminRouter.get('/users/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const targetUserId = req.params.id;
+
+    const user = await prisma.user.findUnique({
+      where: { id: targetUserId },
+      include: {
+        profile: true,
+        starAccount: {
+          include: {
+            transactions: {
+              orderBy: { createdAt: 'desc' },
+              take: 10,
+            },
+          },
+        },
+        ownedGifts: {
+          include: {
+            giftDefinition: true,
+          },
+          orderBy: { receivedAt: 'desc' },
+        },
+        ownedCollectibles: {
+          orderBy: { mintedAt: 'desc' },
+        },
+        sessions: {
+          where: { isRevoked: false },
+          orderBy: { lastActiveAt: 'desc' },
+          take: 5,
+        },
+        _count: {
+          select: {
+            messages: true,
+            chatMemberships: true,
+            reportsFiled: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: { message: 'User not found' } });
+    }
+
+    // Fetch audit history targeting this user
+    const auditHistory = await prisma.auditLog.findMany({
+      where: { target: targetUserId },
+      include: {
+        actor: {
+          select: { id: true, username: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+
+    return res.json({
+      success: true,
+      data: {
+        general: {
+          id: user.id,
+          username: user.username,
+          displayName: user.profile?.displayName || user.username,
+          avatarUrl: user.profile?.avatarUrl,
+          email: user.email,
+          phone: user.phone,
+          bio: user.profile?.bio,
+          role: user.role,
+          createdAt: user.createdAt.toISOString(),
+          lastSeenAt: user.profile?.lastSeenAt?.toISOString() || null,
+        },
+        account: {
+          isBanned: user.isBanned,
+          bannedReason: user.bannedReason,
+          twoFactorEnabled: user.twoFactorEnabled,
+          messagesCount: user._count.messages,
+          chatsCount: user._count.chatMemberships,
+        },
+        premium: {
+          isPremium: user.isPremium,
+          premiumUntil: user.premiumUntil ? user.premiumUntil.toISOString() : null,
+          premiumType: user.premiumType,
+        },
+        stars: {
+          balance: user.starAccount?.balance || 0,
+          isUnlimited: user.starAccount?.isUnlimited || false,
+          totalEarned: user.starAccount?.totalEarned || 0,
+          totalSpent: user.starAccount?.totalSpent || 0,
+          recentTransactions: user.starAccount?.transactions.map(t => ({
+            id: t.id,
+            type: t.type,
+            amount: t.amount,
+            reason: t.reason,
+            createdAt: t.createdAt.toISOString(),
+          })) || [],
+        },
+        gifts: user.ownedGifts.map(g => ({
+          id: g.id,
+          name: g.giftDefinition.name,
+          artwork: g.giftDefinition.artwork,
+          rarity: g.giftDefinition.rarity,
+          serialNumber: g.serialNumber,
+          message: g.message,
+          receivedAt: g.receivedAt.toISOString(),
+        })),
+        collectibles: user.ownedCollectibles.map(c => ({
+          id: c.id,
+          editionName: c.editionName,
+          uniqueNumber: c.uniqueNumber,
+          rarity: c.rarity,
+          mintedAt: c.mintedAt.toISOString(),
+        })),
+        security: {
+          activeSessionsCount: user.sessions.length,
+          recentSessions: user.sessions.map(s => ({
+            id: s.id,
+            deviceName: s.deviceName,
+            browser: s.browser,
+            os: s.os,
+            ipAddress: s.ipAddress,
+            lastActiveAt: s.lastActiveAt.toISOString(),
+          })),
+        },
+        auditHistory: auditHistory.map(a => ({
+          id: a.id,
+          action: a.action,
+          actorUsername: a.actor.username,
+          metadata: a.metadata,
+          createdAt: a.createdAt.toISOString(),
+        })),
       },
     });
   } catch (err) {
@@ -198,6 +343,26 @@ adminRouter.post('/users/:id/role', async (req: Request, res: Response, next: Ne
       return res.status(400).json({ success: false, error: { message: 'Invalid role' } });
     }
 
+    const target = await prisma.user.findUnique({ where: { id: targetUserId } });
+    if (!target) {
+      return res.status(404).json({ success: false, error: { message: 'User not found' } });
+    }
+
+    // Super Admin Protection (Section 69):
+    if (target.role === UserRole.SUPERADMIN && req.user!.role !== UserRole.SUPERADMIN) {
+      return res.status(403).json({
+        success: false,
+        error: { message: 'Cannot demote or modify SUPERADMIN role' },
+      });
+    }
+
+    if (role === UserRole.SUPERADMIN && req.user!.role !== UserRole.SUPERADMIN) {
+      return res.status(403).json({
+        success: false,
+        error: { message: 'Only SUPERADMIN can assign the SUPERADMIN role' },
+      });
+    }
+
     await prisma.$transaction([
       prisma.user.update({
         where: { id: targetUserId },
@@ -208,7 +373,7 @@ adminRouter.post('/users/:id/role', async (req: Request, res: Response, next: Ne
           actorId: req.user!.userId,
           action: 'CHANGE_ROLE',
           target: targetUserId,
-          metadata: { newRole: role },
+          metadata: { newRole: role, previousRole: target.role },
           ipAddress: req.ip,
         },
       }),

@@ -38,6 +38,29 @@ enum MessageType {
   POLL
   STICKER
   VIDEO_NOTE
+  GIFT
+  STARS_TRANSFER
+}
+
+enum StarTransactionType {
+  ACTIVITY_REWARD
+  ADMIN_GRANT
+  ADMIN_DEBIT
+  GIFT_PURCHASE
+  TRANSFER_IN
+  TRANSFER_OUT
+  REFUND
+  SYSTEM_REWARD
+  PREMIUM_REWARD
+  PREMIUM_PURCHASE
+}
+
+enum GiftRarity {
+  COMMON
+  RARE
+  EPIC
+  LEGENDARY
+  MYTHIC
 }
 
 enum StoryMediaType {
@@ -94,6 +117,9 @@ model User {
   isBanned         Boolean      @default(false)
   bannedReason     String?
   twoFactorEnabled Boolean      @default(false)
+  isPremium        Boolean      @default(false)
+  premiumUntil     DateTime?
+  premiumType      String?
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
@@ -121,6 +147,14 @@ model User {
   storyReactions   StoryReaction[]  @relation("UserStoryReactions")
   pollVotes        PollVote[]       @relation("UserPollVotes")
   createdTopics    Topic[]          @relation("UserTopics")
+  starAccount          StarAccount?
+  starTransactions     StarTransaction[]
+  activityRewardState  ActivityRewardState?
+  ownedGifts           GiftInstance[]        @relation("OwnedGifts")
+  sentGifts            GiftInstance[]        @relation("SentGifts")
+  ownedCollectibles    CollectibleInstance[] @relation("OwnedCollectibles")
+  mintedCollectibles   CollectibleInstance[] @relation("MintedCollectibles")
+  permissions          UserPermission[]
 
   @@index([username])
   @@index([email])
@@ -534,3 +568,164 @@ model Sticker {
 
   @@index([packId])
 }
+
+model StarAccount {
+  id          String            @id @default(uuid())
+  userId      String            @unique
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance     Int               @default(0)
+  isUnlimited Boolean           @default(false)
+  totalEarned Int               @default(0)
+  totalSpent  Int               @default(0)
+  version     Int               @default(0)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  transactions StarTransaction[]
+
+  @@index([userId])
+}
+
+model StarTransaction {
+  id               String              @id @default(uuid())
+  accountId        String
+  account          StarAccount         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type             StarTransactionType
+  amount           Int
+  balanceBefore    Int
+  balanceAfter     Int
+  referenceType    String?             // USER, MESSAGE, GIFT, CAMPAIGN, SYSTEM
+  referenceId      String?
+  reason           String?
+  createdByAdminId String?
+  idempotencyKey   String?             @unique
+  createdAt        DateTime            @default(now())
+
+  @@index([userId, createdAt])
+  @@index([accountId])
+  @@index([type])
+}
+
+model ActivityRewardState {
+  id                      String    @id @default(uuid())
+  userId                  String    @unique
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  continuousActiveSeconds Int       @default(0)
+  lastHeartbeatAt         DateTime  @default(now())
+  lastRewardAt            DateTime?
+  nextRewardAt            DateTime?
+  lastClientFingerprint   String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model GiftDefinition {
+  id                    String         @id @default(uuid())
+  name                  String
+  slug                  String         @unique
+  description           String?
+  artwork               String
+  priceStars            Int
+  rarity                GiftRarity     @default(COMMON)
+  isLimited             Boolean        @default(false)
+  totalSupply           Int?
+  soldCount             Int            @default(0)
+  availableFrom         DateTime?
+  availableUntil        DateTime?
+  isPremiumOnly         Boolean        @default(false)
+  isCollectibleEligible Boolean        @default(false)
+  category              String         @default("popular")
+  isActive              Boolean        @default(true)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  instances             GiftInstance[]
+
+  @@index([category])
+  @@index([isActive])
+}
+
+model GiftInstance {
+  id               String               @id @default(uuid())
+  giftDefinitionId String
+  giftDefinition   GiftDefinition       @relation(fields: [giftDefinitionId], references: [id], onDelete: Cascade)
+  ownerId          String
+  owner            User                 @relation("OwnedGifts", fields: [ownerId], references: [id], onDelete: Cascade)
+  senderId         String?
+  sender           User?                @relation("SentGifts", fields: [senderId], references: [id], onDelete: SetNull)
+  message          String?
+  serialNumber     Int?
+  isAnonymous      Boolean              @default(false)
+  showOnProfile    Boolean              @default(true)
+  receivedAt       DateTime             @default(now())
+  createdAt        DateTime             @default(now())
+
+  collectible      CollectibleInstance?
+
+  @@index([ownerId])
+  @@index([giftDefinitionId])
+}
+
+model CollectibleInstance {
+  id               String               @id @default(uuid())
+  uniqueNumber     Int
+  editionName      String
+  background       String
+  modelPattern     String
+  symbol           String
+  rarity           GiftRarity           @default(RARE)
+  totalSupply      Int                  @default(1000)
+  mintedAt         DateTime             @default(now())
+  giftInstanceId   String?              @unique
+  giftInstance     GiftInstance?        @relation(fields: [giftInstanceId], references: [id], onDelete: SetNull)
+  originalSenderId String?
+  originalSender   User?                @relation("MintedCollectibles", fields: [originalSenderId], references: [id], onDelete: SetNull)
+  currentOwnerId   String
+  currentOwner     User                 @relation("OwnedCollectibles", fields: [currentOwnerId], references: [id], onDelete: Cascade)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  history          CollectibleHistory[]
+
+  @@index([currentOwnerId])
+}
+
+model CollectibleHistory {
+  id            String              @id @default(uuid())
+  collectibleId String
+  collectible   CollectibleInstance @relation(fields: [collectibleId], references: [id], onDelete: Cascade)
+  fromUserId    String?
+  toUserId      String
+  action        String              // MINT, TRANSFER, GIFT
+  priceStars    Int?
+  createdAt     DateTime            @default(now())
+
+  @@index([collectibleId])
+}
+
+model UserPermission {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission String
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, permission])
+  @@index([userId])
+}
+
+model EconomyCampaign {
+  id             String   @id @default(uuid())
+  title          String
+  description    String?
+  starsPerUser   Int
+  recipientCount Int
+  totalStars     Int
+  createdByAdmin String
+  createdAt      DateTime @default(now())
+}
+

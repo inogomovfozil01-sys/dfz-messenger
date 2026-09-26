@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { User, Shield, Lock, Laptop, Palette, LogOut, Check, X } from 'lucide-react';
+import { User, Shield, Lock, Laptop, Palette, LogOut, Check, X, Star, Sparkles, ShieldCheck } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Avatar } from '../ui/Avatar';
 import { useAuthStore } from '../../stores/authStore';
+import { useEconomyStore } from '../../stores/economyStore';
 import { apiRequest } from '../../lib/api';
-import { PrivacyVisibility } from '@dfz/types';
+import { PrivacyVisibility, UserRole } from '@dfz/types';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -15,7 +16,9 @@ type SettingsTab = 'profile' | 'privacy' | 'security' | 'appearance';
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const { user, profile, updateProfile, updatePrivacy, logout } = useAuthStore();
+  const { setStarsOpen, setPremiumOpen } = useEconomyStore();
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
+  const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.SUPERADMIN;
 
   // Form states
   const [displayName, setDisplayName] = useState(profile?.displayName || '');
@@ -152,6 +155,40 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             <span>Сеансы и вход</span>
           </button>
 
+          <div className="pt-2 border-t border-dfz-border my-1 flex flex-col gap-1">
+            <button
+              onClick={() => {
+                onClose();
+                setStarsOpen(true);
+              }}
+              className="flex items-center gap-2.5 px-3 py-2 rounded-dfz-md text-xs font-medium text-left text-amber-400 hover:bg-amber-500/10 transition-colors"
+            >
+              <Star size={16} className="fill-amber-400" />
+              <span>DFZ Stars</span>
+            </button>
+
+            <button
+              onClick={() => {
+                onClose();
+                setPremiumOpen(true);
+              }}
+              className="flex items-center gap-2.5 px-3 py-2 rounded-dfz-md text-xs font-medium text-left text-cyan-400 hover:bg-cyan-500/10 transition-colors"
+            >
+              <Sparkles size={16} />
+              <span>DFZ Premium</span>
+            </button>
+
+            {isAdmin && (
+              <a
+                href="/admin"
+                className="flex items-center gap-2.5 px-3 py-2 rounded-dfz-md text-xs font-medium text-left text-rose-400 hover:bg-rose-500/10 transition-colors"
+              >
+                <ShieldCheck size={16} />
+                <span>Администрация</span>
+              </a>
+            )}
+          </div>
+
           <div className="pt-4 mt-auto hidden sm:block border-t border-dfz-border">
             <button
               onClick={() => {
@@ -179,6 +216,35 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   </h4>
                   <p className="text-xs text-dfz-text-muted">@{user?.username}</p>
                 </div>
+              </div>
+
+              {/* DFZ Status Card */}
+              <div className="p-3 rounded-dfz-lg bg-dfz-surface border border-dfz-border flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className={`p-2 rounded-dfz-md ${user?.isPremium ? 'bg-cyan-500/15 text-cyan-400' : 'bg-dfz-surface-hover text-dfz-text-muted'}`}>
+                    <Sparkles size={16} />
+                  </div>
+                  <div>
+                    <h5 className="text-xs font-bold text-dfz-text">
+                      {user?.isPremium ? 'DFZ Premium активен' : 'Базовый аккаунт'}
+                    </h5>
+                    <p className="text-[11px] text-dfz-text-muted">
+                      {user?.isPremium && user.premiumUntil
+                        ? `Действует до ${new Date(user.premiumUntil).toLocaleDateString()}`
+                        : 'Лимиты 2 ГБ, подарки, HD медиа, значок ◆'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    setPremiumOpen(true);
+                  }}
+                  className="px-2.5 py-1 rounded-dfz-md bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-400 text-xs font-semibold transition-colors"
+                >
+                  {user?.isPremium ? 'Продлить' : 'Улучшить'}
+                </button>
               </div>
 
               <div className="space-y-1">

@@ -4,6 +4,7 @@ export enum UserRole {
   MODERATOR = 'MODERATOR',
   ADMIN = 'ADMIN',
   SUPERADMIN = 'SUPERADMIN',
+  SUPER_ADMIN = 'SUPERADMIN',
 }
 
 export enum UserStatus {
@@ -37,6 +38,8 @@ export enum MessageType {
   POLL = 'POLL',
   STICKER = 'STICKER',
   VIDEO_NOTE = 'VIDEO_NOTE',
+  GIFT = 'GIFT',
+  STARS_TRANSFER = 'STARS_TRANSFER',
 }
 
 export enum StoryMediaType {
@@ -113,6 +116,12 @@ export interface User {
   profile?: UserProfile | null;
   status?: UserStatus;
   lastSeen?: string | null;
+  isPremium?: boolean;
+  premiumUntil?: string | null;
+  premiumType?: string | null;
+  starBalance?: number;
+  isUnlimitedStars?: boolean;
+  permissions?: string[];
 }
 
 // Sessions & Devices
@@ -482,5 +491,189 @@ export interface WsPollUpdatedPayload {
 export interface WsTopicPayload {
   chatId: string;
   topic: Topic;
+}
+
+// RBAC Granular Permissions
+export enum Permission {
+  STARS_VIEW = 'stars.view',
+  STARS_GRANT = 'stars.grant',
+  STARS_DEBIT = 'stars.debit',
+  STARS_UNLIMITED = 'stars.unlimited',
+  PREMIUM_VIEW = 'premium.view',
+  PREMIUM_GRANT = 'premium.grant',
+  PREMIUM_REVOKE = 'premium.revoke',
+  GIFTS_VIEW = 'gifts.view',
+  GIFTS_MANAGE = 'gifts.manage',
+  GIFTS_GRANT = 'gifts.grant',
+  COLLECTIBLES_VIEW = 'collectibles.view',
+  COLLECTIBLES_MANAGE = 'collectibles.manage',
+  COLLECTIBLES_GRANT = 'collectibles.grant',
+  USERS_VIEW = 'users.view',
+  USERS_MANAGE = 'users.manage',
+  MODERATION_MANAGE = 'moderation.manage',
+  ECONOMY_MANAGE = 'economy.manage',
+  SYSTEM_MANAGE = 'system.manage',
+}
+
+// Stars & Ledger
+export enum StarTransactionType {
+  ACTIVITY_REWARD = 'ACTIVITY_REWARD',
+  ADMIN_GRANT = 'ADMIN_GRANT',
+  ADMIN_DEBIT = 'ADMIN_DEBIT',
+  GIFT_PURCHASE = 'GIFT_PURCHASE',
+  TRANSFER_IN = 'TRANSFER_IN',
+  TRANSFER_OUT = 'TRANSFER_OUT',
+  REFUND = 'REFUND',
+  SYSTEM_REWARD = 'SYSTEM_REWARD',
+  PREMIUM_REWARD = 'PREMIUM_REWARD',
+  PREMIUM_PURCHASE = 'PREMIUM_PURCHASE',
+}
+
+export interface StarAccount {
+  id: string;
+  userId: string;
+  balance: number;
+  isUnlimited: boolean;
+  totalEarned: number;
+  totalSpent: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StarTransaction {
+  id: string;
+  accountId: string;
+  userId: string;
+  type: StarTransactionType;
+  amount: number;
+  balanceBefore: number;
+  balanceAfter: number;
+  referenceType?: string | null;
+  referenceId?: string | null;
+  reason?: string | null;
+  createdByAdminId?: string | null;
+  createdAt: string;
+  otherParty?: {
+    id: string;
+    username: string;
+    displayName: string;
+    avatarUrl?: string | null;
+  };
+}
+
+export interface ActivityRewardState {
+  userId: string;
+  continuousActiveSeconds: number;
+  remainingSeconds: number;
+  lastHeartbeatAt: string;
+  lastRewardAt?: string | null;
+  nextRewardAt?: string | null;
+  isEligible: boolean;
+  hourlyRewardAmount: number;
+}
+
+// Gifts & Collectibles
+export enum GiftRarity {
+  COMMON = 'COMMON',
+  RARE = 'RARE',
+  EPIC = 'EPIC',
+  LEGENDARY = 'LEGENDARY',
+  MYTHIC = 'MYTHIC',
+}
+
+export interface GiftDefinition {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  artwork: string;
+  priceStars: number;
+  rarity: GiftRarity;
+  isLimited: boolean;
+  totalSupply?: number | null;
+  soldCount: number;
+  availableFrom?: string | null;
+  availableUntil?: string | null;
+  isPremiumOnly: boolean;
+  isCollectibleEligible: boolean;
+  category: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface GiftInstance {
+  id: string;
+  giftDefinitionId: string;
+  giftDefinition: GiftDefinition;
+  ownerId: string;
+  owner?: User;
+  senderId?: string | null;
+  sender?: User | null;
+  message?: string | null;
+  serialNumber?: number | null;
+  isAnonymous: boolean;
+  showOnProfile: boolean;
+  receivedAt: string;
+  createdAt: string;
+  collectible?: CollectibleInstance | null;
+}
+
+export interface CollectibleInstance {
+  id: string;
+  uniqueNumber: number;
+  editionName: string;
+  background: string;
+  modelPattern: string;
+  symbol: string;
+  rarity: GiftRarity;
+  totalSupply: number;
+  mintedAt: string;
+  giftInstanceId?: string | null;
+  originalSenderId?: string | null;
+  originalSender?: User | null;
+  currentOwnerId: string;
+  currentOwner?: User;
+  history?: CollectibleHistoryItem[];
+  createdAt: string;
+}
+
+export interface CollectibleHistoryItem {
+  id: string;
+  collectibleId: string;
+  fromUserId?: string | null;
+  fromUser?: User | null;
+  toUserId: string;
+  toUser?: User | null;
+  action: string;
+  priceStars?: number | null;
+  createdAt: string;
+}
+
+export interface DFZPremiumState {
+  isPremium: boolean;
+  premiumUntil?: string | null;
+  isLifetime: boolean;
+  premiumType?: 'MONTHLY' | 'YEARLY' | 'LIFETIME' | 'ADMIN' | null;
+  badge: string; // '◆'
+}
+
+export interface WsStarRewardPayload {
+  amount: number;
+  balance: number;
+  message: string;
+}
+
+export interface WsStarTransferPayload {
+  amount: number;
+  senderId: string;
+  senderName: string;
+  recipientId: string;
+  newBalance: number;
+  message?: string;
+}
+
+export interface WsGiftReceivedPayload {
+  giftInstance: GiftInstance;
+  senderName?: string;
 }
 

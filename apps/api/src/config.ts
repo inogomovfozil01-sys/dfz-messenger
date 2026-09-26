@@ -26,4 +26,20 @@ export const ENV = {
   ADMIN_USERNAME: process.env.ADMIN_USERNAME || 'admin',
   ADMIN_EMAIL: process.env.ADMIN_EMAIL || 'admin@dfzmessenger.local',
   ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || 'AdminSecure2026!',
+
+  // Economy & Activity Configuration
+  ACTIVITY_REWARD_STARS: parseInt(process.env.ACTIVITY_REWARD_STARS || '100', 10),
+  ACTIVITY_REWARD_INTERVAL_SECONDS: parseInt(process.env.ACTIVITY_REWARD_INTERVAL_SECONDS || '3600', 10),
+  ACTIVITY_GRACE_PERIOD_SECONDS: parseInt(process.env.ACTIVITY_GRACE_PERIOD_SECONDS || '300', 10),
+  ACTIVITY_HEARTBEAT_MIN_INTERVAL: parseInt(process.env.ACTIVITY_HEARTBEAT_MIN_INTERVAL || '20', 10),
+
+  MIN_STAR_TRANSFER: parseInt(process.env.MIN_STAR_TRANSFER || '1', 10),
+  MAX_STAR_TRANSFER: parseInt(process.env.MAX_STAR_TRANSFER || '50000', 10),
+
+  PREMIUM_MONTH_PRICE: parseInt(process.env.PREMIUM_MONTH_PRICE || '1000', 10),
+  PREMIUM_3MONTH_PRICE: parseInt(process.env.PREMIUM_3MONTH_PRICE || '2500', 10),
+  PREMIUM_YEAR_PRICE: parseInt(process.env.PREMIUM_YEAR_PRICE || '8000', 10),
+
+  MAX_GIFT_MESSAGE_LENGTH: parseInt(process.env.MAX_GIFT_MESSAGE_LENGTH || '200', 10),
+  ADMIN_AUTO_PREMIUM: process.env.ADMIN_AUTO_PREMIUM !== 'false',
 };

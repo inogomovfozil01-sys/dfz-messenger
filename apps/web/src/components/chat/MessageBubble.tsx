@@ -9,6 +9,8 @@ import { ContextMenu, ContextMenuItem } from '../ui/ContextMenu';
 import { EmojiPicker } from './EmojiPicker';
 import { PollBubble } from './PollBubble';
 import { LinkPreviewBubble } from './LinkPreviewBubble';
+import { StarTransferBubble } from './StarTransferBubble';
+import { GiftCardBubble } from './GiftCardBubble';
 
 interface MessageBubbleProps {
   message: Message;
@@ -156,6 +158,32 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             />
           </div>
           <div className="flex items-center justify-end gap-1 text-[10px] mt-1 px-2 py-0.5 rounded-full bg-black/40 text-white/90 w-fit ml-auto select-none">
+            <span>{formattedTime}</span>
+            {renderStatus()}
+          </div>
+        </div>
+      ) : message.type === MessageType.STARS_TRANSFER ? (
+        /* Star Transfer Card Message */
+        <div className="relative max-w-sm">
+          <StarTransferBubble
+            content={message.content}
+            senderName={message.sender?.profile?.displayName || message.sender?.username || 'User'}
+            isSelf={isOutgoing}
+          />
+          <div className="flex items-center justify-end gap-1 text-[11px] mt-1 text-dfz-text-muted select-none">
+            <span>{formattedTime}</span>
+            {renderStatus()}
+          </div>
+        </div>
+      ) : message.type === MessageType.GIFT ? (
+        /* Gift Card Message */
+        <div className="relative max-w-sm">
+          <GiftCardBubble
+            content={message.content}
+            senderName={message.sender?.profile?.displayName || message.sender?.username || 'User'}
+            isSelf={isOutgoing}
+          />
+          <div className="flex items-center justify-end gap-1 text-[11px] mt-1 text-dfz-text-muted select-none">
             <span>{formattedTime}</span>
             {renderStatus()}
           </div>

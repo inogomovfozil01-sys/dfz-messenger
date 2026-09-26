@@ -1,8 +1,10 @@
-import React from 'react';
-import { MessageSquare, Users, Phone, Bookmark, Archive, Settings, Shield, Moon, Sun } from 'lucide-react';
+import React, { useState } from 'react';
+import { MessageSquare, Users, Phone, Bookmark, Archive, Settings, Shield, Moon, Sun, Star } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
 import { useAuthStore } from '../../stores/authStore';
 import { useChatStore } from '../../stores/chatStore';
+import { useEconomyStore } from '../../stores/economyStore';
+import { UserMenuPopover } from '../economy/UserMenuPopover';
 import { UserRole } from '@dfz/types';
 
 interface LeftSidebarProps {
@@ -20,6 +22,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
 }) => {
   const { user, profile } = useAuthStore();
   const { chats } = useChatStore();
+  const { starBalance, isUnlimitedStars, setStarsOpen } = useEconomyStore();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const totalUnread = chats.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
   const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.SUPERADMIN;
@@ -68,19 +72,27 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
     <div className="w-16 h-full bg-dfz-surface border-r border-dfz-border flex flex-col items-center justify-between py-4 select-none flex-shrink-0 z-30">
       {/* Top Section: User Avatar */}
       <div className="flex flex-col items-center gap-6">
-        <button
-          type="button"
-          onClick={onOpenProfile}
-          className="relative transition-transform hover:scale-105"
-          title={`${profile?.displayName || user?.username} (Профиль)`}
-        >
-          <Avatar
-            src={profile?.avatarUrl}
-            name={profile?.displayName || user?.username || 'U'}
-            size="md"
-            isOnline={true}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="relative transition-transform hover:scale-105"
+            title={`${profile?.displayName || user?.username} (Меню аккаунта)`}
+          >
+            <Avatar
+              src={profile?.avatarUrl}
+              name={profile?.displayName || user?.username || 'U'}
+              size="md"
+              isOnline={true}
+            />
+          </button>
+          <UserMenuPopover
+            isOpen={isMenuOpen}
+            onClose={() => setIsMenuOpen(false)}
+            onOpenProfile={onOpenProfile}
+            onOpenSettings={onOpenSettings}
           />
-        </button>
+        </div>
 
         {/* Navigation Items */}
         <nav className="flex flex-col items-center gap-2">
@@ -121,6 +133,16 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
         >
           <Moon size={20} className="hidden dark:block" />
           <Sun size={20} className="block dark:hidden" />
+        </button>
+
+        {/* Stars Quick Button */}
+        <button
+          type="button"
+          onClick={() => setStarsOpen(true)}
+          className="p-2.5 rounded-dfz-xl text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 transition-colors"
+          title={`DFZ Stars: ${isUnlimitedStars ? '★ ∞' : `★ ${starBalance.toLocaleString()}`}`}
+        >
+          <Star size={20} className="fill-amber-400/20" />
         </button>
 
         {/* Admin Link if authorized */}

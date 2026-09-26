@@ -313,7 +313,11 @@ export class AuthService {
   async getMe(userId: string) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      include: { profile: true },
+      include: {
+        profile: true,
+        starAccount: true,
+        permissions: true,
+      },
     });
 
     if (!user) {
@@ -321,6 +325,10 @@ export class AuthService {
       err.status = 404;
       throw err;
     }
+
+    const isAdmin = user.role === UserRole.ADMIN || user.role === UserRole.SUPERADMIN;
+    const isPremium = isAdmin && ENV.ADMIN_AUTO_PREMIUM ? true : !!user.isPremium;
+    const isUnlimitedStars = isAdmin ? true : (user.starAccount?.isUnlimited || false);
 
     return {
       id: user.id,
@@ -330,6 +338,12 @@ export class AuthService {
       role: user.role,
       isBanned: user.isBanned,
       twoFactorEnabled: user.twoFactorEnabled,
+      isPremium,
+      premiumUntil: user.premiumUntil ? user.premiumUntil.toISOString() : null,
+      premiumType: user.premiumType,
+      starBalance: user.starAccount?.balance || 0,
+      isUnlimitedStars,
+      permissions: user.permissions.map(p => p.permission),
       createdAt: user.createdAt.toISOString(),
       profile: user.profile ? {
         id: user.profile.id,

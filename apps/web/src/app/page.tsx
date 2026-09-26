@@ -23,6 +23,12 @@ import { StoryViewerModal } from '../components/stories/StoryViewerModal';
 import { StoryCreatorModal } from '../components/stories/StoryCreatorModal';
 import { StoryAnalyticsModal } from '../components/stories/StoryAnalyticsModal';
 import { useStoriesStore } from '../stores/storiesStore';
+import { useEconomyStore } from '../stores/economyStore';
+import { MyStarsModal } from '../components/economy/MyStarsModal';
+import { GiftStoreModal } from '../components/economy/GiftStoreModal';
+import { CollectibleViewerModal } from '../components/economy/CollectibleViewerModal';
+import { PremiumModal } from '../components/economy/PremiumModal';
+import { AdminQuickActionsModal } from '../components/economy/AdminQuickActionsModal';
 import { socketService } from '../lib/socket';
 import { ShieldCheck, MessageSquare, WifiOff } from 'lucide-react';
 
@@ -40,6 +46,7 @@ export default function MessengerPage() {
     setupSocketListeners,
   } = useChatStore();
   const { setupCallListeners } = useCallStore();
+  const { toastMessage } = useEconomyStore();
 
   const [currentNavTab, setCurrentNavTab] = useState<'chats' | 'contacts' | 'calls' | 'saved' | 'archive'>('chats');
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
@@ -59,6 +66,7 @@ export default function MessengerPage() {
         setupSocketListeners();
         setupCallListeners();
         useStoriesStore.getState().setupStoriesSocket();
+        useEconomyStore.getState().setupEconomySocket();
       }
     });
 
@@ -190,6 +198,21 @@ export default function MessengerPage() {
       <StoryViewerModal />
       <StoryCreatorModal />
       <StoryAnalyticsModal />
+
+      {/* Economy & Administration Modals */}
+      <MyStarsModal />
+      <GiftStoreModal />
+      <CollectibleViewerModal />
+      <PremiumModal />
+      <AdminQuickActionsModal />
+
+      {/* Toast Notifications */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 animate-bounce p-3 px-4 rounded-dfz-xl bg-dfz-surface border border-dfz-border shadow-dfz-lg flex items-center gap-2.5 text-xs font-semibold text-dfz-text">
+          <span className="text-amber-400 font-bold">★</span>
+          <span>{toastMessage.text}</span>
+        </div>
+      )}
 
       {/* Mobile-first Bottom Navigation Bar */}
       <MobileBottomNav

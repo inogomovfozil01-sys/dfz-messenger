@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Paperclip, Smile, Send, Mic, Video, X, Edit3, Reply, BarChart2, Image, FileText, Sparkles } from 'lucide-react';
+import { Paperclip, Smile, Send, Mic, Video, X, Edit3, Reply, BarChart2, Image, FileText, Sparkles, Star, Gift } from 'lucide-react';
 import { useChatStore } from '../../stores/chatStore';
+import { useAuthStore } from '../../stores/authStore';
+import { useEconomyStore } from '../../stores/economyStore';
 import { apiRequest } from '../../lib/api';
 import { VoiceRecorder } from './VoiceRecorder';
 import { EmojiPicker } from './EmojiPicker';
@@ -32,7 +34,10 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
     editingMessage,
     setEditingMessage,
     setTyping,
+    activeChat,
   } = useChatStore();
+  const { user } = useAuthStore();
+  const { setSendGiftOpen, setSendStarsOpen } = useEconomyStore();
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -339,6 +344,54 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
               >
                 <BarChart2 size={16} className="text-purple-500" />
                 <span>Создать опрос</span>
+              </button>
+              <div className="my-1 border-t border-dfz-border/50" />
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAttachMenu(false);
+                  const otherMember = activeChat?.type === 'DIRECT'
+                    ? activeChat.members?.find((m: any) => m.userId !== user?.id)?.user
+                    : null;
+                  setSendGiftOpen(
+                    true,
+                    null as any,
+                    otherMember
+                      ? {
+                          id: otherMember.id,
+                          username: otherMember.username,
+                          displayName: otherMember.profile?.displayName || otherMember.username,
+                        }
+                      : null
+                  );
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-dfz-text hover:bg-dfz-surface-hover text-left"
+              >
+                <Gift size={16} className="text-purple-400" />
+                <span>Подарок</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAttachMenu(false);
+                  const otherMember = activeChat?.type === 'DIRECT'
+                    ? activeChat.members?.find((m: any) => m.userId !== user?.id)?.user
+                    : null;
+                  setSendStarsOpen(
+                    true,
+                    otherMember
+                      ? {
+                          id: otherMember.id,
+                          username: otherMember.username,
+                          displayName: otherMember.profile?.displayName || otherMember.username,
+                        }
+                      : null
+                  );
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-dfz-text hover:bg-dfz-surface-hover text-left"
+              >
+                <Star size={16} className="fill-amber-400 text-amber-400" />
+                <span>Отправить Stars</span>
               </button>
             </div>
           )}
