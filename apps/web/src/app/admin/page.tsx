@@ -43,7 +43,7 @@ type AdminTab =
 
 export default function AdminDashboardPage() {
   const router = useRouter();
-  const { user, isLoading } = useAuthStore();
+  const { user, isLoading, checkAuth } = useAuthStore();
 
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [metrics, setMetrics] = useState<any>(null);
@@ -79,14 +79,15 @@ export default function AdminDashboardPage() {
   const [newGiftSupply, setNewGiftSupply] = useState('500');
 
   useEffect(() => {
-    if (!isLoading) {
-      if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPERADMIN)) {
-        router.push('/');
-      } else {
-        loadData();
+    checkAuth().then((isAuth) => {
+      if (isAuth) {
+        const currentUser = useAuthStore.getState().user;
+        if (currentUser && (currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPERADMIN)) {
+          loadData();
+        }
       }
-    }
-  }, [user, isLoading]);
+    });
+  }, []);
 
   const loadData = async () => {
     const [metricsRes, ecoRes, usersRes, reportsRes, auditRes, giftsRes] = await Promise.all([
@@ -223,10 +224,75 @@ export default function AdminDashboardPage() {
     if (res.success) loadData();
   };
 
-  if (isLoading || !user) {
+  if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-dfz-bg text-dfz-text text-sm">
-        Загрузка панели управления...
+      <div className="min-h-screen flex flex-col items-center justify-center bg-dfz-bg text-dfz-text gap-3">
+        <div className="w-8 h-8 border-2 border-dfz-accent border-t-transparent rounded-full animate-spin" />
+        <span className="text-xs text-dfz-text-muted">Проверка прав доступа...</span>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-dfz-bg text-dfz-text p-4">
+        <div className="w-full max-w-md bg-dfz-surface border border-dfz-border rounded-dfz-xl p-8 shadow-dfz-dropdown text-center space-y-5 animate-scale-in">
+          <div className="w-14 h-14 bg-dfz-accent/15 border border-dfz-accent/30 rounded-2xl mx-auto flex items-center justify-center text-dfz-accent">
+            <Shield size={32} />
+          </div>
+          <div className="space-y-1">
+            <h1 className="text-lg font-bold text-dfz-text">Панель управления DFZ</h1>
+            <p className="text-xs text-dfz-text-muted">
+              Для доступа к административной панели требуется авторизация с правами администратора.
+            </p>
+          </div>
+          <div className="pt-2 flex flex-col gap-2.5">
+            <Link
+              href="/login"
+              className="w-full h-10 flex items-center justify-center gap-2 bg-dfz-accent hover:bg-dfz-accent-hover text-white text-xs font-semibold rounded-dfz-lg transition-colors shadow-dfz-sm"
+            >
+              <span>Войти как администратор</span>
+            </Link>
+            <Link
+              href="/"
+              className="w-full h-9 flex items-center justify-center gap-2 bg-dfz-surface hover:bg-dfz-surface-hover border border-dfz-border text-dfz-text-muted hover:text-dfz-text text-xs rounded-dfz-lg transition-colors"
+            >
+              <span>На главную</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPERADMIN) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-dfz-bg text-dfz-text p-4">
+        <div className="w-full max-w-md bg-dfz-surface border border-dfz-border rounded-dfz-xl p-8 shadow-dfz-dropdown text-center space-y-5 animate-scale-in">
+          <div className="w-14 h-14 bg-dfz-danger/15 border border-dfz-danger/30 rounded-2xl mx-auto flex items-center justify-center text-dfz-danger">
+            <Ban size={32} />
+          </div>
+          <div className="space-y-1">
+            <h1 className="text-lg font-bold text-dfz-text">Доступ ограничен</h1>
+            <p className="text-xs text-dfz-text-muted">
+              Вы авторизованы как <span className="font-semibold text-dfz-text">@{user.username}</span>, но ваш аккаунт не обладает правами администратора.
+            </p>
+          </div>
+          <div className="pt-2 flex flex-col gap-2.5">
+            <Link
+              href="/"
+              className="w-full h-10 flex items-center justify-center gap-2 bg-dfz-accent hover:bg-dfz-accent-hover text-white text-xs font-semibold rounded-dfz-lg transition-colors shadow-dfz-sm"
+            >
+              <span>Вернуться к чатам</span>
+            </Link>
+            <Link
+              href="/login"
+              className="w-full h-9 flex items-center justify-center gap-2 bg-dfz-surface hover:bg-dfz-surface-hover border border-dfz-border text-dfz-text-muted hover:text-dfz-text text-xs rounded-dfz-lg transition-colors"
+            >
+              <span>Сменить учетную запись</span>
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }
