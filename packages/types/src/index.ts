@@ -34,6 +34,15 @@ export enum MessageType {
   VOICE = 'VOICE',
   FILE = 'FILE',
   SYSTEM = 'SYSTEM',
+  POLL = 'POLL',
+  STICKER = 'STICKER',
+  VIDEO_NOTE = 'VIDEO_NOTE',
+}
+
+export enum StoryMediaType {
+  IMAGE = 'IMAGE',
+  VIDEO = 'VIDEO',
+  TEXT = 'TEXT',
 }
 
 export enum ReceiptStatus {
@@ -156,6 +165,9 @@ export interface Message {
   replyTo?: (Message & { senderName?: string }) | null;
   forwardedFromId?: string | null;
   forwardedFrom?: User | null;
+  topicId?: string | null;
+  topic?: Topic | null;
+  poll?: Poll | null;
   isEdited: boolean;
   isDeleted: boolean;
   idempotencyKey?: string | null;
@@ -202,6 +214,7 @@ export interface Chat {
   avatarUrl: string | null;
   ownerId: string | null;
   isPublic: boolean;
+  isForum?: boolean;
   inviteCode?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -212,6 +225,7 @@ export interface Chat {
   isMuted?: boolean;
   isArchived?: boolean;
   pinnedMessages?: Message[];
+  topics?: Topic[];
 }
 
 // Contacts
@@ -320,3 +334,153 @@ export interface WsCallSignalPayload {
   callType?: CallType;
   chatId?: string;
 }
+
+// Stories
+export interface StoryView {
+  id: string;
+  storyId: string;
+  viewerId: string;
+  viewer?: User;
+  viewedAt: string;
+}
+
+export interface StoryReaction {
+  id: string;
+  storyId: string;
+  userId: string;
+  user?: User;
+  emoji: string;
+  createdAt: string;
+}
+
+export interface Story {
+  id: string;
+  authorId: string;
+  author?: User;
+  mediaUrl: string;
+  mediaType: StoryMediaType;
+  caption?: string | null;
+  textOverlay?: {
+    text: string;
+    bgColor?: string;
+    textColor?: string;
+    fontSize?: number;
+    fontFamily?: string;
+    alignment?: 'left' | 'center' | 'right';
+  } | null;
+  privacy: PrivacyVisibility;
+  expiresAt: string;
+  isArchived: boolean;
+  createdAt: string;
+  views?: StoryView[];
+  reactions?: StoryReaction[];
+  viewCount?: number;
+  reactionCount?: number;
+  hasViewed?: boolean;
+}
+
+export interface StoryFeedItem {
+  user: User;
+  stories: Story[];
+  hasUnseen: boolean;
+  latestCreatedAt: string;
+}
+
+// Polls
+export interface PollVote {
+  id: string;
+  pollId: string;
+  optionId: string;
+  userId: string;
+  votedAt: string;
+}
+
+export interface PollOption {
+  id: string;
+  pollId: string;
+  text: string;
+  voteCount: number;
+  percentage?: number;
+  hasVoted?: boolean;
+}
+
+export interface Poll {
+  id: string;
+  chatId: string;
+  messageId: string;
+  question: string;
+  isAnonymous: boolean;
+  allowMultiple: boolean;
+  isClosed: boolean;
+  createdAt: string;
+  totalVotes?: number;
+  hasVoted?: boolean;
+  options: PollOption[];
+  userVotes?: string[]; // IDs of options voted for by current user
+}
+
+// Topics / Forums
+export interface Topic {
+  id: string;
+  chatId: string;
+  title: string;
+  icon?: string | null;
+  color?: string | null;
+  creatorId: string;
+  creator?: User;
+  isClosed: boolean;
+  isPinned: boolean;
+  createdAt: string;
+  updatedAt: string;
+  lastMessage?: Message | null;
+  messageCount?: number;
+}
+
+// Stickers
+export interface Sticker {
+  id: string;
+  packId: string;
+  emoji: string;
+  url: string;
+  width?: number | null;
+  height?: number | null;
+  createdAt: string;
+}
+
+export interface StickerPack {
+  id: string;
+  name: string;
+  title: string;
+  author?: string | null;
+  isOfficial: boolean;
+  stickers: Sticker[];
+  createdAt: string;
+}
+
+// Link Preview
+export interface LinkPreviewData {
+  url: string;
+  title?: string;
+  description?: string;
+  image?: string;
+  siteName?: string;
+  favicon?: string;
+}
+
+// Additional WebSocket Events
+export interface WsStoryPayload {
+  story: Story;
+  authorId: string;
+}
+
+export interface WsPollUpdatedPayload {
+  chatId: string;
+  messageId: string;
+  poll: Poll;
+}
+
+export interface WsTopicPayload {
+  chatId: string;
+  topic: Topic;
+}
+

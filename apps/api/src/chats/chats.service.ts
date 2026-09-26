@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '../prisma';
 import { ChatType, MemberRole, ReceiptStatus } from '@dfz/types';
+import { gatewayInstance } from '../gateway/websocket.gateway';
 
 export class ChatsService {
   async getUserChats(userId: string) {
@@ -445,6 +446,129 @@ export class ChatsService {
       data: { isArchived },
     });
     return { isArchived };
+  }
+
+  async createTopic(chatId: string, userId: string, data: { title: string; icon?: string; color?: string }) {
+    const membership = await prisma.chatMember.findUnique({
+      where: { chatId_userId: { chatId, userId } },
+    });
+
+    if (!membership) {
+      throw new Error('Not a member of this chat');
+    }
+
+    const topic = await prisma.topic.create({
+      data: {
+        chatId,
+        creatorId: userId,
+        title: data.title,
+        icon: data.icon,
+        color: data.color,
+      },
+      include: {
+        creator: {
+          select: { id: true, username: true, profile: true },
+        },
+      },
+    });
+
+    // Mark chat as forum
+    await prisma.chat.update({
+      where: { id: chatId },
+      data: { isForum: true },
+    });
+
+    if (gatewayInstance) {
+      gatewayInstance.broadcastToChat(chatId, 'topic:new', {
+        chatId,
+        topic: {
+          ...topic,
+          createdAt: topic.createdAt.toISOString(),
+          updatedAt: topic.updatedAt.toISOString(),
+          messageCount: 0,
+        },
+      });
+    }
+
+    return topic;
+  }
+
+  async getTopics(chatId: string, userId: string) {
+    const membership = await prisma.chatMember.findUnique({
+      where: { chatId_userId: { chatId, userId } },
+    });
+
+    if (!membership) {
+      throw new Error('Access denied');
+    }
+
+    const topics = await prisma.topic.findMany({
+      where: { chatId },
+      orderBy: [{ isPinned: 'desc' }, { updatedAt: 'desc' }],
+      include: {
+        creator: {
+          select: { id: true, username: true, profile: true },
+        },
+        _count: {
+          select: { messages: true },
+        },
+        messages: {
+          take: 1,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            sender: {
+              select: { id: true, username: true, profile: true },
+            },
+          },
+        },
+      },
+    });
+
+    return topics.map((t) => ({
+      id: t.id,
+      chatId: t.chatId,
+      title: t.title,
+      icon: t.icon,
+      color: t.color,
+      creatorId: t.creatorId,
+      creator: t.creator,
+      isClosed: t.isClosed,
+      isPinned: t.isPinned,
+      messageCount: t._count.messages,
+      lastMessage: t.messages[0] ? {
+        id: t.messages[0].id,
+        content: t.messages[0].content,
+        senderName: t.messages[0].sender?.profile?.displayName || t.messages[0].sender?.username,
+        createdAt: t.messages[0].createdAt.toISOString(),
+      } : null,
+      createdAt: t.createdAt.toISOString(),
+      updatedAt: t.updatedAt.toISOString(),
+    }));
+  }
+
+  async closeTopic(chatId: string, topicId: string, userId: string) {
+    const membership = await prisma.chatMember.findUnique({
+      where: { chatId_userId: { chatId, userId } },
+    });
+
+    const topic = await prisma.topic.findUnique({
+      where: { id: topicId },
+    });
+
+    if (!topic || topic.chatId !== chatId) {
+      throw new Error('Topic not found');
+    }
+
+    if (membership?.role !== 'OWNER' && membership?.role !== 'ADMIN' && topic.creatorId !== userId) {
+      throw new Error('Unauthorized');
+    }
+
+    const updated = await prisma.topic.update({
+      where: { id: topicId },
+      data: { isClosed: true },
+    });
+
+    return updated;
   }
 }
 

@@ -7,6 +7,8 @@ import { Avatar } from '../ui/Avatar';
 import { VoicePlayer } from './VoicePlayer';
 import { ContextMenu, ContextMenuItem } from '../ui/ContextMenu';
 import { EmojiPicker } from './EmojiPicker';
+import { PollBubble } from './PollBubble';
+import { LinkPreviewBubble } from './LinkPreviewBubble';
 
 interface MessageBubbleProps {
   message: Message;
@@ -35,6 +37,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const formattedTime = message.createdAt
     ? format(new Date(message.createdAt), 'HH:mm', { locale: ru })
     : '';
+
+  const detectedUrl = message.content ? (message.content.match(/https?:\/\/[^\s]+/i)?.[0] || null) : null;
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -125,146 +129,190 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         </div>
       )}
 
-      {/* Bubble Container */}
-      <div
-        className={`relative rounded-dfz-xl px-3.5 py-2 text-sm leading-relaxed transition-all shadow-dfz-sm ${
-          isOutgoing
-            ? 'bg-dfz-accent text-white rounded-br-dfz-sm'
-            : 'bg-dfz-surface text-dfz-text border border-dfz-border rounded-bl-dfz-sm'
-        }`}
-      >
-        {/* Sender Name in Group/Channel for incoming */}
-        {!isOutgoing && showAvatar && (
-          <div className="text-[12px] font-semibold text-dfz-accent mb-0.5 truncate">
-            {message.sender?.profile?.displayName || message.sender?.username}
+      {/* Sticker Message */}
+      {message.type === MessageType.STICKER ? (
+        <div className="relative group max-w-xs select-none">
+          <img
+            src={message.attachments?.[0]?.url || message.content}
+            alt="Стикер"
+            className="w-40 h-40 object-contain hover:scale-105 transition-transform duration-200 select-none pointer-events-none"
+            loading="lazy"
+          />
+          <div className="flex items-center justify-end gap-1 text-[10px] mt-0.5 px-2 py-0.5 rounded-full bg-black/40 text-white/90 w-fit ml-auto select-none">
+            <span>{formattedTime}</span>
+            {renderStatus()}
           </div>
-        )}
-
-        {/* Reply Quote preview */}
-        {message.replyTo && (
-          <div
-            className={`border-l-2 pl-2.5 py-0.5 mb-1.5 rounded-dfz-sm text-xs cursor-pointer ${
-              isOutgoing ? 'border-white/60 bg-white/10' : 'border-dfz-accent bg-dfz-surface-hover/70'
-            }`}
-          >
-            <div className="font-semibold truncate">
-              {message.replyTo.senderName || 'Сообщение'}
+        </div>
+      ) : message.type === MessageType.VIDEO_NOTE ? (
+        /* Circular Video Note Message */
+        <div className="relative group max-w-xs select-none">
+          <div className="w-52 h-52 rounded-full overflow-hidden border-2 border-dfz-accent shadow-md bg-black">
+            <video
+              src={message.attachments?.[0]?.url || message.content}
+              controls
+              playsInline
+              loop
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div className="flex items-center justify-end gap-1 text-[10px] mt-1 px-2 py-0.5 rounded-full bg-black/40 text-white/90 w-fit ml-auto select-none">
+            <span>{formattedTime}</span>
+            {renderStatus()}
+          </div>
+        </div>
+      ) : message.type === MessageType.POLL && message.poll ? (
+        /* Poll Message */
+        <div className="relative max-w-sm">
+          <PollBubble poll={message.poll} isOwnMessage={isOutgoing} />
+          <div className="flex items-center justify-end gap-1 text-[11px] mt-1 text-dfz-text-muted select-none">
+            <span>{formattedTime}</span>
+            {renderStatus()}
+          </div>
+        </div>
+      ) : (
+        /* Standard Bubble Container */
+        <div
+          className={`relative rounded-dfz-xl px-3.5 py-2 text-sm leading-relaxed transition-all shadow-dfz-sm ${
+            isOutgoing
+              ? 'bg-dfz-accent text-white rounded-br-dfz-sm'
+              : 'bg-dfz-surface text-dfz-text border border-dfz-border rounded-bl-dfz-sm'
+          }`}
+        >
+          {/* Sender Name in Group/Channel for incoming */}
+          {!isOutgoing && showAvatar && (
+            <div className="text-[12px] font-semibold text-dfz-accent mb-0.5 truncate">
+              {message.sender?.profile?.displayName || message.sender?.username}
             </div>
-            <div className="truncate opacity-80">{message.replyTo.content}</div>
-          </div>
-        )}
+          )}
 
-        {/* Attachments */}
-        {message.attachments && message.attachments.length > 0 && (
-          <div className="space-y-2 mb-1.5">
-            {message.attachments.map((att) => {
-              if (att.mimeType.startsWith('image/')) {
+          {/* Reply Quote preview */}
+          {message.replyTo && (
+            <div
+              className={`border-l-2 pl-2.5 py-0.5 mb-1.5 rounded-dfz-sm text-xs cursor-pointer ${
+                isOutgoing ? 'border-white/60 bg-white/10' : 'border-dfz-accent bg-dfz-surface-hover/70'
+              }`}
+            >
+              <div className="font-semibold truncate">
+                {message.replyTo.senderName || 'Сообщение'}
+              </div>
+              <div className="truncate opacity-80">{message.replyTo.content}</div>
+            </div>
+          )}
+
+          {/* Attachments */}
+          {message.attachments && message.attachments.length > 0 && (
+            <div className="space-y-2 mb-1.5">
+              {message.attachments.map((att) => {
+                if (att.mimeType.startsWith('image/')) {
+                  return (
+                    <div
+                      key={att.id || att.url}
+                      onClick={() => onOpenImage(att.url, att.originalName)}
+                      className="relative cursor-pointer overflow-hidden rounded-dfz-md max-h-72 max-w-sm group/img"
+                    >
+                      <img
+                        src={att.url}
+                        alt={att.originalName}
+                        className="w-full h-auto object-cover rounded-dfz-md transition-transform duration-200 group-hover/img:scale-[1.02]"
+                      />
+                    </div>
+                  );
+                }
+
+                if (att.mimeType.startsWith('video/')) {
+                  return (
+                    <div key={att.id || att.url} className="rounded-dfz-md overflow-hidden max-w-sm">
+                      <video controls src={att.url} className="w-full rounded-dfz-md" />
+                    </div>
+                  );
+                }
+
+                if (att.mimeType.startsWith('audio/') || message.type === MessageType.VOICE) {
+                  return (
+                    <VoicePlayer
+                      key={att.id || att.url}
+                      url={att.url}
+                      duration={att.duration}
+                      waveform={att.waveform}
+                      isOutgoing={isOutgoing}
+                    />
+                  );
+                }
+
+                // Document / File
                 return (
                   <div
                     key={att.id || att.url}
-                    onClick={() => onOpenImage(att.url, att.originalName)}
-                    className="relative cursor-pointer overflow-hidden rounded-dfz-md max-h-72 max-w-sm group/img"
+                    className={`flex items-center gap-3 p-2.5 rounded-dfz-md ${
+                      isOutgoing ? 'bg-white/15' : 'bg-dfz-surface-hover border border-dfz-border'
+                    }`}
                   >
-                    <img
-                      src={att.url}
-                      alt={att.originalName}
-                      className="w-full h-auto object-cover rounded-dfz-md transition-transform duration-200 group-hover/img:scale-[1.02]"
-                    />
+                    <div className="p-2 rounded-dfz-md bg-dfz-accent/20 text-dfz-accent flex-shrink-0">
+                      <FileText size={20} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate">{att.originalName}</p>
+                      <p className="text-[11px] opacity-75">{formatFileSize(att.sizeBytes)}</p>
+                    </div>
+                    <a
+                      href={att.url}
+                      download={att.originalName}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
+                    >
+                      <Download size={16} />
+                    </a>
                   </div>
                 );
-              }
+              })}
+            </div>
+          )}
 
-              if (att.mimeType.startsWith('video/')) {
-                return (
-                  <div key={att.id || att.url} className="rounded-dfz-md overflow-hidden max-w-sm">
-                    <video controls src={att.url} className="w-full rounded-dfz-md" />
-                  </div>
-                );
-              }
+          {/* Text Content */}
+          {message.content && (
+            <div className="whitespace-pre-wrap break-words">{message.content}</div>
+          )}
 
-              if (att.mimeType.startsWith('audio/') || message.type === MessageType.VOICE) {
-                return (
-                  <VoicePlayer
-                    key={att.id || att.url}
-                    url={att.url}
-                    duration={att.duration}
-                    waveform={att.waveform}
-                    isOutgoing={isOutgoing}
-                  />
-                );
-              }
+          {/* Safe Link Preview */}
+          {detectedUrl && <LinkPreviewBubble url={detectedUrl} />}
 
-              // Document / File
-              return (
-                <div
-                  key={att.id || att.url}
-                  className={`flex items-center gap-3 p-2.5 rounded-dfz-md ${
-                    isOutgoing ? 'bg-white/15' : 'bg-dfz-surface-hover border border-dfz-border'
+          {/* Footer info: Edited, Time, Delivery Status */}
+          <div
+            className={`flex items-center justify-end gap-1.5 mt-1 text-[11px] select-none ${
+              isOutgoing ? 'text-white/80' : 'text-dfz-text-muted'
+            }`}
+          >
+            {message.isEdited && <span className="text-[10px] italic opacity-75">изм.</span>}
+            <span>{formattedTime}</span>
+            {renderStatus()}
+          </div>
+          {/* Reactions Pill List */}
+          {message.reactions && message.reactions.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1.5 -mb-0.5">
+              {message.reactions.map((r) => (
+                <button
+                  key={r.emoji}
+                  type="button"
+                  onClick={() => onReact(message.id, r.emoji)}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-colors border ${
+                    r.hasReacted
+                      ? isOutgoing
+                        ? 'bg-white/25 border-white text-white font-semibold'
+                        : 'bg-dfz-accent-subtle border-dfz-accent text-dfz-accent font-semibold'
+                      : isOutgoing
+                      ? 'bg-black/20 border-white/20 text-white'
+                      : 'bg-dfz-surface-hover border-dfz-border text-dfz-text'
                   }`}
                 >
-                  <div className="p-2 rounded-dfz-md bg-dfz-accent/20 text-dfz-accent flex-shrink-0">
-                    <FileText size={20} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium truncate">{att.originalName}</p>
-                    <p className="text-[11px] opacity-75">{formatFileSize(att.sizeBytes)}</p>
-                  </div>
-                  <a
-                    href={att.url}
-                    download={att.originalName}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
-                  >
-                    <Download size={16} />
-                  </a>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Text Content */}
-        {message.content && (
-          <div className="whitespace-pre-wrap break-words">{message.content}</div>
-        )}
-
-        {/* Footer info: Edited, Time, Delivery Status */}
-        <div
-          className={`flex items-center justify-end gap-1.5 mt-1 text-[11px] select-none ${
-            isOutgoing ? 'text-white/80' : 'text-dfz-text-muted'
-          }`}
-        >
-          {message.isEdited && <span className="text-[10px] italic opacity-75">изм.</span>}
-          <span>{formattedTime}</span>
-          {renderStatus()}
+                  <span>{r.emoji}</span>
+                  <span className="text-[10px] font-mono">{r.count}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-
-        {/* Reactions Pill List */}
-        {message.reactions && message.reactions.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1.5 -mb-0.5">
-            {message.reactions.map((r) => (
-              <button
-                key={r.emoji}
-                type="button"
-                onClick={() => onReact(message.id, r.emoji)}
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-colors border ${
-                  r.hasReacted
-                    ? isOutgoing
-                      ? 'bg-white/25 border-white text-white font-semibold'
-                      : 'bg-dfz-accent-subtle border-dfz-accent text-dfz-accent font-semibold'
-                    : isOutgoing
-                    ? 'bg-black/20 border-white/20 text-white'
-                    : 'bg-dfz-surface-hover border-dfz-border text-dfz-text'
-                }`}
-              >
-                <span>{r.emoji}</span>
-                <span className="text-[10px] font-mono">{r.count}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Quick Reaction button on hover */}
       <div

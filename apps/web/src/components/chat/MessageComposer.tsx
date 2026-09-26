@@ -1,9 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Paperclip, Smile, Send, Mic, X, Edit3, Reply } from 'lucide-react';
+import { Paperclip, Smile, Send, Mic, Video, X, Edit3, Reply, BarChart2, Image, FileText, Sparkles } from 'lucide-react';
 import { useChatStore } from '../../stores/chatStore';
 import { apiRequest } from '../../lib/api';
 import { VoiceRecorder } from './VoiceRecorder';
 import { EmojiPicker } from './EmojiPicker';
+import { StickerPicker } from './StickerPicker';
+import { CreatePollModal } from './CreatePollModal';
+import { VideoNoteRecorder } from './VideoNoteRecorder';
+import { MessageType, Sticker } from '@dfz/types';
 
 interface MessageComposerProps {
   chatId: string;
@@ -12,8 +16,12 @@ interface MessageComposerProps {
 export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
   const [text, setText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
+  const [isVideoRecording, setIsVideoRecording] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [pickerTab, setPickerTab] = useState<'EMOJI' | 'STICKERS'>('EMOJI');
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [isPollModalOpen, setIsPollModalOpen] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
   const {
@@ -28,6 +36,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
   const typingTimerRef = useRef<any>(null);
 
   // If editing message, populate textarea with existing content
@@ -102,59 +111,126 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
     }
   };
 
-  // File Upload
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      uploadFile(file);
+    }
+    e.target.value = '';
+    setShowAttachMenu(false);
+  };
+
   const uploadFile = async (file: File) => {
     setIsUploading(true);
-    setUploadProgress(20);
+    setUploadProgress(10);
 
-    const formData = new FormData();
-    formData.append('file', file);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
 
-    const res = await apiRequest<any>('/api/media/upload', {
-      method: 'POST',
-      body: formData,
-    });
+      const res = await apiRequest<{
+        url: string;
+        storageKey: string;
+        mimeType: string;
+        sizeBytes: number;
+        originalName: string;
+        duration?: number;
+        width?: number;
+        height?: number;
+      }>('/api/media/upload', {
+        method: 'POST',
+        body: formData,
+      });
 
-    setUploadProgress(100);
-    setIsUploading(false);
+      if (res.success && res.data) {
+        setUploadProgress(100);
 
-    if (res.success && res.data) {
-      await sendMessage('', [res.data]);
+        let msgType = MessageType.FILE;
+        if (res.data.mimeType.startsWith('image/')) msgType = MessageType.IMAGE;
+        else if (res.data.mimeType.startsWith('video/')) msgType = MessageType.VIDEO;
+        else if (res.data.mimeType.startsWith('audio/')) msgType = MessageType.AUDIO;
+
+        await sendMessage('', [res.data], msgType);
+      } else {
+        alert(res.error?.message || 'Ошибка загрузки файла');
+      }
+    } catch {
+      alert('Ошибка при отправке файла');
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
     }
   };
 
-  // Voice recording upload & send
-  const handleVoiceSend = async (blob: Blob, duration: number) => {
-    setIsRecording(false);
+  const handleVoiceSend = async (blob: Blob, duration: number, waveform?: number[]) => {
     setIsUploading(true);
+    try {
+      const file = new File([blob], `voice_${Date.now()}.ogg`, { type: 'audio/ogg' });
+      const formData = new FormData();
+      formData.append('file', file);
 
-    const formData = new FormData();
-    formData.append('audio', blob, 'voice.webm');
-    formData.append('duration', duration.toString());
+      const res = await apiRequest<{
+        url: string;
+        storageKey: string;
+        mimeType: string;
+        sizeBytes: number;
+      }>('/api/media/upload', {
+        method: 'POST',
+        body: formData,
+      });
 
-    const res = await apiRequest<any>('/api/media/voice', {
-      method: 'POST',
-      body: formData,
-    });
-
-    setIsUploading(false);
-
-    if (res.success && res.data) {
-      await sendMessage('', [res.data]);
+      if (res.success && res.data) {
+        const attachment = {
+          ...res.data,
+          originalName: 'Voice message',
+          duration,
+          waveform,
+        };
+        await sendMessage('', [attachment], MessageType.VOICE);
+      }
+    } finally {
+      setIsUploading(false);
+      setIsRecording(false);
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      uploadFile(files[0]);
-    }
-    if (fileInputRef.current) fileInputRef.current.value = '';
+  const handleSendVideoNote = async (url: string, duration: number) => {
+    await sendMessage(
+      '',
+      [
+        {
+          url,
+          storageKey: url,
+          mimeType: 'video/webm',
+          originalName: 'video_note.webm',
+          sizeBytes: 1024 * 1024,
+          duration,
+        },
+      ],
+      MessageType.VIDEO_NOTE
+    );
+  };
+
+  const handleSelectSticker = async (sticker: Sticker) => {
+    setShowEmojiPicker(false);
+    await sendMessage(
+      sticker.url,
+      [
+        {
+          url: sticker.url,
+          storageKey: sticker.url,
+          mimeType: 'image/webp',
+          originalName: sticker.emoji,
+          sizeBytes: 1024,
+        },
+      ],
+      MessageType.STICKER
+    );
   };
 
   if (isRecording) {
     return (
-      <div className="p-3 bg-dfz-bg border-t border-dfz-border">
+      <div className="p-3 bg-dfz-surface border-t border-dfz-border">
         <VoiceRecorder
           onSend={handleVoiceSend}
           onCancel={() => setIsRecording(false)}
@@ -164,18 +240,18 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
   }
 
   return (
-    <div className="relative p-2.5 bg-dfz-bg border-t border-dfz-border">
+    <div className="p-3 bg-dfz-surface border-t border-dfz-border select-none relative">
       {/* Uploading progress indicator */}
       {isUploading && (
-        <div className="absolute top-0 left-0 right-0 h-1 bg-dfz-surface overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-0.5 bg-dfz-accent overflow-hidden">
           <div
-            className="h-full bg-dfz-accent transition-all duration-300"
+            className="h-full bg-white/60 transition-all duration-300"
             style={{ width: `${uploadProgress}%` }}
           />
         </div>
       )}
 
-      {/* Reply or Edit Preview Bar */}
+      {/* Editing or Reply Preview Banner */}
       {(replyTo || editingMessage) && (
         <div className="flex items-center justify-between px-3 py-1.5 mb-2 bg-dfz-surface border border-dfz-border rounded-dfz-lg text-xs animate-slide-up">
           <div className="flex items-center gap-2 overflow-hidden">
@@ -207,44 +283,116 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
         </div>
       )}
 
-      {/* Composer Input Box */}
-      <div className="flex items-end gap-2 bg-dfz-surface border border-dfz-border rounded-dfz-xl px-2 py-1.5 focus-within:border-dfz-border-focus transition-colors">
-        {/* Attachment Button */}
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={handleFileChange}
-          className="hidden"
-        />
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          className="p-2 text-dfz-text-muted hover:text-dfz-text hover:bg-dfz-surface-hover rounded-full transition-colors flex-shrink-0 mb-0.5"
-          title="Прикрепить файл"
-        >
-          <Paperclip size={18} />
-        </button>
+      {/* Hidden file inputs */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        className="hidden"
+      />
+      <input
+        type="file"
+        ref={mediaInputRef}
+        accept="image/*,video/*"
+        onChange={handleFileChange}
+        className="hidden"
+      />
 
-        {/* Emoji Button */}
+      {/* Composer Input Box */}
+      <div className="flex items-end gap-1.5 bg-dfz-surface border border-dfz-border rounded-dfz-xl px-2 py-1.5 focus-within:border-dfz-border-focus transition-colors">
+        {/* Attachment Button & Popup Menu */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setShowAttachMenu(!showAttachMenu)}
+            className="p-2 text-dfz-text-muted hover:text-dfz-text hover:bg-dfz-surface-hover rounded-full transition-colors flex-shrink-0 mb-0.5"
+            title="Прикрепить"
+          >
+            <Paperclip size={18} />
+          </button>
+
+          {showAttachMenu && (
+            <div
+              className="absolute bottom-12 left-0 w-48 bg-dfz-surface border border-dfz-border rounded-dfz-xl shadow-dfz-dropdown py-1 z-40 animate-scale-in"
+              onClick={() => setShowAttachMenu(false)}
+            >
+              <button
+                type="button"
+                onClick={() => mediaInputRef.current?.click()}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-dfz-text hover:bg-dfz-surface-hover text-left"
+              >
+                <Image size={16} className="text-dfz-accent" />
+                <span>Фото или видео</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-dfz-text hover:bg-dfz-surface-hover text-left"
+              >
+                <FileText size={16} className="text-blue-500" />
+                <span>Документ</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsPollModalOpen(true)}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-dfz-text hover:bg-dfz-surface-hover text-left"
+              >
+                <BarChart2 size={16} className="text-purple-500" />
+                <span>Создать опрос</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Emoji & Sticker Drawer Button */}
         <div className="relative">
           <button
             type="button"
             onClick={() => setShowEmojiPicker(!showEmojiPicker)}
             className="p-2 text-dfz-text-muted hover:text-dfz-text hover:bg-dfz-surface-hover rounded-full transition-colors flex-shrink-0 mb-0.5"
-            title="Эмодзи"
+            title="Эмодзи и стикеры"
           >
             <Smile size={18} />
           </button>
+
           {showEmojiPicker && (
-            <div className="absolute bottom-12 left-0 z-30">
-              <EmojiPicker
-                onSelect={(emoji) => {
-                  setText((prev) => prev + emoji);
-                  setShowEmojiPicker(false);
-                  textareaRef.current?.focus();
-                }}
-                onClose={() => setShowEmojiPicker(false)}
-              />
+            <div className="absolute bottom-12 left-0 z-40 bg-dfz-surface border border-dfz-border rounded-dfz-xl shadow-dfz-dropdown overflow-hidden flex flex-col animate-scale-in">
+              {/* Tab Selector Header */}
+              <div className="flex border-b border-dfz-border bg-dfz-bg p-1 gap-1">
+                <button
+                  type="button"
+                  onClick={() => setPickerTab('EMOJI')}
+                  className={`flex-1 py-1 text-xs font-semibold rounded-dfz-md transition-colors flex items-center justify-center gap-1.5 ${
+                    pickerTab === 'EMOJI' ? 'bg-dfz-surface text-dfz-text shadow-dfz-sm' : 'text-dfz-text-muted hover:text-dfz-text'
+                  }`}
+                >
+                  <Smile size={14} />
+                  <span>Эмодзи</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPickerTab('STICKERS')}
+                  className={`flex-1 py-1 text-xs font-semibold rounded-dfz-md transition-colors flex items-center justify-center gap-1.5 ${
+                    pickerTab === 'STICKERS' ? 'bg-dfz-surface text-dfz-text shadow-dfz-sm' : 'text-dfz-text-muted hover:text-dfz-text'
+                  }`}
+                >
+                  <Sparkles size={14} className="text-dfz-accent" />
+                  <span>Стикеры</span>
+                </button>
+              </div>
+
+              {pickerTab === 'EMOJI' ? (
+                <EmojiPicker
+                  onSelect={(emoji) => {
+                    setText((prev) => prev + emoji);
+                    setShowEmojiPicker(false);
+                    textareaRef.current?.focus();
+                  }}
+                  onClose={() => setShowEmojiPicker(false)}
+                />
+              ) : (
+                <StickerPicker onSelectSticker={handleSelectSticker} />
+              )}
             </div>
           )}
         </div>
@@ -261,7 +409,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
           className="flex-1 max-h-36 min-h-[24px] py-1.5 px-1 bg-transparent text-dfz-text placeholder:text-dfz-text-muted text-sm resize-none focus:outline-none leading-relaxed"
         />
 
-        {/* Voice or Send Button */}
+        {/* Action Buttons: Send OR Voice & Video Note */}
         {text.trim() || editingMessage ? (
           <button
             type="button"
@@ -272,16 +420,45 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
             <Send size={16} />
           </button>
         ) : (
-          <button
-            type="button"
-            onClick={() => setIsRecording(true)}
-            className="p-2 text-dfz-text-muted hover:text-dfz-accent hover:bg-dfz-surface-hover rounded-full transition-colors flex-shrink-0 mb-0.5"
-            title="Записать голосовое сообщение"
-          >
-            <Mic size={18} />
-          </button>
+          <div className="flex items-center gap-1 flex-shrink-0 mb-0.5">
+            {/* Round Video Note Button */}
+            <button
+              type="button"
+              onClick={() => setIsVideoRecording(true)}
+              className="p-2 text-dfz-text-muted hover:text-dfz-accent hover:bg-dfz-surface-hover rounded-full transition-colors"
+              title="Записать видеосообщение (кружок)"
+            >
+              <Video size={18} />
+            </button>
+
+            {/* Voice Message Button */}
+            <button
+              type="button"
+              onClick={() => setIsRecording(true)}
+              className="p-2 text-dfz-text-muted hover:text-dfz-accent hover:bg-dfz-surface-hover rounded-full transition-colors"
+              title="Записать голосовое сообщение"
+            >
+              <Mic size={18} />
+            </button>
+          </div>
         )}
       </div>
+
+      {/* Create Poll Modal */}
+      <CreatePollModal
+        chatId={chatId}
+        isOpen={isPollModalOpen}
+        onClose={() => setIsPollModalOpen(false)}
+      />
+
+      {/* Video Note Recorder Overlay */}
+      {isVideoRecording && (
+        <VideoNoteRecorder
+          chatId={chatId}
+          onClose={() => setIsVideoRecording(false)}
+          onSendVideoNote={handleSendVideoNote}
+        />
+      )}
     </div>
   );
 };

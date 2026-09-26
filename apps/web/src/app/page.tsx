@@ -18,6 +18,11 @@ import { NewChannelModal } from '../components/modals/NewChannelModal';
 import { SettingsModal } from '../components/modals/SettingsModal';
 import { UserProfileModal } from '../components/modals/UserProfileModal';
 import { CallOverlay } from '../components/modals/CallOverlay';
+import { MobileBottomNav } from '../components/layout/MobileBottomNav';
+import { StoryViewerModal } from '../components/stories/StoryViewerModal';
+import { StoryCreatorModal } from '../components/stories/StoryCreatorModal';
+import { StoryAnalyticsModal } from '../components/stories/StoryAnalyticsModal';
+import { useStoriesStore } from '../stores/storiesStore';
 import { socketService } from '../lib/socket';
 import { ShieldCheck, MessageSquare, WifiOff } from 'lucide-react';
 
@@ -53,6 +58,7 @@ export default function MessengerPage() {
         fetchChats();
         setupSocketListeners();
         setupCallListeners();
+        useStoriesStore.getState().setupStoriesSocket();
       }
     });
 
@@ -97,7 +103,7 @@ export default function MessengerPage() {
   }
 
   return (
-    <div className="flex h-screen w-screen bg-dfz-bg text-dfz-text overflow-hidden font-sans">
+    <div className="flex h-[100dvh] w-screen bg-dfz-bg text-dfz-text overflow-hidden font-sans">
       {/* Network Offline Alert Bar */}
       {isOffline && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-dfz-danger text-white text-xs py-1 px-4 text-center flex items-center justify-center gap-2 font-medium">
@@ -179,6 +185,18 @@ export default function MessengerPage() {
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
       <UserProfileModal userId={inspectedUserId} onClose={() => setInspectedUserId(null)} />
       <CallOverlay />
+
+      {/* Stories Modals */}
+      <StoryViewerModal />
+      <StoryCreatorModal />
+      <StoryAnalyticsModal />
+
+      {/* Mobile-first Bottom Navigation Bar */}
+      <MobileBottomNav
+        currentTab={currentNavTab as any}
+        onSelectTab={handleNavSelect}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+      />
     </div>
   );
 }

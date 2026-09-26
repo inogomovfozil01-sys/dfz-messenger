@@ -6,6 +6,7 @@ export class MessagesService {
     cursor?: string;
     limit?: number;
     direction?: 'before' | 'after';
+    topicId?: string;
   }) {
     // 1. Verify user has access to chat
     const membership = await prisma.chatMember.findUnique({
@@ -32,6 +33,7 @@ export class MessagesService {
       where: {
         chatId,
         isDeleted: false,
+        topicId: options.topicId !== undefined ? options.topicId : undefined,
       },
       take: limit + 1,
       cursor: cursorObj,
@@ -42,6 +44,12 @@ export class MessagesService {
           include: { profile: true },
         },
         attachments: true,
+        poll: {
+          include: {
+            options: true,
+            votes: true,
+          },
+        },
         replyTo: {
           include: {
             sender: {
@@ -102,9 +110,38 @@ export class MessagesService {
       const hasRead = m.receipts.some(rec => rec.userId !== m.senderId && rec.status === ReceiptStatus.READ);
       const deliveryStatus = hasRead ? 'read' : m.receipts.length > 0 ? 'delivered' : 'sent';
 
+      // Format poll if present
+      let formattedPoll = null;
+      if (m.poll) {
+        const totalVotes = m.poll.options.reduce((sum: number, o: any) => sum + o.voteCount, 0);
+        const userVotes = m.poll.votes?.filter((v: any) => v.userId === userId).map((v: any) => v.optionId) || [];
+        formattedPoll = {
+          id: m.poll.id,
+          chatId: m.poll.chatId,
+          messageId: m.poll.messageId,
+          question: m.poll.question,
+          isAnonymous: m.poll.isAnonymous,
+          allowMultiple: m.poll.allowMultiple,
+          isClosed: m.poll.isClosed,
+          createdAt: m.poll.createdAt.toISOString(),
+          totalVotes,
+          hasVoted: userVotes.length > 0,
+          userVotes,
+          options: m.poll.options.map((opt: any) => ({
+            id: opt.id,
+            pollId: opt.pollId,
+            text: opt.text,
+            voteCount: opt.voteCount,
+            percentage: totalVotes > 0 ? Math.round((opt.voteCount / totalVotes) * 100) : 0,
+            hasVoted: userVotes.includes(opt.id),
+          })),
+        };
+      }
+
       return {
         id: m.id,
         chatId: m.chatId,
+        topicId: m.topicId,
         senderId: m.senderId,
         sender: {
           id: m.sender.id,
@@ -114,6 +151,7 @@ export class MessagesService {
         },
         type: m.type,
         content: m.content,
+        poll: formattedPoll,
         attachments: m.attachments.map(a => ({
           id: a.id,
           messageId: a.messageId,
@@ -157,6 +195,7 @@ export class MessagesService {
     content: string;
     type?: MessageType;
     replyToId?: string;
+    topicId?: string;
     attachments?: Array<{
       originalName: string;
       mimeType: string;
@@ -241,6 +280,7 @@ export class MessagesService {
       data: {
         chatId: data.chatId,
         senderId: userId,
+        topicId: data.topicId || null,
         content: data.content || '',
         type: data.type || MessageType.TEXT,
         replyToId: data.replyToId || null,
@@ -466,45 +506,74 @@ export class MessagesService {
   }
 
   private formatSingleMessage(m: any, viewerUserId: string) {
-    return {
-      id: m.id,
-      chatId: m.chatId,
-      senderId: m.senderId,
-      sender: {
-        id: m.sender.id,
-        username: m.sender.username,
-        displayName: m.sender.profile?.displayName || m.sender.username,
-        avatarUrl: m.sender.profile?.avatarUrl,
-      },
-      type: m.type,
-      content: m.content,
-      attachments: m.attachments?.map((a: any) => ({
-        id: a.id,
-        messageId: a.messageId,
-        originalName: a.originalName,
-        mimeType: a.mimeType,
-        sizeBytes: a.sizeBytes,
-        url: a.url,
-        thumbnailUrl: a.thumbnailUrl,
-        duration: a.duration,
-        waveform: a.waveform,
-        width: a.width,
-        height: a.height,
-      })) || [],
-      replyTo: m.replyTo ? {
-        id: m.replyTo.id,
-        content: m.replyTo.content,
-        senderName: m.replyTo.sender?.profile?.displayName || m.replyTo.sender?.username,
-        type: m.replyTo.type,
-      } : null,
-      reactions: [],
-      isEdited: m.isEdited,
-      isDeleted: m.isDeleted,
-      deliveryStatus: 'sent',
-      createdAt: m.createdAt.toISOString(),
-      updatedAt: m.updatedAt.toISOString(),
-    };
-  }
+    let formattedPoll = null;
+      if (m.poll) {
+        const totalVotes = m.poll.options?.reduce((sum: number, o: any) => sum + o.voteCount, 0) || 0;
+        const userVotes = m.poll.votes?.filter((v: any) => v.userId === viewerUserId).map((v: any) => v.optionId) || [];
+        formattedPoll = {
+          id: m.poll.id,
+          chatId: m.poll.chatId,
+          messageId: m.poll.messageId,
+          question: m.poll.question,
+          isAnonymous: m.poll.isAnonymous,
+          allowMultiple: m.poll.allowMultiple,
+          isClosed: m.poll.isClosed,
+          createdAt: m.poll.createdAt.toISOString ? m.poll.createdAt.toISOString() : m.poll.createdAt,
+          totalVotes,
+          hasVoted: userVotes.length > 0,
+          userVotes,
+          options: m.poll.options?.map((opt: any) => ({
+            id: opt.id,
+            pollId: opt.pollId,
+            text: opt.text,
+            voteCount: opt.voteCount,
+            percentage: totalVotes > 0 ? Math.round((opt.voteCount / totalVotes) * 100) : 0,
+            hasVoted: userVotes.includes(opt.id),
+          })) || [],
+        };
+      }
+
+      return {
+        id: m.id,
+        chatId: m.chatId,
+        topicId: m.topicId || null,
+        senderId: m.senderId,
+        sender: {
+          id: m.sender.id,
+          username: m.sender.username,
+          displayName: m.sender.profile?.displayName || m.sender.username,
+          avatarUrl: m.sender.profile?.avatarUrl,
+        },
+        type: m.type,
+        content: m.content,
+        poll: formattedPoll,
+        attachments: m.attachments?.map((a: any) => ({
+          id: a.id,
+          messageId: a.messageId,
+          originalName: a.originalName,
+          mimeType: a.mimeType,
+          sizeBytes: a.sizeBytes,
+          url: a.url,
+          thumbnailUrl: a.thumbnailUrl,
+          duration: a.duration,
+          waveform: a.waveform,
+          width: a.width,
+          height: a.height,
+        })) || [],
+        replyTo: m.replyTo ? {
+          id: m.replyTo.id,
+          content: m.replyTo.content,
+          senderName: m.replyTo.sender?.profile?.displayName || m.replyTo.sender?.username,
+          type: m.replyTo.type,
+        } : null,
+        reactions: [],
+        isEdited: m.isEdited,
+        isDeleted: m.isDeleted,
+        deliveryStatus: 'sent',
+        createdAt: m.createdAt.toISOString ? m.createdAt.toISOString() : m.createdAt,
+        updatedAt: m.updatedAt.toISOString ? m.updatedAt.toISOString() : m.updatedAt,
+      };
+    }
 }
 
 export const messagesService = new MessagesService();

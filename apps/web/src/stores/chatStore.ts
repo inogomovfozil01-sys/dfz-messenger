@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Chat, Message, ChatType, ReceiptStatus } from '@dfz/types';
+import { Chat, Message, ChatType, ReceiptStatus, MessageType } from '@dfz/types';
 import { apiRequest } from '../lib/api';
 import { socketService } from '../lib/socket';
 
@@ -25,7 +25,7 @@ interface ChatState {
   fetchChats: () => Promise<void>;
   selectChat: (chatId: string) => Promise<void>;
   fetchMessages: (chatId: string, cursor?: string) => Promise<void>;
-  sendMessage: (content: string, attachments?: any[]) => Promise<void>;
+  sendMessage: (content: string, attachments?: any[], type?: MessageType) => Promise<void>;
   editMessage: (messageId: string, content: string) => Promise<void>;
   deleteMessage: (messageId: string) => Promise<void>;
   addReaction: (messageId: string, emoji: string) => Promise<void>;
@@ -139,11 +139,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  sendMessage: async (content: string, attachments?: any[]) => {
+  sendMessage: async (content: string, attachments?: any[], type?: MessageType) => {
     const { activeChatId, replyTo } = get();
     if (!activeChatId) return;
 
     const idempotencyKey = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+    const msgType = type || (attachments?.length ? (attachments[0].mimeType?.startsWith('image/') ? MessageType.IMAGE : MessageType.FILE) : MessageType.TEXT);
 
     // Optimistic message
     const tempId = `temp_${Date.now()}`;
@@ -152,7 +154,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       chatId: activeChatId,
       senderId: 'me',
       content,
-      type: attachments?.length ? (attachments[0].mimeType?.startsWith('image/') ? 'IMAGE' : 'FILE') as any : 'TEXT' as any,
+      type: msgType,
       attachments: attachments || [],
       replyTo: replyTo ? { ...replyTo } : null,
       isEdited: false,
@@ -175,6 +177,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       body: JSON.stringify({
         chatId: activeChatId,
         content,
+        type: msgType,
         replyToId: replyTo?.id,
         idempotencyKey,
         attachments,
@@ -482,6 +485,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     socket.off('message:receipt');
     socket.off('reaction:update');
     socket.off('chat:typing');
+    socket.off('poll:updated');
 
     socket.on('message:new', (msg: Message) => {
       get().onMessageReceived(msg);
@@ -497,6 +501,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     socket.on('chat:typing', (data: any) => {
       get().onTypingReceived(data);
+    });
+
+    socket.on('poll:updated', (data: { chatId: string; messageId: string; poll: any }) => {
+      set((state) => ({
+        messages: {
+          ...state.messages,
+          [data.chatId]: (state.messages[data.chatId] || []).map((m) =>
+            m.id === data.messageId ? { ...m, poll: data.poll } : m
+          ),
+        },
+      }));
     });
   },
 }));

@@ -3,6 +3,8 @@ import { authService } from '../src/auth/auth.service';
 import { chatsService } from '../src/chats/chats.service';
 import { messagesService } from '../src/messages/messages.service';
 import { usersService } from '../src/users/users.service';
+import { storiesService } from '../src/stories/stories.service';
+import { pollsService } from '../src/polls/polls.service';
 import { prisma } from '../src/prisma';
 import { UserRole } from '@dfz/types';
 
@@ -126,12 +128,75 @@ async function runTests() {
     assert.ok(messageBlocked, 'Blocked user should not be able to send direct message');
     console.log('  ✅ Server-side blocking enforcement verified');
 
-    // Clean up test users
+    // Unblock for subsequent tests
+    await usersService.unblockUser(user2.user.id, regResult.user.id);
+
+    // 12. Stories
+    console.log('Test 11: 24-hour Stories Lifecycle');
+    const story = await storiesService.createStory(regResult.user.id, {
+      mediaUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500',
+      caption: 'Test story caption',
+    });
+    assert.ok(story.id);
+    assert.strictEqual(story.caption, 'Test story caption');
+
+    const feed = await storiesService.getFeed(user2.user.id);
+    assert.ok(feed.length >= 1, 'Feed should include public story');
+
+    await storiesService.recordView(user2.user.id, story.id);
+    const views = await storiesService.getStoryViews(regResult.user.id, story.id);
+    assert.strictEqual(views.viewCount, 1);
+
+    const reactionRes = await storiesService.reactToStory(user2.user.id, story.id, '🔥');
+    assert.strictEqual(reactionRes.action, 'added');
+    console.log('  ✅ Stories creation, feed, view recording, and reactions verified');
+
+    // 13. Polls
+    console.log('Test 12: Interactive Polls Creation & Voting');
+    const pollResult = await pollsService.createPoll(regResult.user.id, chat.id, {
+      question: 'Which is the best modern messenger?',
+      options: ['DFZ Messenger', 'Telegram', 'Signal'],
+    });
+    assert.ok(pollResult.poll.id);
+    assert.strictEqual(pollResult.poll.options.length, 3);
+
+    const targetOptionId = pollResult.poll.options[0].id;
+    const votedPoll = await pollsService.vote(user2.user.id, pollResult.poll.id, targetOptionId);
+    assert.strictEqual(votedPoll.totalVotes, 1);
+    const votedOpt = votedPoll.options.find(o => o.id === targetOptionId);
+    assert.ok(votedOpt);
+    assert.strictEqual(votedOpt.voteCount, 1);
+    assert.strictEqual(votedOpt.percentage, 100);
+
+    const closedPoll = await pollsService.closePoll(regResult.user.id, pollResult.poll.id);
+    assert.strictEqual(closedPoll.isClosed, true);
+    console.log('  ✅ Poll creation, atomic voting, and closing verified');
+
+    // 14. Topics / Forums
+    console.log('Test 13: Group Forum Topics');
+    const group = await chatsService.createGroup(regResult.user.id, {
+      title: 'DFZ Engineering Community',
+    });
+    assert.ok(group.id);
+    const topic = await chatsService.createTopic(group.id, regResult.user.id, {
+      title: 'General Architecture',
+      icon: '🏛️',
+      color: '#3b82f6',
+    });
+    assert.ok(topic.id);
+    assert.strictEqual(topic.title, 'General Architecture');
+
+    const topics = await chatsService.getTopics(group.id, regResult.user.id);
+    assert.ok(topics.length >= 1);
+    assert.strictEqual(topics[0].title, 'General Architecture');
+    console.log('  ✅ Forum topics creation and listing verified');
+
+    // Clean up test data
     await prisma.user.deleteMany({
       where: { id: { in: [regResult.user.id, user2.user.id] } },
     });
 
-    console.log('\n🎉 ALL 10 CRITICAL INTEGRATION TESTS PASSED SUCCESSFULLY!\n');
+    console.log('\n🎉 ALL 13 PRODUCTION INTEGRATION TESTS PASSED SUCCESSFULLY!\n');
     process.exit(0);
   } catch (error) {
     console.error('❌ Test failed:', error);

@@ -5,6 +5,7 @@ import { prisma } from '../prisma';
 import { UserRole } from '@dfz/types';
 
 export interface AuthUserPayload {
+  id: string;
   userId: string;
   username: string;
   role: UserRole;
@@ -64,6 +65,7 @@ export async function authGuard(req: Request, res: Response, next: NextFunction)
     }
 
     req.user = {
+      id: user.id,
       userId: user.id,
       username: user.username,
       role: user.role as UserRole,

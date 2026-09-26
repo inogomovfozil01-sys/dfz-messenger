@@ -35,6 +35,15 @@ enum MessageType {
   VOICE
   FILE
   SYSTEM
+  POLL
+  STICKER
+  VIDEO_NOTE
+}
+
+enum StoryMediaType {
+  IMAGE
+  VIDEO
+  TEXT
 }
 
 enum ReceiptStatus {
@@ -107,6 +116,11 @@ model User {
   incomingCalls    Call[]       @relation("ReceiverCalls")
   pinnedMessages   PinnedMessage[]
   folders          ChatFolder[]
+  stories          Story[]          @relation("UserStories")
+  storyViews       StoryView[]      @relation("UserStoryViews")
+  storyReactions   StoryReaction[]  @relation("UserStoryReactions")
+  pollVotes        PollVote[]       @relation("UserPollVotes")
+  createdTopics    Topic[]          @relation("UserTopics")
 
   @@index([username])
   @@index([email])
@@ -180,6 +194,7 @@ model Chat {
   ownerId     String?
   owner       User?        @relation("ChatOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   isPublic    Boolean      @default(false)
+  isForum     Boolean      @default(false)
   inviteCode  String?      @unique
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
@@ -188,6 +203,7 @@ model Chat {
   messages       Message[]
   pinnedMessages PinnedMessage[]
   calls          Call[]
+  topics         Topic[]
 
   @@index([type])
   @@index([ownerId])
@@ -220,6 +236,8 @@ model Message {
   chat            Chat           @relation(fields: [chatId], references: [id], onDelete: Cascade)
   senderId        String
   sender          User           @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  topicId         String?
+  topic           Topic?         @relation(fields: [topicId], references: [id], onDelete: Cascade)
   replyToId       String?
   replyTo         Message?       @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
   replies         Message[]      @relation("MessageReplies")
@@ -237,9 +255,11 @@ model Message {
   receipts       MessageReceipt[]
   reactions      Reaction[]
   pinnedInChats  PinnedMessage[]
+  poll           Poll?
 
   @@index([chatId, createdAt])
   @@index([chatId, id])
+  @@index([topicId])
   @@index([senderId])
   @@index([idempotencyKey])
 }
@@ -380,4 +400,137 @@ model ChatFolder {
   createdAt  DateTime @default(now())
 
   @@index([userId])
+}
+
+model Story {
+  id          String            @id @default(uuid())
+  authorId    String
+  author      User              @relation("UserStories", fields: [authorId], references: [id], onDelete: Cascade)
+  mediaUrl    String
+  mediaType   StoryMediaType    @default(IMAGE)
+  caption     String?
+  textOverlay Json?
+  privacy     PrivacyVisibility @default(EVERYONE)
+  expiresAt   DateTime
+  isArchived  Boolean           @default(false)
+  createdAt   DateTime          @default(now())
+
+  views       StoryView[]
+  reactions   StoryReaction[]
+
+  @@index([authorId])
+  @@index([expiresAt])
+  @@index([createdAt])
+}
+
+model StoryView {
+  id        String   @id @default(uuid())
+  storyId   String
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  viewerId  String
+  viewer    User     @relation("UserStoryViews", fields: [viewerId], references: [id], onDelete: Cascade)
+  viewedAt  DateTime @default(now())
+
+  @@unique([storyId, viewerId])
+  @@index([storyId])
+  @@index([viewerId])
+}
+
+model StoryReaction {
+  id        String   @id @default(uuid())
+  storyId   String
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation("UserStoryReactions", fields: [userId], references: [id], onDelete: Cascade)
+  emoji     String
+  createdAt DateTime @default(now())
+
+  @@unique([storyId, userId, emoji])
+  @@index([storyId])
+  @@index([userId])
+}
+
+model Poll {
+  id            String       @id @default(uuid())
+  chatId        String
+  messageId     String       @unique
+  message       Message      @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  question      String
+  isAnonymous   Boolean      @default(false)
+  allowMultiple Boolean      @default(false)
+  isClosed      Boolean      @default(false)
+  createdAt     DateTime     @default(now())
+
+  options       PollOption[]
+  votes         PollVote[]
+
+  @@index([chatId])
+}
+
+model PollOption {
+  id        String     @id @default(uuid())
+  pollId    String
+  poll      Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  text      String
+  voteCount Int        @default(0)
+  votes     PollVote[]
+
+  @@index([pollId])
+}
+
+model PollVote {
+  id        String     @id @default(uuid())
+  pollId    String
+  poll      Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  optionId  String
+  option    PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User       @relation("UserPollVotes", fields: [userId], references: [id], onDelete: Cascade)
+  votedAt   DateTime   @default(now())
+
+  @@unique([pollId, optionId, userId])
+  @@index([pollId])
+  @@index([userId])
+}
+
+model Topic {
+  id        String    @id @default(uuid())
+  chatId    String
+  chat      Chat      @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  title     String
+  icon      String?
+  color     String?
+  creatorId String
+  creator   User      @relation("UserTopics", fields: [creatorId], references: [id], onDelete: Cascade)
+  isClosed  Boolean   @default(false)
+  isPinned  Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  messages  Message[]
+
+  @@index([chatId])
+}
+
+model StickerPack {
+  id         String    @id @default(uuid())
+  name       String    @unique
+  title      String
+  author     String?
+  isOfficial Boolean   @default(false)
+  stickers   Sticker[]
+  createdAt  DateTime  @default(now())
+}
+
+model Sticker {
+  id        String      @id @default(uuid())
+  packId    String
+  pack      StickerPack @relation(fields: [packId], references: [id], onDelete: Cascade)
+  emoji     String
+  url       String
+  width     Int?
+  height    Int?
+  createdAt DateTime    @default(now())
+
+  @@index([packId])
 }

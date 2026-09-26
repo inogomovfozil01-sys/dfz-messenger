@@ -13,6 +13,7 @@ const sendMessageSchema = z.object({
   content: z.string().max(4096).default(''),
   type: z.nativeEnum(MessageType).optional(),
   replyToId: z.string().optional(),
+  topicId: z.string().optional(),
   idempotencyKey: z.string().optional(),
   attachments: z.array(z.object({
     originalName: z.string(),
@@ -34,11 +35,13 @@ messagesRouter.get('/chat/:chatId', async (req: Request, res: Response, next: Ne
     const cursor = (req.query.cursor as string) || undefined;
     const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 40;
     const direction = (req.query.direction as 'before' | 'after') || 'before';
+    const topicId = (req.query.topicId as string) || undefined;
 
     const result = await messagesService.getMessages(req.params.chatId, req.user!.userId, {
       cursor,
       limit,
       direction,
+      topicId,
     });
 
     return res.json({

@@ -179,3 +179,37 @@ chatsRouter.post('/:id/archive', async (req: Request, res: Response, next: NextF
     next(err);
   }
 });
+
+// 11. Get Topics
+chatsRouter.get('/:id/topics', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const topics = await chatsService.getTopics(req.params.id, req.user!.userId);
+    return res.json({ success: true, data: topics });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 12. Create Topic
+chatsRouter.post('/:id/topics', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { title, icon, color } = req.body;
+    if (!title || typeof title !== 'string') {
+      return res.status(400).json({ success: false, error: { message: 'Title is required' } });
+    }
+    const topic = await chatsService.createTopic(req.params.id, req.user!.userId, { title, icon, color });
+    return res.status(201).json({ success: true, data: topic });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 13. Close Topic
+chatsRouter.post('/:id/topics/:topicId/close', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await chatsService.closeTopic(req.params.id, req.params.topicId, req.user!.userId);
+    return res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+});

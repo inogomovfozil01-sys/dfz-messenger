@@ -8,6 +8,7 @@ import { Badge } from '../ui/Badge';
 import { Skeleton } from '../ui/Skeleton';
 import { ContextMenu, ContextMenuItem } from '../ui/ContextMenu';
 import { useChatStore, FolderFilter } from '../../stores/chatStore';
+import { StoriesStrip } from '../stories/StoriesStrip';
 
 interface ChatListProps {
   onNewChat: () => void;
@@ -186,6 +187,9 @@ export const ChatList: React.FC<ChatListProps> = ({
           })}
         </div>
       </div>
+
+      {/* 24-hour Stories Strip */}
+      <StoriesStrip />
 
       {/* Chat List Body */}
       <div className="flex-1 overflow-y-auto divide-y divide-dfz-border/40">

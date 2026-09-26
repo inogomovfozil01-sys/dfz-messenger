@@ -21,6 +21,10 @@ import { mediaRouter } from './media/media.controller';
 import { searchRouter } from './search/search.controller';
 import { moderationRouter } from './moderation/moderation.controller';
 import { adminRouter } from './admin/admin.controller';
+import { storiesRouter } from './stories/stories.controller';
+import { pollsRouter } from './polls/polls.controller';
+import { stickersRouter } from './stickers/stickers.controller';
+import { previewRouter } from './preview/preview.controller';
 
 const app = express();
 const server = http.createServer(app);
@@ -87,6 +91,10 @@ app.use('/api/media', mediaRouter);
 app.use('/api/search', searchRouter);
 app.use('/api/moderation', moderationRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/stories', storiesRouter);
+app.use('/api/polls', pollsRouter);
+app.use('/api/stickers', stickersRouter);
+app.use('/api/preview', previewRouter);
 
 // Central Error Handler
 app.use(errorHandler);
