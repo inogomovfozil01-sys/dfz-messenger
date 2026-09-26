@@ -10,6 +10,7 @@ import { useEconomyStore } from '../stores/economyStore';
 import { TelegramDrawer } from '../components/layout/TelegramDrawer';
 import { ChatList } from '../components/layout/ChatList';
 import { ChatHeader } from '../components/chat/ChatHeader';
+import { ChatSearchResults } from '../components/chat/ChatSearchResults';
 import { MessageList } from '../components/chat/MessageList';
 import { MessageComposer } from '../components/chat/MessageComposer';
 import { ChatInfoPanel } from '../components/chat/ChatInfoPanel';
@@ -33,9 +34,10 @@ import { CollectibleViewerModal } from '../components/economy/CollectibleViewerM
 import { PremiumModal } from '../components/economy/PremiumModal';
 import { AdminQuickActionsModal } from '../components/economy/AdminQuickActionsModal';
 import { apiRequest } from '../lib/api';
+import { Modal } from '../components/ui/Modal';
 import { ShieldCheck, MessageSquare, WifiOff, Lock } from 'lucide-react';
 
-export default function TelegramMessengerPage() {
+export default function MessengerPage() {
   const router = useRouter();
   const { user, profile, isAuthenticated, isLoading, checkAuth } = useAuthStore();
   const {
@@ -64,6 +66,8 @@ export default function TelegramMessengerPage() {
   const [isCallsOpen, setIsCallsOpen] = useState(false);
   const [inspectedUserId, setInspectedUserId] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(false);
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
+  const [inviteStatus, setInviteStatus] = useState('');
 
   // Check Auth on Mount
   useEffect(() => {
@@ -71,6 +75,9 @@ export default function TelegramMessengerPage() {
       if (!isAuth) {
         router.push('/login');
       } else {
+        const params = new URLSearchParams(window.location.search);
+        setInviteCode(params.get('invite'));
+        setInspectedUserId(params.get('profile'));
         fetchChats();
         setupSocketListeners();
         setupCallListeners();
@@ -79,6 +86,11 @@ export default function TelegramMessengerPage() {
       }
     });
 
+    const shortcut = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); document.querySelector<HTMLInputElement>('[data-global-search]')?.focus(); }
+    };
+    window.addEventListener('keydown', shortcut);
+    setIsOffline(!navigator.onLine);
     // Network status listeners
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
@@ -86,6 +98,7 @@ export default function TelegramMessengerPage() {
     window.addEventListener('offline', handleOffline);
 
     return () => {
+      window.removeEventListener('keydown', shortcut);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
@@ -112,7 +125,7 @@ export default function TelegramMessengerPage() {
 
   if (isLoading) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#0e1621] text-white select-none">
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-dfz-bg text-white select-none">
         <div className="w-16 h-16 rounded-full bg-[#2481cc] flex items-center justify-center text-white shadow-xl mb-4 animate-bounce">
           <ShieldCheck size={36} />
         </div>
@@ -127,7 +140,7 @@ export default function TelegramMessengerPage() {
   }
 
   return (
-    <div className="flex h-[100dvh] w-screen bg-[#0e1621] text-dfz-text overflow-hidden font-sans select-none">
+    <div className="flex h-[100dvh] w-screen bg-dfz-bg text-dfz-text overflow-hidden font-sans select-none">
       {/* Network Offline Alert Bar */}
       {isOffline && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-[#e53935] text-white text-xs py-1 px-4 text-center flex items-center justify-center gap-2 font-medium shadow-md">
@@ -159,7 +172,7 @@ export default function TelegramMessengerPage() {
 
       {/* 2. Telegram Main Chat Area (full width on mobile if chat is active) */}
       <div
-        className={`flex-1 h-full flex flex-col bg-[#0e1621] relative overflow-hidden ${
+        className={`flex-1 h-full flex flex-col bg-dfz-bg relative overflow-hidden ${
           activeChatId ? 'flex' : 'hidden md:flex'
         }`}
       >
@@ -170,10 +183,11 @@ export default function TelegramMessengerPage() {
               chat={activeChat}
               onBackMobile={() => useChatStore.setState({ activeChatId: null, activeChat: null })}
               onToggleInfo={toggleInfoPanel}
-              onToggleSearch={() => {}}
+              onToggleSearch={() => useChatStore.getState().toggleSearchInChat()}
             />
 
             {/* Telegram Wallpaper Message Canvas */}
+            <ChatSearchResults />
             <MessageList chatId={activeChat.id} />
 
             {/* Telegram Message Composer */}
@@ -187,7 +201,7 @@ export default function TelegramMessengerPage() {
               <span>Выберите, кому хотели бы написать</span>
             </div>
             <p className="text-[11px] text-[#7f91a4] mt-3">
-              Сообщения и звонки защищены протоколом сквозного шифрования
+              DFZ Messenger · Личные сообщения, группы и каналы
             </p>
           </div>
         )}
@@ -217,6 +231,16 @@ export default function TelegramMessengerPage() {
       />
 
       {/* Dialogs and Modals */}
+      <Modal isOpen={!!inviteCode} onClose={() => setInviteCode(null)} title="Приглашение">
+        <p className="text-sm text-dfz-text-muted mb-4">Присоединиться к беседе по приглашению?</p>
+        {inviteStatus && <p role="status" className="text-sm mb-3">{inviteStatus}</p>}
+        <button className="bg-dfz-accent text-white px-4 py-2 rounded" onClick={async () => {
+          const res = await apiRequest<any>(`/api/invites/${encodeURIComponent(inviteCode!)}/join`, {method:'POST'});
+          if(!res.success) { setInviteStatus(res.error?.message || 'Приглашение недоступно'); return; }
+          if(res.data?.status === 'PENDING') { setInviteStatus('Заявка отправлена администратору'); return; }
+          await fetchChats(); await selectChat(res.data.chatId); setInviteCode(null);
+        }}>Присоединиться</button>
+      </Modal>
       <NewChatModal isOpen={isNewChatOpen} onClose={() => setIsNewChatOpen(false)} />
       <NewGroupModal isOpen={isNewGroupOpen} onClose={() => setIsNewGroupOpen(false)} />
       <NewChannelModal isOpen={isNewChannelOpen} onClose={() => setIsNewChannelOpen(false)} />

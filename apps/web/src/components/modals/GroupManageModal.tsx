@@ -1,3 +1,4 @@
+import { InviteManager } from './InviteManager';
 import React, { useState, useEffect } from 'react';
 import {
   X,
@@ -77,6 +78,7 @@ export const GroupManageModal: React.FC<GroupManageModalProps> = ({
       setIsForum(!!chat.isForum);
       setInviteCode(chat.inviteCode || '');
       setMembers(chat.members || []);
+      apiRequest<any>(`/api/chats/${chat.id}/policy`).then(res => { if(res.success && res.data) { setPermSendMessages(res.data.sendMessages); setPermSendMedia(res.data.sendMedia); setPermAddUsers(res.data.addMembers); setPermPinMessages(res.data.pinMessages); setPermChangeInfo(res.data.changeInfo); } });
       setStatusMessage(null);
       setErrorMessage(null);
       setSelectedMemberForAdmin(null);
@@ -204,7 +206,7 @@ export const GroupManageModal: React.FC<GroupManageModalProps> = ({
   };
 
   const filteredMembers = members.filter((m) => {
-    const name = m.user?.profile?.displayName || m.user?.username || '';
+    const name = m.displayName || m.username || '';
     return name.toLowerCase().includes(memberSearch.toLowerCase());
   });
 
@@ -452,7 +454,9 @@ export const GroupManageModal: React.FC<GroupManageModalProps> = ({
               <div className="flex justify-end">
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
+                    const res = await apiRequest(`/api/chats/${chat.id}/policy`, { method:'PUT', body:JSON.stringify({ sendMessages:permSendMessages, sendMedia:permSendMedia, sendStickers:permSendMedia, addMembers:permAddUsers, pinMessages:permPinMessages, changeInfo:permChangeInfo }) });
+                    if(!res.success) { setErrorMessage(res.error?.message || 'Не удалось сохранить разрешения'); return; }
                     setStatusMessage('Разрешения участников обновлены');
                     setTimeout(() => setStatusMessage(null), 3000);
                   }}
@@ -484,13 +488,13 @@ export const GroupManageModal: React.FC<GroupManageModalProps> = ({
                     >
                       <div className="flex items-center gap-3">
                         <Avatar
-                          src={m.user?.profile?.avatarUrl}
-                          name={m.user?.profile?.displayName || m.user?.username}
+                          src={m.avatarUrl}
+                          name={m.displayName || m.username}
                           size="md"
                         />
                         <div>
                           <div className="font-semibold text-xs text-dfz-text flex items-center gap-1.5">
-                            <span>{m.user?.profile?.displayName || m.user?.username}</span>
+                            <span>{m.displayName || m.username}</span>
                             {isOwnerMember && (
                               <span className="px-1.5 py-0.2 rounded-full bg-amber-500/20 text-[10px] font-bold text-amber-400">
                                 Владелец
@@ -502,7 +506,7 @@ export const GroupManageModal: React.FC<GroupManageModalProps> = ({
                               </span>
                             )}
                           </div>
-                          <div className="text-[11px] text-dfz-text-muted">@{m.user?.username}</div>
+                          <div className="text-[11px] text-dfz-text-muted">@{m.username}</div>
                         </div>
                       </div>
 
@@ -555,15 +559,15 @@ export const GroupManageModal: React.FC<GroupManageModalProps> = ({
                     >
                       <div className="flex items-center gap-2.5">
                         <Avatar
-                          src={m.user?.profile?.avatarUrl}
-                          name={m.user?.profile?.displayName || m.user?.username}
+                          src={m.avatarUrl}
+                          name={m.displayName || m.username}
                           size="sm"
                         />
                         <div>
                           <div className="font-semibold text-xs text-dfz-text">
-                            {m.user?.profile?.displayName || m.user?.username}
+                            {m.displayName || m.username}
                           </div>
-                          <div className="text-[10px] text-dfz-text-muted">@{m.user?.username}</div>
+                          <div className="text-[10px] text-dfz-text-muted">@{m.username}</div>
                         </div>
                       </div>
 
@@ -629,6 +633,7 @@ export const GroupManageModal: React.FC<GroupManageModalProps> = ({
           {/* TAB 5: INVITES */}
           {activeTab === 'invites' && (
             <div className="space-y-4">
+              <InviteManager chatId={chat.id} />
               <div className="space-y-1">
                 <span className="text-[11px] font-semibold text-dfz-text-muted">
                   Пригласительная ссылка группы

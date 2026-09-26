@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { requireSession } from './access';
 import { ENV } from '../config';
 import { prisma } from '../prisma';
 import { UserRole } from '@dfz/types';
@@ -40,6 +41,8 @@ export async function authGuard(req: Request, res: Response, next: NextFunction)
     }
 
     const decoded = jwt.verify(token, ENV.JWT_ACCESS_SECRET) as AuthUserPayload;
+
+    await requireSession(decoded.userId, decoded.sessionId);
 
     // Check if user is banned or deleted
     const user = await prisma.user.findUnique({

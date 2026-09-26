@@ -1,0 +1,68 @@
+import assert from 'node:assert/strict';
+import { prisma } from '../src/prisma';
+import { authService } from '../src/auth/auth.service';
+import { chatsService } from '../src/chats/chats.service';
+import { messagesService } from '../src/messages/messages.service';
+import { storiesService } from '../src/stories/stories.service';
+import { usersService } from '../src/users/users.service';
+import { contactsService } from '../src/contacts/contacts.service';
+import { callsService } from '../src/calls/calls.service';
+import { pollsService } from '../src/polls/polls.service';
+import { requireSession } from '../src/common/access';
+import { MemberRole, PrivacyVisibility } from '@dfz/types';
+import jwt from 'jsonwebtoken';
+
+async function main() {
+  if (!process.env.DATABASE_URL?.includes('127.0.0.1') || !process.env.DATABASE_URL.includes('dfz_rebuild_qa')) throw new Error('Security tests require the dedicated local QA database');
+  const suffix = Date.now();
+  const create = (letter: string) => authService.register({ username: `qa_${letter}_${suffix}`, password: 'LocalQaPassword2026!', displayName: `QA ${letter}` });
+  const a = await create('a'), b = await create('b'), outsider = await create('c');
+  const aid = a.user.id, bid = b.user.id, cid = outsider.user.id;
+  const denied = async (fn: () => Promise<unknown>) => assert.rejects(fn, (err: any) => err.status === 403 || err.status === 400 || err.status === 401);
+  try {
+    const group = await chatsService.createGroup(aid, { title: 'Security QA', memberIds: [bid] });
+    const privateChat = await chatsService.createDirectChat(aid, bid);
+    const m = await messagesService.sendMessage(aid, { chatId: group.id, content: 'private message' });
+    await denied(() => messagesService.getMessages(group.id, cid, {}));
+    await denied(() => messagesService.editMessage(bid, m.id, 'forged'));
+    await denied(() => messagesService.pinMessage(privateChat.id, m.id, aid));
+    await messagesService.pinMessage(group.id, m.id, aid);
+    await denied(() => messagesService.unpinMessage(group.id, m.id, bid));
+    await denied(() => messagesService.markReceipt(cid, group.id, [m.id], 'READ' as any));
+    await denied(() => messagesService.markReceipt(bid, privateChat.id, [m.id], 'READ' as any));
+    await denied(() => messagesService.sendMessage(aid, { chatId: privateChat.id, content: 'cross chat', replyToId: m.id }));
+    await denied(() => chatsService.updateChat(group.id, bid, { title: 'hijacked' }));
+    await denied(() => chatsService.addMember(group.id, bid, cid, MemberRole.ADMIN));
+    const channel = await chatsService.createChannel(aid, { title: 'QA channel' });
+    await chatsService.addMember(channel.id, aid, bid);
+    await denied(() => pollsService.createPoll(bid, channel.id, { question: 'Bypass?', options: ['yes', 'no'] }));
+    await denied(() => callsService.logCallStart({ callerId: cid, receiverId: bid, chatId: privateChat.id, type: 'AUDIO' as any }));
+    await usersService.updatePrivacy(aid, { photoVisibility: PrivacyVisibility.NOBODY, lastSeenVisibility: PrivacyVisibility.NOBODY });
+    await usersService.updateProfile(aid, { avatarUrl: 'https://example.invalid/private.png' });
+    await contactsService.addContact(bid, aid);
+    assert.equal((await contactsService.getContacts(bid))[0].contactUser.avatarUrl, null);
+    const story = await storiesService.createStory(aid, { mediaUrl: 'text', mediaType: 'TEXT' as any, privacy: PrivacyVisibility.CONTACTS });
+    assert.equal((await storiesService.getFeed(bid)).some(f => f.stories.some(s => s.id === story.id)), false);
+    await denied(() => storiesService.recordView(bid, story.id));
+    await contactsService.addContact(aid, bid);
+    await storiesService.recordView(bid, story.id);
+    await usersService.blockUser(aid, bid);
+    await denied(() => messagesService.sendMessage(bid, { chatId: privateChat.id, content: 'bypass block' }));
+    await denied(() => storiesService.reactToStory(bid, story.id, '👍'));
+    assert.equal((await storiesService.getFeed(bid)).some(f => f.stories.some(s => s.id === story.id)), false);
+    await usersService.unblockUser(aid, bid);
+    await messagesService.sendMessage(bid, { chatId: privateChat.id, content: 'unblocked' });
+    await chatsService.clearHistory(group.id, bid);
+    assert.equal((await messagesService.getMessages(group.id, bid, {})).items.length, 0);
+    assert.equal((await messagesService.getMessages(group.id, aid, {})).items.length, 1);
+    const sessionId = (jwt.decode(a.accessToken) as any).sessionId;
+    await authService.terminateSession(aid, sessionId);
+    await denied(() => requireSession(aid, sessionId));
+    console.log('PASS: 23 authorization, privacy, block, history and revoked-session regression checks');
+  } finally {
+    await prisma.chat.deleteMany({ where: { members: { some: { userId: { in: [aid,bid,cid] } } } } });
+    await prisma.user.deleteMany({ where: { id: { in: [aid,bid,cid] } } });
+    await prisma.$disconnect();
+  }
+}
+main().catch(err => { console.error(err); process.exitCode = 1; });

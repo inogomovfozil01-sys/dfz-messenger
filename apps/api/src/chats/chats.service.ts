@@ -1,3 +1,4 @@
+import { requireCommunication, requireMember, requireRight, httpError } from '../common/access';
 import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '../prisma';
 import { ChatType, MemberRole, ReceiptStatus } from '@dfz/types';
@@ -228,6 +229,7 @@ export class ChatsService {
       return this.getChatById(saved.id, currentUserId);
     }
 
+    await requireCommunication(currentUserId, targetUserId, 'messageVisibility');
     // Check if target is blocked or blocked us
     const isBlocked = await prisma.block.findFirst({
       where: {
@@ -288,8 +290,9 @@ export class ChatsService {
     ];
 
     if (data.memberIds && Array.isArray(data.memberIds)) {
-      for (const mId of data.memberIds) {
+      for (const mId of new Set(data.memberIds)) {
         if (mId !== ownerId) {
+          await requireCommunication(ownerId, mId, 'groupAddVisibility');
           membersToCreate.push({ userId: mId, role: MemberRole.MEMBER });
         }
       }
@@ -356,6 +359,10 @@ export class ChatsService {
       throw err;
     }
 
+    if (!['GROUP', 'CHANNEL'].includes(chat.type)) throw httpError(403, 'Cannot add members to private conversation');
+    requireRight(actorMembership, 'inviteUsers', chat.type === 'GROUP');
+    if (role !== MemberRole.MEMBER) throw httpError(403, 'Use owner role management to promote members');
+    await requireCommunication(actorId, targetUserId, 'groupAddVisibility');
     const alreadyMember = chat.members.find(m => m.userId === targetUserId);
     if (alreadyMember) {
       return { message: 'User is already a member' };
@@ -393,15 +400,12 @@ export class ChatsService {
       throw err;
     }
 
+    if (target.role === 'OWNER') throw httpError(403, 'Transfer ownership or delete the group before leaving');
+    if (actorId !== targetUserId) requireRight(actor, 'banUsers');
+    if (actor.role === 'ADMIN' && target.role === 'ADMIN' && actorId !== targetUserId) throw httpError(403, 'Only owner can remove admins');
     // Role checks
     if (actor.role === MemberRole.MEMBER && actorId !== targetUserId) {
       const err: any = new Error('Permission denied to remove member');
-      err.status = 403;
-      throw err;
-    }
-
-    if (actor.role === MemberRole.ADMIN && target.role === MemberRole.OWNER) {
-      const err: any = new Error('Cannot remove group owner');
       err.status = 403;
       throw err;
     }
@@ -415,6 +419,7 @@ export class ChatsService {
       },
     });
 
+    gatewayInstance?.io.in(`user:${targetUserId}`).socketsLeave(`chat:${chatId}`);
     return { message: 'Member removed successfully' };
   }
 
@@ -457,6 +462,7 @@ export class ChatsService {
       throw new Error('Not a member of this chat');
     }
 
+    requireRight(membership, 'manageTopics');
     const topic = await prisma.topic.create({
       data: {
         chatId,
@@ -588,6 +594,7 @@ export class ChatsService {
       throw err;
     }
 
+    requireRight(membership, 'changeInfo');
     const updated = await prisma.chat.update({
       where: { id: chatId },
       data: {
@@ -625,6 +632,7 @@ export class ChatsService {
       throw err;
     }
 
+    if (targetUserId === chat.ownerId || data.role === MemberRole.OWNER) throw httpError(403, 'Ownership cannot be changed here');
     const updated = await prisma.chatMember.update({
       where: { chatId_userId: { chatId, userId: targetUserId } },
       data: {
@@ -690,7 +698,7 @@ export class ChatsService {
     // Set member's joinedAt to now, so messages before now are not considered unread/visible
     await prisma.chatMember.update({
       where: { chatId_userId: { chatId, userId } },
-      data: { joinedAt: new Date() },
+      data: { clearedAt: new Date() },
     });
 
     return { success: true, message: 'Chat history cleared' };

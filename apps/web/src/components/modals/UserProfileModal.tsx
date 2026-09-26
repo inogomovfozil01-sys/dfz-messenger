@@ -120,7 +120,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ userId, onCl
 
   const handleShareProfile = () => {
     if (!profile) return;
-    const shareUrl = `${window.location.origin}/@${profile.username}`;
+    const shareUrl = `${window.location.origin}/?profile=${profile.username}`;
     navigator.clipboard.writeText(shareUrl);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);

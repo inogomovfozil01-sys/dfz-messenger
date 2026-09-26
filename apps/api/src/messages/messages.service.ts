@@ -1,3 +1,4 @@
+import { requireMember, requirePosting, requireRight, httpError } from '../common/access';
 import { prisma } from '../prisma';
 import { MessageType, ReceiptStatus, MemberRole, ChatType } from '@dfz/types';
 
@@ -24,7 +25,7 @@ export class MessagesService {
       throw err;
     }
 
-    const limit = Math.min(options.limit || 40, 100);
+    const limit = Math.max(1, Math.min(options.limit || 40, 100));
 
     // 2. Cursor pagination query
     let cursorObj = options.cursor ? { id: options.cursor } : undefined;
@@ -33,6 +34,7 @@ export class MessagesService {
       where: {
         chatId,
         isDeleted: false,
+        ...(membership?.clearedAt && { createdAt: { gt: membership.clearedAt } }),
         topicId: options.topicId !== undefined ? options.topicId : undefined,
       },
       take: limit + 1,
@@ -210,6 +212,17 @@ export class MessagesService {
     }>;
     idempotencyKey?: string;
   }) {
+    await requirePosting(data.chatId, userId, data.type);
+    if (data.type === MessageType.SYSTEM || data.type === MessageType.GIFT || data.type === MessageType.STARS_TRANSFER) throw httpError(403, 'System message types are server-only');
+    if (data.attachments?.length) {
+      data.attachments = await Promise.all(data.attachments.map(async att => {
+        const upload = await prisma.upload.findUnique({ where: { storageKey: att.storageKey } });
+        if (!upload || upload.ownerId !== userId) throw httpError(403, 'Attachment must be uploaded by sender');
+        return { ...att, originalName: upload.originalName, mimeType: upload.mimeType, sizeBytes: upload.sizeBytes, url: `/api/media/files/${upload.storageKey}`, thumbnailUrl: undefined };
+      }));
+    }
+    if (data.replyToId && !await prisma.message.findFirst({ where: { id: data.replyToId, chatId: data.chatId, isDeleted: false } })) throw httpError(400, 'Reply must reference a message in this chat');
+    if (data.topicId && !await prisma.topic.findFirst({ where: { id: data.topicId, chatId: data.chatId, isClosed: false } })) throw httpError(400, 'Topic unavailable');
     // 1. Check idempotency if provided
     if (data.idempotencyKey) {
       const existing = await prisma.message.findFirst({
@@ -330,6 +343,7 @@ export class MessagesService {
       throw err;
     }
 
+    await requirePosting(msg.chatId, userId);
     if (msg.senderId !== userId) {
       const err: any = new Error('You can only edit your own messages');
       err.status = 403;
@@ -368,6 +382,8 @@ export class MessagesService {
     const isSender = msg.senderId === userId;
     const isAdmin = membership && (membership.role === MemberRole.ADMIN || membership.role === MemberRole.OWNER);
 
+    if (!membership) throw httpError(403, 'Chat membership required');
+    if (isAdmin && !isSender) requireRight(membership, 'deleteMessages');
     if (!isSender && !isAdmin) {
       const err: any = new Error('Permission denied to delete this message');
       err.status = 403;
@@ -441,7 +457,11 @@ export class MessagesService {
   }
 
   async markReceipt(userId: string, chatId: string, messageIds: string[], status: ReceiptStatus) {
+    await requireMember(chatId, userId);
+    if (!['READ', 'DELIVERED'].includes(status) || messageIds.length > 200 || messageIds.some(id => typeof id !== 'string')) throw httpError(400, 'Invalid receipt');
     if (!messageIds.length) return { updatedCount: 0 };
+    const valid = await prisma.message.count({ where: { id: { in: messageIds }, chatId, isDeleted: false } });
+    if (valid !== new Set(messageIds).size) throw httpError(403, 'Receipt references inaccessible messages');
 
     for (const msgId of messageIds) {
       await prisma.messageReceipt.upsert({
@@ -451,7 +471,7 @@ export class MessagesService {
             userId,
           },
         },
-        update: { status },
+        update: status === 'READ' ? { status } : {},
         create: {
           messageId: msgId,
           userId,
@@ -482,6 +502,8 @@ export class MessagesService {
       throw err;
     }
 
+    requireRight(member, 'pinMessages', chat.type === 'DIRECT' || chat.type === 'SAVED');
+    if (!await prisma.message.findFirst({ where: { id: messageId, chatId, isDeleted: false } })) throw httpError(400, 'Message does not belong to chat');
     const pinned = await prisma.pinnedMessage.upsert({
       where: {
         chatId_messageId: { chatId, messageId },
@@ -498,6 +520,8 @@ export class MessagesService {
   }
 
   async unpinMessage(chatId: string, messageId: string, userId: string) {
+    const member = await requireMember(chatId, userId);
+    requireRight(member, 'pinMessages', member.chat.type === 'DIRECT' || member.chat.type === 'SAVED');
     await prisma.pinnedMessage.deleteMany({
       where: { chatId, messageId },
     });

@@ -4,6 +4,7 @@ import { useChatStore } from '../../stores/chatStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useEconomyStore } from '../../stores/economyStore';
 import { apiRequest } from '../../lib/api';
+import { socketService } from '../../lib/socket';
 import { VoiceRecorder } from './VoiceRecorder';
 import { EmojiPicker } from './EmojiPicker';
 import { StickerPicker } from './StickerPicker';
@@ -43,6 +44,20 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaInputRef = useRef<HTMLInputElement>(null);
   const typingTimerRef = useRef<any>(null);
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setText('');
+    apiRequest<any>(`/api/chats/${chatId}/draft`).then(res => { if (!cancelled && res.success) setText(res.data?.content || ''); });
+    const socket = socketService.getSocket();
+    const onDraft = (draft: {chatId: string; content: string}) => { if (draft.chatId === chatId && document.activeElement !== textareaRef.current) setText(draft.content); };
+    socket.on('draft:updated', onDraft);
+    return () => { cancelled = true; socket.off('draft:updated', onDraft); };
+  }, [chatId]);
+  const saveDraft = (content: string) => {
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    draftTimerRef.current = setTimeout(() => { void apiRequest(`/api/chats/${chatId}/draft`, { method:'PUT', body:JSON.stringify({content}) }); }, 450);
+  };
 
   // If editing message, populate textarea with existing content
   useEffect(() => {
@@ -63,6 +78,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setText(e.target.value);
+    if (!editingMessage) saveDraft(e.target.value);
     adjustHeight();
 
     // Typing event emission
@@ -87,6 +103,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
 
     if (content) {
       await sendMessage(content);
+      saveDraft('');
       setText('');
       setReplyTo(null);
       if (textareaRef.current) textareaRef.current.style.height = 'auto';

@@ -3,256 +3,112 @@ import { Server, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import { ENV } from '../config';
 import { prisma } from '../prisma';
-import { UserRole, UserStatus, CallStatus } from '@dfz/types';
+import { CallStatus } from '@dfz/types';
 import { callsService } from '../calls/calls.service';
-
-interface AuthenticatedSocket extends Socket {
-  userId: string;
-  username: string;
-  role: UserRole;
-}
+import { requireSession, requireMember, requirePosting, requireCommunication, maySee, httpError } from '../common/access';
 
 export class WebSocketGateway {
   public io: Server;
-  private onlineUsers = new Map<string, Set<string>>(); // userId -> Set of socketIds
-
+  private onlineUsers = new Map<string, Set<string>>();
   constructor(server: HttpServer) {
-    this.io = new Server(server, {
-      cors: {
-        origin: [ENV.CLIENT_URL, 'http://localhost:3000', 'http://127.0.0.1:3000'],
-        credentials: true,
-      },
-      pingTimeout: 30000,
-      pingInterval: 10000,
-    });
-
-    this.setupAuthMiddleware();
-    this.setupEventHandlers();
-  }
-
-  private setupAuthMiddleware() {
-    this.io.use(async (socket: Socket, next) => {
+    this.io = new Server(server, { cors: { origin: [ENV.CLIENT_URL, 'http://localhost:3000', 'http://127.0.0.1:3000'], credentials: true }, maxHttpBufferSize: 65536 });
+    this.io.use(async (socket, next) => {
       try {
-        let token = socket.handshake.auth?.token;
-
-        if (!token && socket.handshake.headers.cookie) {
-          const cookies = socket.handshake.headers.cookie.split(';').reduce((res, item) => {
-            const data = item.trim().split('=');
-            if (data.length === 2) res[data[0]] = decodeURIComponent(data[1]);
-            return res;
-          }, {} as Record<string, string>);
-          token = cookies['dfz_access_token'];
-        }
-
-        if (!token) {
-          return next(new Error('Authentication token missing'));
-        }
-
-        const decoded = jwt.verify(token, ENV.JWT_ACCESS_SECRET) as {
-          userId: string;
-          username: string;
-          role: UserRole;
-        };
-
-        const user = await prisma.user.findUnique({
-          where: { id: decoded.userId },
-          select: { id: true, username: true, role: true, isBanned: true },
-        });
-
-        if (!user || user.isBanned) {
-          return next(new Error('User suspended or not found'));
-        }
-
-        (socket as AuthenticatedSocket).userId = user.id;
-        (socket as AuthenticatedSocket).username = user.username;
-        (socket as AuthenticatedSocket).role = user.role as UserRole;
-
-        return next();
-      } catch (err) {
-        return next(new Error('Invalid socket credentials'));
-      }
+        const cookies = Object.fromEntries((socket.handshake.headers.cookie || '').split(';').filter(s => s.includes('=')).map(s => { const i = s.indexOf('='); return [s.slice(0, i).trim(), decodeURIComponent(s.slice(i + 1))]; }));
+        const decoded = jwt.verify(socket.handshake.auth?.token || cookies.dfz_access_token || '', ENV.JWT_ACCESS_SECRET) as { userId: string; sessionId: string; exp: number };
+        await requireSession(decoded.userId, decoded.sessionId);
+        socket.data = decoded;
+        next();
+      } catch { next(new Error('Session unavailable')); }
     });
-  }
-
-  private setupEventHandlers() {
-    this.io.on('connection', (rawSocket: Socket) => {
-      const socket = rawSocket as AuthenticatedSocket;
-      const userId = socket.userId;
-      const username = socket.username;
-
-      // Register connection in online users map
-      let userSockets = this.onlineUsers.get(userId);
-      if (!userSockets) {
-        userSockets = new Set();
-        this.onlineUsers.set(userId, userSockets);
-      }
-      userSockets.add(socket.id);
-
-      // Join individual user channel for direct alerts & signaling
+    this.io.on('connection', socket => {
+      const userId: string = socket.data.userId;
+      const sessions = this.onlineUsers.get(userId) || new Set<string>();
+      sessions.add(socket.id); this.onlineUsers.set(userId, sessions);
       socket.join(`user:${userId}`);
-
-      // Broadcast user online status
-      this.io.emit('presence:update', {
-        userId,
-        status: UserStatus.ONLINE,
-      });
-
-      // 1. Join Chat room
-      socket.on('chat:join', async (chatId: string) => {
-        if (!chatId) return;
-        socket.join(`chat:${chatId}`);
-      });
-
-      // 2. Leave Chat room
-      socket.on('chat:leave', (chatId: string) => {
-        if (!chatId) return;
-        socket.leave(`chat:${chatId}`);
-      });
-
-      // 3. Typing indicator
-      socket.on('chat:typing', (data: { chatId: string; isTyping: boolean }) => {
-        if (!data?.chatId) return;
-        socket.to(`chat:${data.chatId}`).emit('chat:typing', {
-          chatId: data.chatId,
-          userId,
-          username,
-          isTyping: data.isTyping,
-        });
-      });
-
-      // 4. Message events
-      socket.on('message:send', (data: any) => {
-        if (!data?.chatId) return;
-        this.io.to(`chat:${data.chatId}`).emit('message:new', data);
-      });
-
-      socket.on('message:receipt', (data: { chatId: string; messageIds: string[]; status: string }) => {
-        if (!data?.chatId) return;
-        socket.to(`chat:${data.chatId}`).emit('message:receipt', {
-          ...data,
-          userId,
-        });
-      });
-
-      socket.on('reaction:update', (data: { chatId: string; messageId: string; emoji: string; action: 'add' | 'remove' }) => {
-        if (!data?.chatId) return;
-        this.io.to(`chat:${data.chatId}`).emit('reaction:update', {
-          ...data,
-          userId,
-          username,
-        });
-      });
-
-      // 5. WebRTC Calling Signaling
-      socket.on('call:initiate', async (payload: {
-        chatId: string;
-        receiverId: string;
-        callType: 'AUDIO' | 'VIDEO';
-      }) => {
+      const expiry = setTimeout(() => socket.disconnect(true), Math.max(1, socket.data.exp * 1000 - Date.now()));
+      const sessionCheck = setInterval(() => { requireSession(userId, socket.data.sessionId).catch(() => socket.disconnect(true)); }, 15000);
+      void this.publishPresence(userId, 'ONLINE');
+      let windowStart = Date.now(), eventCount = 0;
+      socket.use(async (_packet, next) => {
         try {
-          const perm = await callsService.checkCallPermission(userId, payload.receiverId);
-          if (!perm.allowed) {
-            socket.emit('call:error', { message: perm.reason || 'Звонок недоступен' });
-            return;
-          }
-
-          const callRecord = await callsService.logCallStart({
-            chatId: payload.chatId,
-            callerId: userId,
-            receiverId: payload.receiverId,
-            type: payload.callType as any,
-          });
-
-          this.io.to(`user:${payload.receiverId}`).emit('call:incoming', {
-            callId: callRecord.id,
-            chatId: payload.chatId,
-            callerId: userId,
-            callerUsername: username,
-            callType: payload.callType,
-          });
-        } catch (err: any) {
-          socket.emit('call:error', { message: err.message || 'Ошибка инициализации звонка' });
-        }
+          if (Date.now() - windowStart > 10000) { windowStart = Date.now(); eventCount = 0; }
+          if (++eventCount > 100) throw httpError(429, 'Too many events');
+          await requireSession(userId, socket.data.sessionId);
+          next();
+        } catch { socket.disconnect(true); }
       });
-
-      socket.on('call:accept', async (payload: { callerId: string; callId: string }) => {
-        try {
-          await callsService.updateCallStatus(payload.callId, CallStatus.CONNECTED);
-        } catch {}
-        this.io.to(`user:${payload.callerId}`).emit('call:accepted', {
-          receiverId: userId,
-          callId: payload.callId,
-        });
+      const handle = (event: string, fn: (data: any) => Promise<void>) => socket.on(event, (data: any) => {
+        Promise.resolve().then(() => fn(data)).catch(() => socket.emit(event.startsWith('call:') ? 'call:error' : 'operation:error', { message: 'Операция недоступна', event }));
       });
-
-      socket.on('call:reject', async (payload: { callerId: string; callId: string }) => {
-        try {
-          await callsService.updateCallStatus(payload.callId, CallStatus.REJECTED);
-        } catch {}
-        this.io.to(`user:${payload.callerId}`).emit('call:rejected', {
-          receiverId: userId,
-          callId: payload.callId,
-        });
+      handle('chat:join', async chatId => { await requireMember(chatId, userId); await socket.join(`chat:${chatId}`); });
+      handle('chat:leave', async chatId => { if (typeof chatId === 'string') await socket.leave(`chat:${chatId}`); });
+      handle('chat:typing', async data => {
+        await requirePosting(data.chatId, userId);
+        const user = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { username: true } });
+        socket.to(`chat:${data.chatId}`).emit('chat:typing', { chatId: data.chatId, userId, username: user.username, isTyping: data.isTyping === true });
       });
-
-      socket.on('call:end', async (payload: { targetUserId: string; callId?: string; durationSeconds?: number }) => {
-        try {
-          if (payload.callId) {
-            await callsService.updateCallStatus(payload.callId, CallStatus.ENDED, payload.durationSeconds || 0);
-          }
-        } catch {}
-        this.io.to(`user:${payload.targetUserId}`).emit('call:ended', {
-          userId,
-        });
+      // Persisted messages, reactions and receipts are published exclusively by HTTP handlers.
+      handle('call:initiate', async data => {
+        if (!['AUDIO', 'VIDEO'].includes(data.callType)) throw httpError(400, 'Invalid call type');
+        const busy = await prisma.call.findFirst({ where: { status: { in: ['RINGING', 'CONNECTED'] }, OR: [{ callerId: userId }, { receiverId: userId }, { callerId: data.receiverId }, { receiverId: data.receiverId }], createdAt: { gt: new Date(Date.now() - 120000) } } });
+        if (busy) throw httpError(409, 'User is busy');
+        const call = await callsService.logCallStart({ chatId: data.chatId, callerId: userId, receiverId: data.receiverId, type: data.callType });
+        const user = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { username: true } });
+        this.notifyUser(data.receiverId, 'call:incoming', { callId: call.id, chatId: call.chatId, callerId: userId, callerUsername: user.username, callType: call.type });
+        this.notifyUser(userId, 'call:outgoing', { callId: call.id });
+        const timeout = setTimeout(async () => {
+          const result = await prisma.call.updateMany({ where: { id: call.id, status: 'RINGING' }, data: { status: 'MISSED', endedAt: new Date() } }).catch(() => null);
+          if (result?.count) { this.notifyUser(userId, 'call:ended', { callId: call.id }); this.notifyUser(data.receiverId, 'call:ended', { callId: call.id }); }
+        }, 45000); timeout.unref();
       });
-
-      socket.on('call:signal', (payload: {
-        targetUserId: string;
-        signal: any;
-      }) => {
-        this.io.to(`user:${payload.targetUserId}`).emit('call:signal', {
-          senderId: userId,
-          signal: payload.signal,
-        });
+      for (const event of ['call:accept', 'call:reject']) handle(event, async data => {
+        const call = await prisma.call.findFirst({ where: { id: data.callId, receiverId: userId, status: 'RINGING' } });
+        if (!call) throw httpError(403, 'Call unavailable');
+        await requireCommunication(call.callerId, userId, 'callVisibility');
+        await callsService.updateCallStatus(call.id, event === 'call:accept' ? CallStatus.CONNECTED : CallStatus.REJECTED);
+        this.notifyUser(call.callerId, event === 'call:accept' ? 'call:accepted' : 'call:rejected', { receiverId: userId, callId: call.id });
       });
-
-      // Disconnect handling
-      socket.on('disconnect', async () => {
-        const sockets = this.onlineUsers.get(userId);
-        if (sockets) {
-          sockets.delete(socket.id);
-          if (sockets.size === 0) {
-            this.onlineUsers.delete(userId);
-
-            const now = new Date();
-            await prisma.profile.updateMany({
-              where: { userId },
-              data: { lastSeenAt: now },
-            }).catch(() => null);
-
-            this.io.emit('presence:update', {
-              userId,
-              status: UserStatus.OFFLINE,
-              lastSeenAt: now.toISOString(),
-            });
-          }
+      handle('call:end', async data => {
+        const call = await this.activeCall(userId, data.targetUserId, data.callId);
+        await callsService.updateCallStatus(call.id, CallStatus.ENDED, call.startedAt ? Math.max(0, Math.floor((Date.now() - call.startedAt.getTime()) / 1000)) : 0);
+        this.notifyUser(call.callerId === userId ? call.receiverId! : call.callerId, 'call:ended', { callId: call.id });
+      });
+      handle('call:signal', async data => {
+        const call = await this.activeCall(userId, data.targetUserId);
+        if (call.status !== 'CONNECTED') throw httpError(403, 'Call not accepted');
+        await requireCommunication(call.callerId, call.receiverId!, 'callVisibility');
+        this.notifyUser(data.targetUserId, 'call:signal', { senderId: userId, callId: call.id, signal: data.signal });
+      });
+      socket.on('disconnect', () => {
+        clearTimeout(expiry); clearInterval(sessionCheck);
+        const set = this.onlineUsers.get(userId); set?.delete(socket.id);
+        if (!set?.size) {
+          this.onlineUsers.delete(userId);
+          void prisma.profile.updateMany({ where: { userId }, data: { lastSeenAt: new Date() } }).catch(() => null);
+          void this.publishPresence(userId, 'OFFLINE');
         }
       });
     });
   }
-
-  public notifyUser(userId: string, event: string, data: any) {
-    this.io.to(`user:${userId}`).emit(event, data);
+  private async activeCall(userId: string, targetId: string, callId?: string) {
+    if (typeof targetId !== 'string') throw httpError(400, 'Target required');
+    const call = await prisma.call.findFirst({ where: { ...(callId && { id: callId }), status: { in: ['RINGING', 'CONNECTED'] }, OR: [{ callerId: userId, receiverId: targetId }, { callerId: targetId, receiverId: userId }] }, orderBy: { createdAt: 'desc' } });
+    if (!call) throw httpError(403, 'Call unavailable');
+    return call;
   }
-
-  public broadcastToChat(chatId: string, event: string, data: any) {
-    this.io.to(`chat:${chatId}`).emit(event, data);
+  private async publishPresence(userId: string, status: string) {
+    try {
+      const profile = await prisma.profile.findUnique({ where: { userId } });
+      for (const viewer of this.onlineUsers.keys()) if (await maySee(viewer, userId, profile?.lastSeenVisibility)) this.notifyUser(viewer, 'presence:update', { userId, status, lastSeenAt: status === 'OFFLINE' ? new Date().toISOString() : null });
+    } catch { /* Presence is ephemeral. */ }
+  }
+  public isOnline(userId: string) { return this.onlineUsers.has(userId); }
+  public notifyUser(userId: string, event: string, data: any) { this.io.to(`user:${userId}`).emit(event, data); }
+  public async broadcastToChat(chatId: string, event: string, data: any) {
+    const members = await prisma.chatMember.findMany({ where: { chatId }, select: { userId: true } });
+    this.io.to(members.map(m => `user:${m.userId}`)).emit(event, data);
   }
 }
-
 export let gatewayInstance: WebSocketGateway | null = null;
-
-export function initWebSocketGateway(server: HttpServer): WebSocketGateway {
-  gatewayInstance = new WebSocketGateway(server);
-  return gatewayInstance;
-}
+export function initWebSocketGateway(server: HttpServer) { gatewayInstance = new WebSocketGateway(server); return gatewayInstance; }

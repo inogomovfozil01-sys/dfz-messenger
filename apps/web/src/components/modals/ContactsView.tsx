@@ -53,7 +53,8 @@ export const ContactsView: React.FC<ContactsViewProps> = ({ onSelectUser, onBack
 
     const target = searchRes.data.find(
       (u) => u.username.toLowerCase() === cleanUsername.toLowerCase()
-    ) || searchRes.data[0];
+    );
+    if (!target) { setAddError('Точный username не найден'); return; }
 
     const res = await apiRequest('/api/contacts', {
       method: 'POST',
@@ -122,9 +123,7 @@ export const ContactsView: React.FC<ContactsViewProps> = ({ onSelectUser, onBack
   };
 
   const isUserOnline = (userObj: any) => {
-    if (!userObj?.lastSeenAt) return false;
-    const diff = (Date.now() - new Date(userObj.lastSeenAt).getTime()) / 1000;
-    return diff < 180; // online within 3 mins
+    return userObj?.isOnline === true;
   };
 
   const filtered = contacts.filter((c) => {

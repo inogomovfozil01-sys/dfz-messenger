@@ -16,6 +16,18 @@ const upload = multer({
 
 mediaRouter.use(authGuard);
 
+mediaRouter.get('/files/:key', async (req, res, next) => {
+  try {
+    const file = await mediaService.getFile(req.params.key, req.user!.userId);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+    res.type(file.mimeType);
+    if (!/^(image|video|audio)\//.test(file.mimeType)) res.attachment(req.params.key);
+    res.sendFile(file.path);
+  } catch (err) { next(err); }
+});
+
 // 1. Upload single file
 mediaRouter.post('/upload', upload.single('file'), async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -27,7 +39,7 @@ mediaRouter.post('/upload', upload.single('file'), async (req: Request, res: Res
     const protocol = req.protocol === 'https' ? 'https' : 'http';
     const baseUrl = `${protocol}://${host}`;
 
-    const attachment = await mediaService.processUploadedFile(req.file, baseUrl);
+    const attachment = await mediaService.processUploadedFile(req.file, baseUrl, req.user!.userId);
 
     return res.status(201).json({
       success: true,
@@ -51,7 +63,7 @@ mediaRouter.post('/upload-multiple', upload.array('files', 10), async (req: Requ
     const baseUrl = `${protocol}://${host}`;
 
     const attachments = await Promise.all(
-      files.map(f => mediaService.processUploadedFile(f, baseUrl))
+      files.map(f => mediaService.processUploadedFile(f, baseUrl, req.user!.userId))
     );
 
     return res.status(201).json({
@@ -74,9 +86,9 @@ mediaRouter.post('/voice', upload.single('audio'), async (req: Request, res: Res
     const protocol = req.protocol === 'https' ? 'https' : 'http';
     const baseUrl = `${protocol}://${host}`;
 
-    const attachment = await mediaService.processUploadedFile(req.file, baseUrl);
+    const attachment = await mediaService.processUploadedFile(req.file, baseUrl, req.user!.userId);
     const duration = req.body.duration ? parseInt(req.body.duration, 10) : 0;
-    const waveform = mediaService.generateSyntheticWaveform(32);
+    const waveform: number[] = [];
 
     return res.status(201).json({
       success: true,

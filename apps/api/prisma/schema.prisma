@@ -1,6 +1,5 @@
 generator client {
-  provider      = "prisma-client-js"
-  binaryTargets = ["native", "rhel-openssl-1.0.x", "rhel-openssl-3.0.x", "debian-openssl-3.0.x"]
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -239,10 +238,80 @@ model Chat {
   pinnedMessages PinnedMessage[]
   calls          Call[]
   topics         Topic[]
+  policy         ChatPolicy?
+  invites        ChatInvite[]
+  joinRequests   JoinRequest[]
+  drafts         Draft[]
 
   @@index([type])
   @@index([ownerId])
   @@index([inviteCode])
+}
+
+model ChatPolicy {
+  chatId          String @id
+  chat            Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sendMessages    Boolean @default(true)
+  sendMedia       Boolean @default(true)
+  sendStickers    Boolean @default(true)
+  sendPolls       Boolean @default(true)
+  embedLinks      Boolean @default(true)
+  addMembers      Boolean @default(true)
+  pinMessages     Boolean @default(false)
+  changeInfo      Boolean @default(false)
+  slowModeSeconds Int @default(0)
+  reactions       Boolean @default(true)
+  signMessages    Boolean @default(false)
+  protectedContent Boolean @default(false)
+}
+
+model ChatInvite {
+  id               String @id @default(uuid())
+  chatId           String
+  chat             Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  code             String @unique @default(uuid())
+  name             String
+  expiresAt        DateTime?
+  usageLimit       Int?
+  usedCount        Int @default(0)
+  approvalRequired Boolean @default(false)
+  revokedAt        DateTime?
+  createdAt        DateTime @default(now())
+  @@index([chatId])
+}
+
+model JoinRequest {
+  id        String @id @default(uuid())
+  chatId    String
+  chat      Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  userId    String
+  status    String @default("PENDING")
+  createdAt DateTime @default(now())
+  @@unique([chatId, userId])
+}
+
+model Draft {
+  id        String @id @default(uuid())
+  chatId    String
+  chat      Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  userId    String
+  content   String
+  updatedAt DateTime @updatedAt
+  @@unique([chatId, userId])
+}
+
+model UserSettings {
+  userId String @id
+  notifyPrivate Boolean @default(true)
+  notifyGroups Boolean @default(true)
+  notifyChannels Boolean @default(true)
+  notifyPreview Boolean @default(true)
+  notifySound Boolean @default(true)
+  textSize Int @default(14)
+  density String @default("comfortable")
+  reducedMotion Boolean @default(false)
+  autoDownloadWifi Boolean @default(true)
+  autoDownloadMobile Boolean @default(false)
 }
 
 model ChatMember {
@@ -258,6 +327,7 @@ model ChatMember {
   mutedUntil  DateTime?
   isPinned    Boolean     @default(false)
   isArchived  Boolean     @default(false)
+  clearedAt   DateTime?
   joinedAt    DateTime    @default(now())
 
   @@unique([chatId, userId])
@@ -343,6 +413,17 @@ model Attachment {
   createdAt    DateTime @default(now())
 
   @@index([messageId])
+}
+
+model Upload {
+  storageKey   String   @id
+  ownerId      String
+  originalName String
+  mimeType     String
+  sizeBytes    Int
+  createdAt    DateTime @default(now())
+
+  @@index([ownerId])
 }
 
 model PinnedMessage {
@@ -729,4 +810,3 @@ model EconomyCampaign {
   createdByAdmin String
   createdAt      DateTime @default(now())
 }
-

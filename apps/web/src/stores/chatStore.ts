@@ -1,9 +1,11 @@
+function reconnectChats() { const state = useChatStore.getState(); void state.fetchChats(); if (state.activeChatId) void state.selectChat(state.activeChatId); }
+import { useAuthStore } from './authStore';
 import { create } from 'zustand';
 import { Chat, Message, ChatType, ReceiptStatus, MessageType } from '@dfz/types';
 import { apiRequest } from '../lib/api';
 import { socketService } from '../lib/socket';
 
-export type FolderFilter = 'all' | 'personal' | 'groups' | 'channels' | 'unread';
+export type FolderFilter = 'all' | 'personal' | 'groups' | 'channels' | 'unread' | 'archive';
 
 interface ChatState {
   chats: Chat[];
@@ -138,6 +140,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     set({
       activeChatId: chatId,
+      activeChat: null,
+      isSearchingInChat: false,
+      isInfoPanelOpen: false,
       replyTo: null,
       editingMessage: null,
       isLoadingMessages: true,
@@ -151,6 +156,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       apiRequest<{ items: Message[]; nextCursor: string | null; hasMore: boolean }>(`/api/messages/chat/${chatId}`),
     ]);
 
+    if (get().activeChatId !== chatId) return;
     if (chatRes.success && chatRes.data) {
       set({ activeChat: chatRes.data });
     }
@@ -204,7 +210,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const optimisticMsg: Message = {
       id: tempId,
       chatId: activeChatId,
-      senderId: 'me',
+      senderId: useAuthStore.getState().user!.id,
       content,
       type: msgType,
       attachments: attachments || [],
@@ -242,8 +248,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
         messages: {
           ...state.messages,
           [activeChatId]: (state.messages[activeChatId] || []).map((m) =>
-            m.id === tempId ? { ...res.data!, deliveryStatus: 'sent' } : m
-          ),
+            m.id === tempId ? { ...res.data!, deliveryStatus: 'sent' as const } : m
+          ).filter((m, i, all) => all.findIndex(x => x.id === m.id) === i),
         },
       }));
 
@@ -357,7 +363,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   markAsRead: async (chatId: string) => {
     const msgs = get().messages[chatId] || [];
-    const unreadIds = msgs.map((m) => m.id);
+    const unreadIds = msgs.filter(m => !m.id.startsWith('temp_') && m.senderId !== useAuthStore.getState().user?.id).slice(-200).map(m => m.id);
     if (!unreadIds.length) return;
 
     await apiRequest('/api/messages/receipts', {
@@ -567,7 +573,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           return {
             ...c,
             lastMessage: message,
-            unreadCount: isCurrent ? 0 : (c.unreadCount || 0) + 1,
+            unreadCount: isCurrent ? 0 : (c.unreadCount || 0) + (exists || message.senderId === useAuthStore.getState().user?.id ? 0 : 1),
             updatedAt: message.createdAt,
           };
         }
@@ -620,19 +626,20 @@ export const useChatStore = create<ChatState>((set, get) => ({
         let reactions = m.reactions ? [...m.reactions] : [];
         let rIndex = reactions.findIndex((r) => r.emoji === emoji);
 
+        if (action === 'add' && reactions[rIndex]?.users.some(u => u.id === userId)) return m;
         if (action === 'add') {
           if (rIndex > -1) {
             reactions[rIndex] = {
               ...reactions[rIndex],
               count: reactions[rIndex].count + 1,
-              hasReacted: true,
+              hasReacted: userId === useAuthStore.getState().user?.id || !!reactions[rIndex]?.hasReacted,
               users: [...reactions[rIndex].users, { id: userId, username }],
             };
           } else {
             reactions.push({
               emoji,
               count: 1,
-              hasReacted: true,
+              hasReacted: userId === useAuthStore.getState().user?.id || !!reactions[rIndex]?.hasReacted,
               users: [{ id: userId, username }],
             });
           }
@@ -645,7 +652,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
               reactions[rIndex] = {
                 ...reactions[rIndex],
                 count: newCount,
-                hasReacted: false,
+                hasReacted: userId === useAuthStore.getState().user?.id ? false : reactions[rIndex].hasReacted,
                 users: reactions[rIndex].users.filter((u) => u.id !== userId),
               };
             }
@@ -678,14 +685,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   setupSocketListeners: () => {
     const socket = socketService.getSocket();
+    socket.off('message:edited');
+    socket.off('message:deleted');
+    socket.on('message:edited', message => get().onMessageEdited(message));
+    socket.on('message:deleted', data => get().onMessageDeleted(data));
     socket.off('message:new');
     socket.off('message:receipt');
     socket.off('reaction:update');
     socket.off('chat:typing');
     socket.off('poll:updated');
+    socket.off('connect', reconnectChats);
+    socket.on('connect', reconnectChats);
 
     socket.on('message:new', (msg: Message) => {
-      get().onMessageReceived(msg);
+      const message = (msg as any).message || msg;
+      if (!message?.id || !message.chatId) return;
+      get().onMessageReceived(message);
+      if (message.chatId === get().activeChatId && document.visibilityState === 'visible') void get().markAsRead(message.chatId);
     });
 
     socket.on('message:receipt', (data: any) => {

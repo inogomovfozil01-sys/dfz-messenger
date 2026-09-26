@@ -1,5 +1,7 @@
 import { prisma } from '../prisma';
 import { PrivacyVisibility } from '@dfz/types';
+import { maySee } from '../common/access';
+import { gatewayInstance } from '../gateway/websocket.gateway';
 
 export class UsersService {
   async checkUsernameAvailable(username: string) {
@@ -138,11 +140,14 @@ export class UsersService {
       id: user.id,
       username: user.username,
       displayName: prof?.displayName || user.username,
-      bio: prof?.bio || null,
-      avatarUrl: showPhoto ? prof?.avatarUrl : null,
-      lastSeenAt: showLastSeen ? prof?.lastSeenAt?.toISOString() : null,
-      isBlocked: !!isBlocked,
-      canMessage: !isBlocked,
+      bio: isBlocked ? null : prof?.bio || null,
+      avatarUrl: currentUserId === user.id || showPhoto ? prof?.avatarUrl : null,
+      lastSeenAt: currentUserId === user.id || showLastSeen ? prof?.lastSeenAt?.toISOString() : null,
+      isBlocked: isBlocked?.blockerId === currentUserId,
+      canMessage: await maySee(currentUserId, user.id, prof?.messageVisibility),
+      canCall: await maySee(currentUserId, user.id, prof?.callVisibility),
+      isPremium: user.isPremium && (!user.premiumUntil || user.premiumUntil > new Date()),
+      isOnline: showLastSeen && !!gatewayInstance?.isOnline(user.id),
       createdAt: user.createdAt.toISOString(),
     };
   }
@@ -168,13 +173,7 @@ export class UsersService {
       take: 20,
     });
 
-    return users.map(u => ({
-      id: u.id,
-      username: u.username,
-      displayName: u.profile?.displayName || u.username,
-      avatarUrl: u.profile?.avatarUrl,
-      bio: u.profile?.bio,
-    }));
+    return Promise.all(users.map(u => this.getProfile(currentUserId, u.id)));
   }
 
   async blockUser(currentUserId: string, targetUserId: string, reason?: string) {

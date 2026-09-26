@@ -103,7 +103,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const [chatDensity, setChatDensity] = useState<'compact' | 'comfortable'>('comfortable');
 
   // Storage state
-  const [cacheSize, setCacheSize] = useState('14.2 MB');
+  const [cacheSize, setCacheSize] = useState('Рассчитывается…');
   const [cacheCleared, setCacheCleared] = useState(false);
   const [autoDownloadWifi, setAutoDownloadWifi] = useState(true);
   const [autoDownloadMobile, setAutoDownloadMobile] = useState(false);
@@ -133,6 +133,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     }
   }, [activeTab, isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    navigator.storage?.estimate().then(e => setCacheSize(e.usage !== undefined ? (e.usage / 1024 / 1024).toFixed(2) + ' MB' : 'Недоступно'));
+    apiRequest<any>('/api/settings').then(r => { if(r.success && r.data) { setNotifyPrivate(r.data.notifyPrivate); setNotifyGroups(r.data.notifyGroups); setNotifyChannels(r.data.notifyChannels); setNotifySound(r.data.notifySound); setNotifyPreview(r.data.notifyPreview); setChatDensity(r.data.density); setAutoDownloadWifi(r.data.autoDownloadWifi); setAutoDownloadMobile(r.data.autoDownloadMobile); } });
+  }, [isOpen]);
+  const saveSetting = async (key: string, value: unknown) => { await apiRequest('/api/settings', {method:'PUT', body:JSON.stringify({[key]:value})}); };
   const loadBlockedUsers = async () => {
     setIsLoadingBlocked(true);
     const res = await apiRequest<any[]>('/api/users/blocked');
@@ -163,22 +169,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    await updateProfile({
+    const saved = await updateProfile({
       displayName: displayName.trim(),
       bio: bio.trim() || null,
       avatarUrl: avatarUrl.trim() || null,
     });
+    if (!saved) return;
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 2000);
   };
 
   const handleSavePrivacy = async () => {
-    await updatePrivacy({
+    const saved = await updatePrivacy({
       lastSeenVisibility: lastSeen,
       callVisibility: callVis,
       photoVisibility: photoVis,
       groupAddVisibility: groupVis,
     } as any);
+    if (!saved) return;
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 2000);
   };
@@ -223,10 +231,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     }
   };
 
-  const handleClearCache = () => {
+  const handleClearCache = async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(k => k.startsWith('dfz-')).map(k => caches.delete(k)));
     localStorage.removeItem('dfz_chat_cache');
-    sessionStorage.clear();
-    setCacheSize('0 KB');
+    const estimate = await navigator.storage?.estimate();
+    setCacheSize(estimate?.usage !== undefined ? (estimate.usage / 1024 / 1024).toFixed(2) + ' MB' : 'Недоступно');
     setCacheCleared(true);
     setTimeout(() => setCacheCleared(false), 3000);
   };
@@ -726,7 +736,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   <input
                     type="checkbox"
                     checked={notifyPrivate}
-                    onChange={(e) => setNotifyPrivate(e.target.checked)}
+                    onChange={(e) => { setNotifyPrivate(e.target.checked); void saveSetting('notifyPrivate', e.target.checked); }}
                     className="w-4 h-4 rounded text-dfz-accent bg-dfz-bg border-dfz-border"
                   />
                 </label>
@@ -736,7 +746,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   <input
                     type="checkbox"
                     checked={notifyGroups}
-                    onChange={(e) => setNotifyGroups(e.target.checked)}
+                    onChange={(e) => { setNotifyGroups(e.target.checked); void saveSetting('notifyGroups', e.target.checked); }}
                     className="w-4 h-4 rounded text-dfz-accent bg-dfz-bg border-dfz-border"
                   />
                 </label>
@@ -746,7 +756,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   <input
                     type="checkbox"
                     checked={notifyChannels}
-                    onChange={(e) => setNotifyChannels(e.target.checked)}
+                    onChange={(e) => { setNotifyChannels(e.target.checked); void saveSetting('notifyChannels', e.target.checked); }}
                     className="w-4 h-4 rounded text-dfz-accent bg-dfz-bg border-dfz-border"
                   />
                 </label>
@@ -762,7 +772,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   <input
                     type="checkbox"
                     checked={notifySound}
-                    onChange={(e) => setNotifySound(e.target.checked)}
+                    onChange={(e) => { setNotifySound(e.target.checked); void saveSetting('notifySound', e.target.checked); }}
                     className="w-4 h-4 rounded text-dfz-accent bg-dfz-bg border-dfz-border"
                   />
                 </label>
@@ -775,7 +785,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   <input
                     type="checkbox"
                     checked={notifyPreview}
-                    onChange={(e) => setNotifyPreview(e.target.checked)}
+                    onChange={(e) => { setNotifyPreview(e.target.checked); void saveSetting('notifyPreview', e.target.checked); }}
                     className="w-4 h-4 rounded text-dfz-accent bg-dfz-bg border-dfz-border"
                   />
                 </label>
@@ -961,7 +971,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   <input
                     type="checkbox"
                     checked={autoDownloadWifi}
-                    onChange={(e) => setAutoDownloadWifi(e.target.checked)}
+                    onChange={(e) => { setAutoDownloadWifi(e.target.checked); void saveSetting('autoDownloadWifi', e.target.checked); }}
                     className="w-4 h-4 rounded text-dfz-accent bg-dfz-bg border-dfz-border"
                   />
                 </label>
@@ -971,7 +981,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   <input
                     type="checkbox"
                     checked={autoDownloadMobile}
-                    onChange={(e) => setAutoDownloadMobile(e.target.checked)}
+                    onChange={(e) => { setAutoDownloadMobile(e.target.checked); void saveSetting('autoDownloadMobile', e.target.checked); }}
                     className="w-4 h-4 rounded text-dfz-accent bg-dfz-bg border-dfz-border"
                   />
                 </label>
@@ -986,7 +996,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
               <div className="space-y-2">
                 <label
-                  onClick={() => setSelectedLang('ru')}
+                  onClick={() => { setSelectedLang('ru'); void updateProfile({language:'ru'}); }}
                   className={`flex items-center justify-between p-3 rounded-dfz-xl border cursor-pointer transition-colors ${
                     selectedLang === 'ru'
                       ? 'bg-dfz-surface-secondary border-dfz-accent text-dfz-text'
@@ -1001,7 +1011,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 </label>
 
                 <label
-                  onClick={() => setSelectedLang('en')}
+                  onClick={() => { setSelectedLang('en'); void updateProfile({language:'en'}); }}
                   className={`flex items-center justify-between p-3 rounded-dfz-xl border cursor-pointer transition-colors ${
                     selectedLang === 'en'
                       ? 'bg-dfz-surface-secondary border-dfz-accent text-dfz-text'
@@ -1016,7 +1026,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 </label>
 
                 <label
-                  onClick={() => setSelectedLang('uz')}
+                  onClick={() => { setSelectedLang('uz'); void updateProfile({language:'uz'}); }}
                   className={`flex items-center justify-between p-3 rounded-dfz-xl border cursor-pointer transition-colors ${
                     selectedLang === 'uz'
                       ? 'bg-dfz-surface-secondary border-dfz-accent text-dfz-text'

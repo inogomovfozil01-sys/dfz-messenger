@@ -1,3 +1,4 @@
+import { requirePosting, requireMember } from '../common/access';
 import { prisma } from '../prisma';
 import { gatewayInstance } from '../gateway/websocket.gateway';
 import { Poll } from '@dfz/types';
@@ -28,6 +29,7 @@ export class PollsService {
       throw new Error('You are not a member of this chat');
     }
 
+    await requirePosting(chatId, userId, 'POLL');
     // Transaction: Create message of type POLL and associated Poll entity with options
     const result = await prisma.$transaction(async (tx) => {
       const message = await tx.message.create({
@@ -120,6 +122,7 @@ export class PollsService {
       throw new Error('Poll not found');
     }
 
+    await requireMember(poll.chatId, userId);
     if (poll.isClosed) {
       throw new Error('This poll is closed');
     }

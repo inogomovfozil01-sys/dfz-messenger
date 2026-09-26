@@ -1,4 +1,5 @@
 import { prisma } from '../prisma';
+import { usersService } from '../users/users.service';
 
 export class ContactsService {
   async getContacts(userId: string) {
@@ -12,21 +13,14 @@ export class ContactsService {
       orderBy: { contactUser: { username: 'asc' } },
     });
 
-    return contacts.map(c => ({
+    return Promise.all(contacts.map(async c => ({
       id: c.id,
       userId: c.userId,
       contactUserId: c.contactUserId,
       nickname: c.nickname,
       createdAt: c.createdAt.toISOString(),
-      contactUser: {
-        id: c.contactUser.id,
-        username: c.contactUser.username,
-        displayName: c.contactUser.profile?.displayName || c.contactUser.username,
-        avatarUrl: c.contactUser.profile?.avatarUrl,
-        bio: c.contactUser.profile?.bio,
-        lastSeenAt: c.contactUser.profile?.lastSeenAt?.toISOString() || null,
-      },
-    }));
+      contactUser: await usersService.getProfile(userId, c.contactUserId),
+    })));
   }
 
   async addContact(userId: string, targetUserId: string, nickname?: string) {

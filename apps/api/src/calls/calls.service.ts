@@ -1,5 +1,6 @@
 import { prisma } from '../prisma';
 import { CallType, CallStatus, PrivacyVisibility } from '@dfz/types';
+import { requireCommunication, requireMember, httpError } from '../common/access';
 
 export class CallsService {
   async getCallHistory(userId: string, filter: 'all' | 'missed' = 'all') {
@@ -108,6 +109,10 @@ export class CallsService {
     receiverId: string;
     type: CallType;
   }) {
+    await requireCommunication(data.callerId, data.receiverId, 'callVisibility');
+    const member = await requireMember(data.chatId, data.callerId);
+    await requireMember(data.chatId, data.receiverId);
+    if (data.callerId === data.receiverId || member.chat.type !== 'DIRECT') throw httpError(400, 'A call requires a direct conversation');
     return prisma.call.create({
       data: {
         chatId: data.chatId,

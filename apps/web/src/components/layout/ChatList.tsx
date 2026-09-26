@@ -63,6 +63,8 @@ export const ChatList: React.FC<ChatListProps> = ({
       label: 'Все',
       count: chats.filter((c) => !c.isArchived).reduce((sum, c) => sum + (c.unreadCount || 0), 0),
     },
+    { id: 'unread', label: 'Непрочитанные' },
+    { id: 'archive', label: 'Архив' },
     {
       id: 'personal',
       label: 'Личные',
@@ -98,6 +100,8 @@ export const ChatList: React.FC<ChatListProps> = ({
           if (!matchTitle && !matchMsg) return false;
         }
 
+        if (activeFolder === 'archive') return !!chat.isArchived;
+        if (activeFolder === 'unread') return !chat.isArchived && !!chat.unreadCount;
         // Folder filter
         if (activeFolder === 'personal') return !chat.isArchived && chat.type === ChatType.DIRECT;
         if (activeFolder === 'groups') return !chat.isArchived && chat.type === ChatType.GROUP;
@@ -198,6 +202,7 @@ export const ChatList: React.FC<ChatListProps> = ({
             <Search size={16} className="absolute left-3.5 text-dfz-text-muted pointer-events-none" />
             <input
               type="text"
+              data-global-search
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Поиск"

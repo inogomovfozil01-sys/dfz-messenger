@@ -7,7 +7,7 @@ import { LinkPreviewData } from '@dfz/types';
 
 const dnsLookup = promisify(dns.lookup);
 
-function isPrivateIp(ip: string): boolean {
+export function isPrivateIp(ip: string): boolean {
   // IPv4 private & reserved ranges
   const parts = ip.split('.').map(Number);
   if (parts.length === 4) {
@@ -17,12 +17,12 @@ function isPrivateIp(ip: string): boolean {
     if (parts[0] === 192 && parts[1] === 168) return true; // 192.168.0.0/16
     if (parts[0] === 169 && parts[1] === 254) return true; // link-local / AWS metadata
     if (parts[0] === 0) return true; // 0.0.0.0/8
+    if (parts[0] >= 224 || parts[0] === 192 && parts[1] === 0 || parts[0] === 198 && (parts[1] === 18 || parts[1] === 19) || parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127) return true;
   }
 
   // IPv6 loopback / unique local / link-local
-  if (ip === '::1' || ip.startsWith('fe80:') || ip.startsWith('fc00:') || ip.startsWith('fd00:')) {
-    return true;
-  }
+  // Only global unicast IPv6 is eligible; mapped IPv4 and local/reserved ranges are denied.
+  if (ip.includes(':')) return !/^[23][0-9a-f]{3}:/i.test(ip) || ip.toLowerCase().startsWith('2001:db8:');
 
   return false;
 }
@@ -39,6 +39,7 @@ export class PreviewService {
     }
 
     const hostname = parsed.hostname;
+    if (parsed.username || parsed.password || parsed.port && !['80', '443'].includes(parsed.port)) throw new Error('Unsafe URL');
     if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') {
       throw new Error('SSRF blocked: local address');
     }
@@ -56,13 +57,16 @@ export class PreviewService {
         parsed.href,
         {
           timeout: 4000,
+          // Pin the validated address to prevent DNS rebinding between validation and connect.
+          lookup: (_host: string, options: any, callback: any) => options?.all ? callback(null, [lookup]) : callback(null, lookup.address, lookup.family),
           headers: {
             'User-Agent': 'Mozilla/5.0 (compatible; DFZLinkBot/1.0)',
             Accept: 'text/html,application/xhtml+xml',
           },
         },
         (res) => {
-          if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 400)) {
+          if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 300)) {
+            res.resume();
             return reject(new Error(`HTTP ${res.statusCode}`));
           }
 

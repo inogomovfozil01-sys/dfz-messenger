@@ -105,7 +105,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
 
   const renderSubtitle = () => {
     if (chat.type === ChatType.DIRECT) {
-      return otherMember?.lastSeenAt ? 'В сети' : 'Не в сети';
+      return (otherMember as any)?.isOnline ? 'В сети' : otherMember?.lastSeenAt ? `Был(а) ${new Date(otherMember.lastSeenAt).toLocaleString('ru')}` : 'Статус скрыт';
     }
     if (chat.type === ChatType.GROUP) {
       return `${chat.members?.length || 1} участников`;

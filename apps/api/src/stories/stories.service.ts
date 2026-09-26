@@ -1,8 +1,16 @@
 import { prisma } from '../prisma';
 import { gatewayInstance } from '../gateway/websocket.gateway';
 import { Story, StoryFeedItem, StoryMediaType, PrivacyVisibility } from '@dfz/types';
+import { maySee, httpError } from '../common/access';
 
 export class StoriesService {
+  async requireAccess(userId: string, storyId: string) {
+    const story = await prisma.story.findUnique({ where: { id: storyId } });
+    if (!story || (story.authorId !== userId && (story.isArchived || story.expiresAt <= new Date() || !await maySee(userId, story.authorId, story.privacy)))) {
+      throw httpError(403, 'Story unavailable');
+    }
+    return story;
+  }
   /**
    * Create a new 24-hour story
    */
@@ -41,7 +49,7 @@ export class StoriesService {
 
     // Broadcast new story event
     if (gatewayInstance) {
-      gatewayInstance.io.emit('story:new', {
+      gatewayInstance.notifyUser(authorId, 'story:new', {
         story: {
           ...story,
           createdAt: story.createdAt.toISOString(),
@@ -65,19 +73,22 @@ export class StoriesService {
 
     // 1. Fetch user contacts
     const contacts = await prisma.contact.findMany({
-      where: { userId: currentUserId },
-      select: { contactUserId: true },
+      where: { contactUserId: currentUserId },
+      select: { userId: true },
     });
-    const contactIds = contacts.map((c) => c.contactUserId);
+    const contactIds = contacts.map((c) => c.userId);
+    const blocks = await prisma.block.findMany({ where: { OR: [{ blockerId: currentUserId }, { blockedId: currentUserId }] } });
+    const excluded = blocks.map(b => b.blockerId === currentUserId ? b.blockedId : b.blockerId);
 
     // 2. Fetch all active stories: own stories + contacts + public stories
     const activeStories = await prisma.story.findMany({
       where: {
         expiresAt: { gt: now },
         isArchived: false,
+        authorId: { notIn: excluded },
         OR: [
           { authorId: currentUserId },
-          { authorId: { in: contactIds } },
+          { authorId: { in: contactIds }, privacy: 'CONTACTS' },
           { privacy: 'EVERYONE' },
         ],
       },
@@ -198,6 +209,7 @@ export class StoriesService {
    * Mark a story as viewed by the current user
    */
   async recordView(userId: string, storyId: string) {
+    await this.requireAccess(userId, storyId);
     const existing = await prisma.storyView.findUnique({
       where: {
         storyId_viewerId: {
@@ -236,6 +248,7 @@ export class StoriesService {
    * Add or toggle reaction to a story
    */
   async reactToStory(userId: string, storyId: string, emoji: string) {
+    await this.requireAccess(userId, storyId);
     const existing = await prisma.storyReaction.findUnique({
       where: {
         storyId_userId_emoji: {

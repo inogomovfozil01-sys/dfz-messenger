@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { messagesService } from './messages.service';
 import { authGuard } from '../common/auth.guard';
 import { MessageType, ReceiptStatus } from '@dfz/types';
+import { gatewayInstance } from '../gateway/websocket.gateway';
 
 export const messagesRouter = Router();
 
@@ -58,6 +59,7 @@ messagesRouter.post('/', async (req: Request, res: Response, next: NextFunction)
   try {
     const data = sendMessageSchema.parse(req.body);
     const message = await messagesService.sendMessage(req.user!.userId, data);
+    await gatewayInstance?.broadcastToChat(message.chatId, 'message:new', message);
 
     return res.status(201).json({
       success: true,
@@ -76,6 +78,7 @@ messagesRouter.put('/:id', async (req: Request, res: Response, next: NextFunctio
       return res.status(400).json({ success: false, error: { message: 'Message content cannot be empty' } });
     }
     const updated = await messagesService.editMessage(req.user!.userId, req.params.id, content.trim());
+    await gatewayInstance?.broadcastToChat(updated.chatId, 'message:edited', updated);
     return res.json({
       success: true,
       data: updated,
@@ -89,6 +92,7 @@ messagesRouter.put('/:id', async (req: Request, res: Response, next: NextFunctio
 messagesRouter.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const result = await messagesService.deleteMessage(req.user!.userId, req.params.id);
+    await gatewayInstance?.broadcastToChat(result.chatId, 'message:deleted', result);
     return res.json({
       success: true,
       data: result,
@@ -106,6 +110,7 @@ messagesRouter.post('/:id/reactions', async (req: Request, res: Response, next: 
       return res.status(400).json({ success: false, error: { message: 'Emoji required' } });
     }
     const result = await messagesService.addReaction(req.user!.userId, req.params.id, emoji.trim());
+    await gatewayInstance?.broadcastToChat(result.chatId, 'reaction:update', { ...result, action: 'add', username: req.user!.username });
     return res.json({
       success: true,
       data: result,
@@ -119,6 +124,7 @@ messagesRouter.post('/:id/reactions', async (req: Request, res: Response, next: 
 messagesRouter.delete('/:id/reactions/:emoji', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const result = await messagesService.removeReaction(req.user!.userId, req.params.id, req.params.emoji);
+    if (result.chatId) await gatewayInstance?.broadcastToChat(result.chatId, 'reaction:update', { ...result, action: 'remove', username: req.user!.username });
     return res.json({
       success: true,
       data: result,
@@ -141,6 +147,7 @@ messagesRouter.post('/receipts', async (req: Request, res: Response, next: NextF
       messageIds,
       status || ReceiptStatus.READ
     );
+    await gatewayInstance?.broadcastToChat(chatId, 'message:receipt', { chatId, messageIds, status: status || ReceiptStatus.READ, userId: req.user!.userId });
     return res.json({
       success: true,
       data: result,

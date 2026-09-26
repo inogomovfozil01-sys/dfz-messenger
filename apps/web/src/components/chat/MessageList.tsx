@@ -7,6 +7,7 @@ import { useChatStore } from '../../stores/chatStore';
 import { MessageBubble } from './MessageBubble';
 import { MediaLightbox } from './MediaLightbox';
 import { Skeleton } from '../ui/Skeleton';
+import { ArrowDown, MessageSquare } from 'lucide-react';
 
 interface MessageListProps {
   chatId: string;
@@ -33,28 +34,38 @@ export const MessageList: React.FC<MessageListProps> = ({ chatId }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomAnchorRef = useRef<HTMLDivElement>(null);
   const isInitialScrollRef = useRef(true);
+  const nearBottom = useRef(true);
+  const loadingOlder = useRef(false);
+  const [hasNewMessages, setHasNewMessages] = useState(false);
+  const lastMessageId = chatMessages.at(-1)?.id;
+
+  useEffect(() => { isInitialScrollRef.current = true; nearBottom.current = true; setHasNewMessages(false); }, [chatId]);
 
   // Auto-scroll to bottom on initial load and on new messages
   useEffect(() => {
-    if (bottomAnchorRef.current) {
+    if (bottomAnchorRef.current && (isInitialScrollRef.current || nearBottom.current)) {
       bottomAnchorRef.current.scrollIntoView({
         behavior: isInitialScrollRef.current ? 'auto' : 'smooth',
       });
       isInitialScrollRef.current = false;
-    }
-  }, [chatMessages.length]);
+    } else if (lastMessageId) setHasNewMessages(true);
+  }, [lastMessageId]);
 
   // Infinite scroll up listener
   const handleScroll = () => {
     const el = scrollContainerRef.current;
     if (!el) return;
 
-    if (el.scrollTop === 0 && hasMore[chatId] && !isLoadingMessages) {
+    nearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 96;
+    if (nearBottom.current) setHasNewMessages(false);
+    if (el.scrollTop < 40 && hasMore[chatId] && !isLoadingMessages && !loadingOlder.current) {
+      loadingOlder.current = true;
       const prevHeight = el.scrollHeight;
       fetchMessages(chatId).then(() => {
         // Maintain scroll position after prepending older messages
         requestAnimationFrame(() => {
           if (el) el.scrollTop = el.scrollHeight - prevHeight;
+          loadingOlder.current = false;
         });
       });
     }
@@ -82,7 +93,7 @@ export const MessageList: React.FC<MessageListProps> = ({ chatId }) => {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-dfz-text-muted select-none">
         <div className="w-16 h-16 rounded-full bg-dfz-surface border border-dfz-border flex items-center justify-center text-2xl mb-3 shadow-dfz-sm">
-          💬
+          <MessageSquare size={26} />
         </div>
         <h4 className="text-base font-semibold text-dfz-text mb-1">Здесь пока нет сообщений</h4>
         <p className="text-xs max-w-xs">
@@ -133,7 +144,7 @@ export const MessageList: React.FC<MessageListProps> = ({ chatId }) => {
             3 * 60 * 1000;
 
         return (
-          <React.Fragment key={msg.id}>
+          <div key={msg.id} id={`message-${msg.id}`} className="scroll-mt-4">
             {showDateSeparator && (
               <div className="flex items-center justify-center my-3 select-none">
                 <span className="px-3 py-1 bg-dfz-surface/90 border border-dfz-border rounded-full text-[11px] font-medium text-dfz-text-muted shadow-dfz-sm">
@@ -152,7 +163,7 @@ export const MessageList: React.FC<MessageListProps> = ({ chatId }) => {
               onReact={(id, emoji) => addReaction(id, emoji)}
               onOpenImage={(url, name) => setPreviewImage({ url, name })}
             />
-          </React.Fragment>
+          </div>
         );
       })}
 
@@ -167,6 +178,7 @@ export const MessageList: React.FC<MessageListProps> = ({ chatId }) => {
       )}
 
       <div ref={bottomAnchorRef} />
+      {hasNewMessages && <button className="sticky bottom-2 self-end flex items-center gap-2 rounded-full px-3 py-2 bg-dfz-accent text-white shadow-lg" onClick={() => { bottomAnchorRef.current?.scrollIntoView({ behavior: 'smooth' }); setHasNewMessages(false); }}><ArrowDown size={16} />Новые сообщения</button>}
     </div>
   );
 };

@@ -1,3 +1,4 @@
+import { InviteManager } from './InviteManager';
 import React, { useState, useEffect } from 'react';
 import {
   X,
@@ -194,7 +195,7 @@ export const ChannelManageModal: React.FC<ChannelManageModalProps> = ({
   };
 
   const filteredSubscribers = subscribers.filter((m) => {
-    const name = m.user?.profile?.displayName || m.user?.username || '';
+    const name = m.displayName || m.username || '';
     return name.toLowerCase().includes(subscriberSearch.toLowerCase());
   });
 
@@ -387,13 +388,13 @@ export const ChannelManageModal: React.FC<ChannelManageModalProps> = ({
                     >
                       <div className="flex items-center gap-3">
                         <Avatar
-                          src={m.user?.profile?.avatarUrl}
-                          name={m.user?.profile?.displayName || m.user?.username}
+                          src={m.avatarUrl}
+                          name={m.displayName || m.username}
                           size="md"
                         />
                         <div>
                           <div className="font-semibold text-xs text-dfz-text flex items-center gap-1.5">
-                            <span>{m.user?.profile?.displayName || m.user?.username}</span>
+                            <span>{m.displayName || m.username}</span>
                             {isOwnerMember && (
                               <span className="px-1.5 py-0.2 rounded-full bg-amber-500/20 text-[10px] font-bold text-amber-400">
                                 Владелец
@@ -405,7 +406,7 @@ export const ChannelManageModal: React.FC<ChannelManageModalProps> = ({
                               </span>
                             )}
                           </div>
-                          <div className="text-[11px] text-dfz-text-muted">@{m.user?.username}</div>
+                          <div className="text-[11px] text-dfz-text-muted">@{m.username}</div>
                         </div>
                       </div>
 
@@ -446,15 +447,15 @@ export const ChannelManageModal: React.FC<ChannelManageModalProps> = ({
                     >
                       <div className="flex items-center gap-2.5">
                         <Avatar
-                          src={m.user?.profile?.avatarUrl}
-                          name={m.user?.profile?.displayName || m.user?.username}
+                          src={m.avatarUrl}
+                          name={m.displayName || m.username}
                           size="sm"
                         />
                         <div>
                           <div className="font-semibold text-xs text-dfz-text">
-                            {m.user?.profile?.displayName || m.user?.username}
+                            {m.displayName || m.username}
                           </div>
-                          <div className="text-[10px] text-dfz-text-muted">@{m.user?.username}</div>
+                          <div className="text-[10px] text-dfz-text-muted">@{m.username}</div>
                         </div>
                       </div>
 
@@ -520,6 +521,7 @@ export const ChannelManageModal: React.FC<ChannelManageModalProps> = ({
           {/* TAB 4: INVITES */}
           {activeTab === 'invites' && (
             <div className="space-y-4">
+              <InviteManager chatId={chat.id} />
               <div className="space-y-1">
                 <span className="text-[11px] font-semibold text-dfz-text-muted">
                   Ссылка-приглашение канала

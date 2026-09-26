@@ -20,13 +20,17 @@ export function errorHandler(err: any, req: Request, res: Response, _next: NextF
 
   // Handle Multer upload errors
   if (err.name === 'MulterError') {
-    return res.status(400).json({
+    return res.status(err.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({
       success: false,
       error: {
         code: 'UPLOAD_ERROR',
         message: err.message,
       },
     });
+  }
+
+  if (err.code === 'P2002' || err.code === 'P2025') {
+    return res.status(err.code === 'P2002' ? 409 : 404).json({ success: false, error: { code: err.code === 'P2002' ? 'CONFLICT' : 'NOT_FOUND', message: err.code === 'P2002' ? 'Запись уже существует' : 'Запись не найдена' } });
   }
 
   // Handle standard HTTP status errors

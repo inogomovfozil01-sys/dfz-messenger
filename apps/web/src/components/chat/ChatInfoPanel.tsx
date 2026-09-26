@@ -31,6 +31,7 @@ interface ChatInfoPanelProps {
   chat: Chat;
   onClose: () => void;
   onAddMember?: () => void;
+  onOpenProfile?: (userId: string) => void;
 }
 
 type MediaTab = 'members' | 'media' | 'files' | 'links' | 'voice';
@@ -39,6 +40,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
   chat,
   onClose,
   onAddMember,
+  onOpenProfile,
 }) => {
   const { user } = useAuthStore();
   const {
@@ -62,6 +64,10 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
     (m) => m.userId === user?.id && (m.role === MemberRole.OWNER || m.role === MemberRole.ADMIN)
   );
   const isOwner = chat.ownerId === user?.id || chat.members?.some((m) => m.userId === user?.id && m.role === MemberRole.OWNER);
+  const otherMember =
+    chat.type === ChatType.DIRECT
+      ? chat.members?.find((m) => m.userId !== user?.id)
+      : null;
 
   useEffect(() => {
     if (activeTab !== 'members') {
@@ -173,6 +179,19 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
               <span>Поиск</span>
             </button>
 
+            {otherMember && onOpenProfile && (
+              <button
+                onClick={() => onOpenProfile(otherMember.userId)}
+                className="flex flex-col items-center gap-1 text-[11px] text-dfz-text-muted hover:text-dfz-text transition-colors"
+                title="Открыть профиль"
+              >
+                <div className="p-2 rounded-full bg-dfz-bg border border-dfz-border text-[#2a8dd4]">
+                  <User size={16} />
+                </div>
+                <span>Профиль</span>
+              </button>
+            )}
+
             {chat.inviteCode && (
               <button
                 onClick={handleCopyLink}
@@ -230,6 +249,16 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
             }`}
           >
             Ссылки
+          </button>
+          <button
+            onClick={() => setActiveTab('voice')}
+            className={`flex-1 py-2.5 text-xs font-semibold border-b-2 text-center transition-colors ${
+              activeTab === 'voice'
+                ? 'border-[#2a8dd4] text-[#2a8dd4]'
+                : 'border-transparent text-dfz-text-muted hover:text-dfz-text'
+            }`}
+          >
+            Голосовые
           </button>
         </div>
 
@@ -395,10 +424,84 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
               )}
             </div>
           )}
+
+          {activeTab === 'voice' && (
+            <div className="space-y-2">
+              {isLoadingMedia ? (
+                <div className="p-6 text-center text-xs text-dfz-text-muted">Загрузка аудио...</div>
+              ) : mediaItems.length === 0 ? (
+                <div className="p-8 text-center text-xs text-dfz-text-muted">Нет голосовых сообщений</div>
+              ) : (
+                mediaItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-2.5 rounded-dfz-md bg-dfz-bg border border-dfz-border text-xs flex items-center justify-between gap-2"
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <Mic size={15} className="text-[#2a8dd4] flex-shrink-0" />
+                      <span className="truncate text-dfz-text text-[11px]">Голосовое</span>
+                    </div>
+                    <span className="text-[10px] text-dfz-text-muted flex-shrink-0">
+                      {new Date(item.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
 
         {/* Danger zone actions */}
         <div className="p-4 border-t border-dfz-border/60 space-y-2">
+          {chat.type === ChatType.DIRECT && otherMember && (
+            <>
+              <button
+                onClick={async () => {
+                  if (confirm(`Заблокировать @${otherMember.username || 'пользователя'}?`)) {
+                    const res = await apiRequest('/api/contacts/block', {
+                      method: 'POST',
+                      body: JSON.stringify({ targetUserId: otherMember.userId }),
+                    });
+                    if (res.success) {
+                      alert('Пользователь заблокирован');
+                    } else {
+                      alert(res.error?.message || 'Не удалось заблокировать');
+                    }
+                  }
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-dfz-md hover:bg-dfz-danger/10 text-dfz-danger text-xs font-semibold transition-colors text-left"
+              >
+                <Ban size={15} />
+                <span>Заблокировать</span>
+              </button>
+
+              <button
+                onClick={async () => {
+                  const reason = prompt('Укажите причину жалобы (Спам, Мошенничество, Оскорбления, Другое):');
+                  if (!reason) return;
+                  const res = await apiRequest('/api/moderation/report', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                      targetType: 'USER',
+                      targetId: otherMember.userId,
+                      reason: 'OTHER',
+                      description: reason,
+                    }),
+                  });
+                  if (res.success) {
+                    alert('Жалоба успешно отправлена модераторам');
+                  } else {
+                    alert(res.error?.message || 'Ошибка отправки жалобы');
+                  }
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-dfz-md hover:bg-dfz-surface text-dfz-text-muted hover:text-dfz-text text-xs font-semibold transition-colors text-left"
+              >
+                <Shield size={15} />
+                <span>Пожаловаться</span>
+              </button>
+            </>
+          )}
+
           <button
             onClick={() => {
               if (confirm('Очистить историю сообщений для вас?')) {

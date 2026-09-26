@@ -88,7 +88,6 @@ export const useCallStore = create<CallState>((set, get) => ({
         callType,
       });
 
-      await webrtcManager.createOffer(targetUserId);
     } catch (err) {
       console.error('Failed to start call', err);
       get().endCall();
@@ -133,6 +132,7 @@ export const useCallStore = create<CallState>((set, get) => ({
         }
       };
 
+      webrtcManager.createPeerConnection(incomingCall.callerId);
       socket.emit('call:accept', {
         callerId: incomingCall.callerId,
         callId: incomingCall.callId,
@@ -203,7 +203,8 @@ export const useCallStore = create<CallState>((set, get) => ({
     });
 
     socket.on('call:accepted', () => {
-      // Caller receives notification that call was accepted
+      const active = get().activeCall;
+      if (active) void webrtcManager.createOffer(active.targetUserId).catch(() => get().endCall());
     });
 
     socket.on('call:rejected', () => {
@@ -215,7 +216,9 @@ export const useCallStore = create<CallState>((set, get) => ({
     });
 
     socket.on('call:signal', (data: { senderId: string; signal: any }) => {
-      webrtcManager.handleSignal(data.signal);
+      if (data.senderId === get().activeCall?.targetUserId) void webrtcManager.handleSignal(data.signal).catch(() => get().endCall());
     });
+    socket.off('call:error');
+    socket.on('call:error', () => get().endCall());
   },
 }));
