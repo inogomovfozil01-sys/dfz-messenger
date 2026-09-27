@@ -3,6 +3,26 @@ import { prisma } from '../prisma';
 import { MessageType, ReceiptStatus, MemberRole, ChatType } from '@dfz/types';
 
 export class MessagesService {
+  async forward(userId: string, messageIds: string[], chatId: string) {
+    await requirePosting(chatId, userId);
+    const source = await prisma.message.findMany({ where: { id: { in: messageIds }, isDeleted: false }, include: { attachments: true, chat: { include: { policy: true } } } });
+    if (source.length !== new Set(messageIds).size) throw httpError(404, 'Message unavailable');
+    for (const message of source) {
+      const member = await requireMember(message.chatId, userId);
+      if (member.clearedAt && message.createdAt <= member.clearedAt || message.chat.policy?.protectedContent) throw httpError(403, 'Forwarding is restricted');
+      await requirePosting(chatId, userId, message.type);
+    }
+    const result = await prisma.$transaction(async tx => {
+      const results = [];
+      for (const m of source) {
+        const ordinary = !['POLL','GIFT','STARS_TRANSFER','SYSTEM'].includes(m.type);
+        results.push(await tx.message.create({ data: { chatId, senderId: userId, forwardedFromId: m.forwardedFromId || m.senderId, content: m.content, type: ordinary ? m.type : 'TEXT', attachments: { create: m.attachments.map(a => ({ originalName:a.originalName, mimeType:a.mimeType, sizeBytes:a.sizeBytes, storageKey:a.storageKey, url:a.url, duration:a.duration })) } }, include: { sender: { include: { profile: true } }, attachments: true } }));
+      }
+      await tx.chat.update({ where:{id:chatId}, data:{updatedAt:new Date()} });
+      return results;
+    });
+    return result.map(m => this.formatSingleMessage(m, userId));
+  }
   async getMessages(chatId: string, userId: string, options: {
     cursor?: string;
     limit?: number;

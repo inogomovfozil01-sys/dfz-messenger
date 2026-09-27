@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import http from 'node:http';
 import https from 'node:https';
 
-export const config = { api: { bodyParser: false, responseLimit: false } };
+export const config = { api: { bodyParser: false, responseLimit: false, externalResolver: true } };
 
 // One frontend origin for cookies and protected media. The API remains a separate service.
 export default function proxy(req: NextApiRequest, res: NextApiResponse) {

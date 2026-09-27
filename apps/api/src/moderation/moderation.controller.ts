@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../prisma';
 import { authGuard } from '../common/auth.guard';
 import { roleGuard } from '../common/role.guard';
+import { httpError } from '../common/access';
 import { ReportReason, ReportStatus, UserRole } from '@dfz/types';
 
 export const moderationRouter = Router();
@@ -20,6 +21,14 @@ const createReportSchema = z.object({
 moderationRouter.post('/report', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const data = createReportSchema.parse(req.body);
+    const userId = req.user!.userId;
+    const visibleChat = { OR: [{ isPublic: true }, { members: { some: { userId } } }] };
+    const target = data.targetType === 'USER'
+      ? await prisma.user.findUnique({ where: { id: data.targetId }, select: { id: true } })
+      : data.targetType === 'CHAT'
+        ? await prisma.chat.findFirst({ where: { id: data.targetId, ...visibleChat }, select: { id: true } })
+        : await prisma.message.findFirst({ where: { id: data.targetId, isDeleted: false, chat: visibleChat }, select: { id: true } });
+    if (!target) throw httpError(404, 'Report target unavailable');
     const report = await prisma.report.create({
       data: {
         reporterId: req.user!.userId,

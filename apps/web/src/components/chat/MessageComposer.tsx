@@ -216,38 +216,12 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
     }
   };
 
-  const handleSendVideoNote = async (url: string, duration: number) => {
-    await sendMessage(
-      '',
-      [
-        {
-          url,
-          storageKey: url,
-          mimeType: 'video/webm',
-          originalName: 'video_note.webm',
-          sizeBytes: 1024 * 1024,
-          duration,
-        },
-      ],
-      MessageType.VIDEO_NOTE
-    );
+  const handleSendVideoNote = async (attachment: any, duration: number) => {
+    await sendMessage('', [{...attachment, duration}], MessageType.VIDEO_NOTE);
   };
-
   const handleSelectSticker = async (sticker: Sticker) => {
     setShowEmojiPicker(false);
-    await sendMessage(
-      sticker.url,
-      [
-        {
-          url: sticker.url,
-          storageKey: sticker.url,
-          mimeType: 'image/webp',
-          originalName: sticker.emoji,
-          sizeBytes: 1024,
-        },
-      ],
-      MessageType.STICKER
-    );
+    await sendMessage(sticker.url, [], MessageType.STICKER);
   };
 
   if (isRecording) {
@@ -262,10 +236,10 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
   }
 
   return (
-    <div className="p-2 sm:p-3 bg-dfz-surface border-t border-dfz-border/80 select-none relative">
+    <div className="dfz-composer select-none relative">
       {/* Uploading progress indicator */}
       {isUploading && (
-        <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#2481cc] overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-0.5 bg-[var(--accent-primary)] overflow-hidden">
           <div
             className="h-full bg-white/60 transition-all duration-300"
             style={{ width: `${uploadProgress}%` }}
@@ -275,12 +249,12 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
 
       {/* Editing or Reply Preview Banner */}
       {(replyTo || editingMessage) && (
-        <div className="flex items-center justify-between px-3 py-1.5 mb-2 bg-dfz-surface border-l-4 border-[#2481cc] rounded-r-dfz-lg text-xs animate-slide-up bg-black/20">
+        <div className="flex items-center justify-between px-3 py-1.5 mb-2 bg-dfz-surface border-l-4 border-[var(--accent-primary)] rounded-r-dfz-lg text-xs animate-slide-up bg-black/20">
           <div className="flex items-center gap-2 overflow-hidden">
             {editingMessage ? (
-              <Edit3 size={14} className="text-[#2481cc] flex-shrink-0" />
+              <Edit3 size={14} className="text-[var(--accent-primary)] flex-shrink-0" />
             ) : (
-              <Reply size={14} className="text-[#2481cc] flex-shrink-0" />
+              <Reply size={14} className="text-[var(--accent-primary)] flex-shrink-0" />
             )}
             <div className="truncate">
               <span className="font-semibold text-dfz-text">
@@ -322,7 +296,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
 
       {/* Telegram Composer Input Bar */}
       <div className="flex items-end gap-2">
-        <div className="flex-1 flex items-end gap-1.5 bg-dfz-bg border border-dfz-border/60 rounded-[22px] px-2 py-1 focus-within:border-[#2481cc] transition-colors shadow-inner">
+        <div className="flex-1 flex items-end gap-1.5 bg-dfz-surface border border-dfz-border rounded-2xl px-2 py-1 focus-within:border-[var(--accent-primary)] transition-colors shadow-inner">
         {/* Attachment Button & Popup Menu */}
         <div className="relative">
           <button
@@ -487,7 +461,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
           <button
             type="button"
             onClick={handleSend}
-            className="w-11 h-11 bg-[#2481cc] hover:bg-[#1c74b8] text-white rounded-full transition-transform active:scale-95 flex items-center justify-center flex-shrink-0 shadow-md animate-scale-in"
+            className="w-11 h-11 bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white rounded-full transition-transform active:scale-95 flex items-center justify-center flex-shrink-0 shadow-md animate-scale-in"
             title="Отправить (Enter)"
           >
             <Send size={18} className="translate-x-0.5 -translate-y-0.5" />
@@ -498,7 +472,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
             <button
               type="button"
               onClick={() => setIsVideoRecording(true)}
-              className="p-2.5 text-dfz-text-muted hover:text-[#2481cc] hover:bg-dfz-surface-hover rounded-full transition-colors"
+              className="p-2.5 text-dfz-text-muted hover:text-[var(--accent-primary)] hover:bg-dfz-surface-hover rounded-full transition-colors"
               title="Записать видеосообщение (кружок)"
             >
               <Video size={19} />
@@ -508,7 +482,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
             <button
               type="button"
               onClick={() => setIsRecording(true)}
-              className="w-11 h-11 bg-[#2481cc] hover:bg-[#1c74b8] text-white rounded-full transition-transform active:scale-95 flex items-center justify-center flex-shrink-0 shadow-md"
+              className="w-11 h-11 bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white rounded-full transition-transform active:scale-95 flex items-center justify-center flex-shrink-0 shadow-md"
               title="Записать голосовое сообщение"
             >
               <Mic size={19} />

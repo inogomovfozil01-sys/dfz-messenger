@@ -100,6 +100,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
   // Appearance state
   const [appTheme, setAppTheme] = useState<'dark' | 'dim' | 'light'>('dark');
+  const [themeError, setThemeError] = useState('');
+  const [themeSaving, setThemeSaving] = useState(false);
+  useEffect(() => { if (profile?.theme && ['dark','dim','light'].includes(profile.theme)) setAppTheme(profile.theme as 'dark' | 'dim' | 'light'); }, [profile?.theme]);
   const [chatDensity, setChatDensity] = useState<'compact' | 'comfortable'>('comfortable');
 
   // Storage state
@@ -250,7 +253,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     <Modal isOpen={isOpen} onClose={onClose} title="Настройки" maxWidth="xl">
       <div className="flex flex-col sm:flex-row gap-4 min-h-[460px] select-none text-xs text-dfz-text">
         {/* Left Navigation Menu */}
-        <div className="w-full sm:w-52 flex flex-col gap-0.5 border-b sm:border-b-0 sm:border-r border-dfz-border pb-3 sm:pb-0 sm:pr-3">
+        <div className="dfz-settings-nav w-full sm:w-52 flex flex-col gap-0.5 border-b sm:border-b-0 sm:border-r border-dfz-border pb-3 sm:pb-0 sm:pr-3">
           <button
             onClick={() => setActiveTab('profile')}
             className={`flex items-center gap-2.5 px-3 py-2 rounded-dfz-lg font-medium text-left transition-colors ${
@@ -799,54 +802,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               <div className="space-y-2">
                 <h4 className="text-xs font-bold text-dfz-text">Цветовая схема</h4>
                 <div className="grid grid-cols-3 gap-2.5">
-                  <div
-                    onClick={() => {
-                      setAppTheme('dark');
-                      document.documentElement.classList.remove('light');
-                      document.documentElement.classList.add('dark');
-                    }}
-                    className={`p-3 rounded-dfz-xl border cursor-pointer text-center space-y-1.5 transition-all ${
-                      appTheme === 'dark'
-                        ? 'border-dfz-accent bg-[#0e141b]'
-                        : 'border-dfz-border bg-[#0e141b]/60 hover:border-dfz-text-muted'
-                    }`}
-                  >
-                    <div className="w-6 h-6 rounded-full bg-[#151d26] border border-[#26323e] mx-auto" />
-                    <div className="font-semibold text-xs text-white">Тёмная (Classic)</div>
-                  </div>
-
-                  <div
-                    onClick={() => {
-                      setAppTheme('dim');
-                      document.documentElement.classList.remove('light');
-                      document.documentElement.classList.add('dark');
-                    }}
-                    className={`p-3 rounded-dfz-xl border cursor-pointer text-center space-y-1.5 transition-all ${
-                      appTheme === 'dim'
-                        ? 'border-dfz-accent bg-[#151d26]'
-                        : 'border-dfz-border bg-[#151d26]/60 hover:border-dfz-text-muted'
-                    }`}
-                  >
-                    <div className="w-6 h-6 rounded-full bg-[#19232e] border border-[#26323e] mx-auto" />
-                    <div className="font-semibold text-xs text-white">Приглушённая</div>
-                  </div>
-
-                  <div
-                    onClick={() => {
-                      setAppTheme('light');
-                      document.documentElement.classList.remove('dark');
-                      document.documentElement.classList.add('light');
-                    }}
-                    className={`p-3 rounded-dfz-xl border cursor-pointer text-center space-y-1.5 transition-all ${
-                      appTheme === 'light'
-                        ? 'border-dfz-accent bg-white'
-                        : 'border-dfz-border bg-gray-100 hover:border-dfz-text-muted'
-                    }`}
-                  >
-                    <div className="w-6 h-6 rounded-full bg-gray-200 border border-gray-300 mx-auto" />
-                    <div className="font-semibold text-xs text-gray-900">Светлая</div>
-                  </div>
+                  {([{id:'dark',label:'Графит',color:'#101115'},{id:'dim',label:'Сумерки',color:'#22232c'},{id:'light',label:'Светлая',color:'#f1f0f6'}] as const).map(theme => <button key={theme.id} disabled={themeSaving} aria-pressed={appTheme === theme.id} onClick={async()=>{setThemeSaving(true);setThemeError('');const saved=await updateProfile({theme:theme.id});if(saved)setAppTheme(theme.id);else setThemeError('Не удалось сохранить тему. Попробуйте ещё раз.');setThemeSaving(false);}} className={`p-3 rounded-xl border text-center space-y-2 transition-colors disabled:opacity-60 ${appTheme === theme.id ? 'border-dfz-accent bg-dfz-accent-subtle' : 'border-dfz-border hover:bg-dfz-surface-hover'}`}><span className="block h-12 rounded-lg border border-dfz-border" style={{background:theme.color}}/><span className="block text-xs font-medium">{theme.label}</span></button>)}
                 </div>
+                {themeError && <p role="alert" className="text-xs text-dfz-danger">{themeError}</p>}
               </div>
 
               <div className="space-y-2">
@@ -854,7 +812,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => setChatDensity('comfortable')}
+                    onClick={async () => { const r = await apiRequest('/api/settings',{method:'PUT',body:JSON.stringify({density:'comfortable'})}); if(r.success){setChatDensity('comfortable'); document.documentElement.dataset.density='comfortable';} }}
                     className={`flex-1 py-2 px-3 rounded-dfz-lg border text-xs font-medium transition-colors ${
                       chatDensity === 'comfortable'
                         ? 'bg-dfz-accent text-white border-dfz-accent'
@@ -865,7 +823,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   </button>
                   <button
                     type="button"
-                    onClick={() => setChatDensity('compact')}
+                    onClick={async () => { const r = await apiRequest('/api/settings',{method:'PUT',body:JSON.stringify({density:'compact'})}); if(r.success){setChatDensity('compact'); document.documentElement.dataset.density='compact';} }}
                     className={`flex-1 py-2 px-3 rounded-dfz-lg border text-xs font-medium transition-colors ${
                       chatDensity === 'compact'
                         ? 'bg-dfz-accent text-white border-dfz-accent'

@@ -264,7 +264,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ userId, onCl
               <>
                 <button
                   onClick={handleStartMessage}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#2a8dd4] hover:bg-[#2481cc] text-white text-xs font-semibold rounded-dfz-md transition-colors shadow-dfz-sm"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-primary)] hover:bg-[var(--accent-primary)] text-white text-xs font-semibold rounded-dfz-md transition-colors shadow-dfz-sm"
                 >
                   <MessageSquare size={14} />
                   <span>Сообщение</span>

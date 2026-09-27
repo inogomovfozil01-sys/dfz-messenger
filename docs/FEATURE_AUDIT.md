@@ -37,3 +37,34 @@ Audit date: 2026-09-27. Existing Next.js frontend, Express API, Prisma/PostgreSQ
 - Baseline API TypeScript build: passed.
 - No deployment performed; production readiness is not asserted.
 - Additional changes and verified scenarios will be appended below.
+
+## Rebuild progress — verified 2026-09-27
+
+### Implemented in the existing application
+
+- DFZ graphite/iris visual system, desktop navigation rail, revised chat list/search/stories, larger chat header, redesigned message bubbles and composer. Light and dim themes use their own tokens; theme selection persists in the profile. Density setting persists and affects chat rows. Desktop navigation opens the existing functional views.
+- Local login no longer inherits the initial global loading state. Browser QA created a contact, opened a direct conversation, sent messages, searched globally, and navigated to the matching message.
+- Search respects per-member cleared history; profile search, contacts, chat list and chat details respect photo and last-seen privacy. Cleared history does not leak through chat previews or pinned-message lists.
+- Group policy, limited/expiring/revocable invites, join approval, recent actions, user settings and private drafts have persisted API routes. Invite usage and approval decisions use transaction locks.
+- Message membership/right checks, cross-chat target validation, server-originated message events, participant-validated call signaling, session revocation checks and authenticated media access were added. Forwarding is performed server-side and respects source membership and protected content.
+- Real report submission replaces the previous local alert. Inaccessible report targets are rejected. Forwarding errors remain visible instead of showing false success.
+- Activity rewards serialize concurrent heartbeats; transfer replay keys are scoped to sender. Voice playback derives duration from media, and video notes use actual uploaded metadata.
+- PWA offline shell and update notification added. Private chat responses are not cached by the new worker. Installation/offline lifecycle is not yet browser verified.
+
+### Verification evidence
+
+- API TypeScript build passed after chat privacy changes.
+- Web TypeScript validation passed after navigation redesign; final production build status recorded below.
+- Existing API integration suite: 13 scenarios passed against the dedicated local `dfz_rebuild_qa` PostgreSQL database.
+- `apps/api/test/security-regression.ts`: passed, including contacts/list/detail privacy, cross-chat identifiers, blocked communication, cleared history/pins, revoked sessions.
+- `apps/api/test/management-regression.ts`: passed, including HTTP admin/member permissions, global/in-chat cleared-history search, report access, concurrent one-use invite consumption, draft isolation, settings validation.
+- Economy suite previously passed 14 scenarios on the same dedicated local database.
+- Browser: actual message sending after redesign, global search result navigation, dark/light theme switch. Screenshot evidence: `qa/dfz-desktop.png` (1280 x 720) and `qa/dfz-mobile.png` (390 x 844). Mobile chat had document width and content width 390 px. This is not a full device/browser matrix.
+
+### Remaining release blockers and unverified scope
+
+This is progress, not completion of all 115 request sections. Still required: complete custom-folder UI, privacy exceptions and advanced story audiences, 2FA, channel comments/discussion/views/analytics, comprehensive granular permission enforcement, reliable retry/offline sending, full notification/autodownload behavior, every premium limit and gift race case, media content-signature validation and pagination, bounded search navigation, multi-device/reconnect/revocation race testing, complete localization, and full admin workflows.
+
+Calls need real microphone/camera, ICE/TURN and two-device verification. Redis is unavailable locally; memory fallback is not equivalent to production Redis. No production deployment or remote database migration was performed. Existing-database migration adoption needs a backup and schema comparison; do not apply the initial baseline CREATE statements blindly to an existing database.
+
+Final build result: `@dfz/types`, API and Next.js production build passed after theme schema/type alignment. The fresh economy rerun passed all 14 cases, and management HTTP tests also verified persisted `dim` theme. `git diff --check` passed. A standalone lint configuration is still not established; the build's type-check stage must not be reported as a complete lint audit.

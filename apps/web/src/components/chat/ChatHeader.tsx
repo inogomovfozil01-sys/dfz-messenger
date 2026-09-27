@@ -134,6 +134,8 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          <button className="text-xs p-2" onClick={() => { const state=useChatStore.getState(); const selected=(state.messages[chat.id] || []).filter(m=>selectedMessageIds.includes(m.id)); void navigator.clipboard.writeText(selected.map(m=>m.content).join('\n')); }}>Копировать</button>
+          <button className="text-xs p-2" onClick={() => { const state=useChatStore.getState(); const selected=(state.messages[chat.id] || []).find(m=>selectedMessageIds.includes(m.id)); if(selected) state.openForward(selected); }}><Share2 size={16} /></button>
           <button
             onClick={bulkDeleteMessages}
             disabled={selectedMessageIds.length === 0}
@@ -150,7 +152,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   // If searching in chat, render in-chat search bar
   if (isSearchingInChat) {
     return (
-      <div className="flex items-center justify-between h-14 px-3 sm:px-4 bg-dfz-surface border-b border-dfz-border select-none z-10 flex-shrink-0 animate-fade-in">
+      <div className="flex items-center justify-between h-[72px] px-3 sm:px-6 bg-dfz-surface border-b border-dfz-border select-none z-10 flex-shrink-0 animate-fade-in">
         <div className="flex items-center gap-2 flex-1 min-w-0 mr-3">
           <Search size={16} className="text-dfz-text-muted flex-shrink-0" />
           <input
@@ -183,7 +185,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
 
   return (
     <div className="flex flex-col bg-dfz-surface border-b border-dfz-border select-none z-10 flex-shrink-0">
-      <div className="flex items-center justify-between h-14 px-3 sm:px-4">
+      <div className="flex items-center justify-between h-[72px] px-3 sm:px-6">
         <div className="flex items-center gap-3 min-w-0">
           {/* Mobile Back Button */}
           <button
@@ -364,7 +366,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           className="flex items-center justify-between px-3 sm:px-4 py-1.5 bg-[#19232e]/80 hover:bg-[#19232e] border-t border-dfz-border/60 text-xs cursor-pointer transition-colors"
         >
           <div className="flex items-center gap-2 min-w-0">
-            <Pin size={13} className="text-[#2a8dd4] flex-shrink-0" />
+            <Pin size={13} className="text-[var(--accent-primary)] flex-shrink-0" />
             <div className="truncate">
               <span className="font-semibold text-dfz-text">
                 Закрепленное сообщение{' '}

@@ -10,7 +10,7 @@ const updateProfileSchema = z.object({
   displayName: z.string().min(1).max(64).optional(),
   bio: z.string().max(200).optional().nullable(),
   avatarUrl: z.string().url().optional().nullable(),
-  theme: z.enum(['dark', 'light', 'system']).optional(),
+  theme: z.enum(['dark', 'dim', 'light', 'system']).optional(),
   language: z.string().max(10).optional(),
 });
 

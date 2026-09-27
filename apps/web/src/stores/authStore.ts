@@ -100,6 +100,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   logout: async () => {
     await apiRequest('/api/auth/logout', { method: 'POST' });
     socketService.disconnect();
+    const { useChatStore } = await import('./chatStore');
+    useChatStore.setState(useChatStore.getInitialState(), true);
     set({
       user: null,
       profile: null,

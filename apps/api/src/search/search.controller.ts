@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { prisma } from '../prisma';
 import { authGuard } from '../common/auth.guard';
-import { ChatType } from '@dfz/types';
+import { usersService } from '../users/users.service';
 
 export const searchRouter = Router();
 
@@ -66,11 +66,12 @@ searchRouter.get('/global', async (req: Request, res: Response, next: NextFuncti
       take: 10,
     });
 
-    // C. Messages (only in user's chats)
+    const memberships = await prisma.chatMember.findMany({ where: { userId }, select: { chatId: true, clearedAt: true } });
+    // Search only history still visible to this member.
     const messages = await prisma.message.findMany({
       where: {
         AND: [
-          { chat: { members: { some: { userId } } } },
+          { OR: memberships.map(m => ({ chatId: m.chatId, ...(m.clearedAt ? { createdAt: { gt: m.clearedAt } } : {}) })) },
           { isDeleted: false },
           { content: { contains: q, mode: 'insensitive' } },
         ],
@@ -86,13 +87,7 @@ searchRouter.get('/global', async (req: Request, res: Response, next: NextFuncti
     return res.json({
       success: true,
       data: {
-        users: users.map(u => ({
-          id: u.id,
-          username: u.username,
-          displayName: u.profile?.displayName || u.username,
-          avatarUrl: u.profile?.avatarUrl,
-          bio: u.profile?.bio,
-        })),
+        users: await Promise.all(users.map(u => usersService.getProfile(userId, u.id))),
         chats: chats.map(c => ({
           id: c.id,
           type: c.type,
@@ -139,6 +134,7 @@ searchRouter.get('/chat/:chatId', async (req: Request, res: Response, next: Next
       where: {
         chatId,
         isDeleted: false,
+        ...(member.clearedAt ? { createdAt: { gt: member.clearedAt } } : {}),
         content: { contains: q, mode: 'insensitive' },
       },
       include: {

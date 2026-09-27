@@ -158,7 +158,7 @@ export const ContactsView: React.FC<ContactsViewProps> = ({ onSelectUser, onBack
           </div>
           <button
             onClick={() => setShowAdd(!showAdd)}
-            className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-[#2a8dd4] hover:bg-[#2481cc] text-white rounded-dfz-md shadow-dfz-sm transition-colors"
+            className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-[var(--accent-primary)] hover:bg-[var(--accent-primary)] text-white rounded-dfz-md shadow-dfz-sm transition-colors"
           >
             <UserPlus size={14} />
             <span>Добавить</span>

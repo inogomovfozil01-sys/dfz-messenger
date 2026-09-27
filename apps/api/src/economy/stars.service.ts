@@ -3,6 +3,7 @@ import { gatewayInstance } from '../gateway/websocket.gateway';
 import { ENV } from '../config';
 import { UserRole, StarTransactionType, Permission } from '@dfz/types';
 import { hasPermission } from '../common/permission.guard';
+import { requirePosting, requireCommunication, httpError } from '../common/access';
 
 export class StarsService {
   /**
@@ -76,6 +77,9 @@ export class StarsService {
     chatId?: string
   ) {
     // 1. Validation
+    await requireCommunication(senderId, recipientId, 'messageVisibility');
+    if (chatId) await requirePosting(chatId, senderId);
+    if (idempotencyKey) idempotencyKey = `transfer:${senderId}:${idempotencyKey}`;
     if (!Number.isInteger(amount) || amount <= 0) {
       throw new Error('Stars amount must be a positive integer');
     }
@@ -110,9 +114,10 @@ export class StarsService {
     // 3. Idempotency Check
     if (idempotencyKey) {
       const existingTx = await prisma.starTransaction.findUnique({
-        where: { idempotencyKey },
+        where: { idempotencyKey: `${idempotencyKey}:out` },
       });
       if (existingTx) {
+        if (existingTx.referenceId !== recipientId || existingTx.amount !== -amount) throw httpError(409, 'Idempotency key already used for another transfer');
         return {
           success: true,
           transactionId: existingTx.id,
@@ -151,6 +156,7 @@ export class StarsService {
           where: { userId: senderId },
         });
         senderBalanceAfter = refreshedSender!.balance;
+        senderBalanceBefore = senderBalanceAfter + amount;
       }
 
       // Credit recipient

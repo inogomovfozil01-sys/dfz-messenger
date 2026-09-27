@@ -8,6 +8,7 @@ import { ChatType } from '@dfz/types';
 export const ForwardModal: React.FC = () => {
   const { chats, isForwardOpen, forwardingMessage, closeForward, forwardToChat } = useChatStore();
   const [query, setQuery] = useState('');
+  const [error, setError] = useState('');
   const [isForwarding, setIsForwarding] = useState(false);
   const [forwardedChatId, setForwardedChatId] = useState<string | null>(null);
 
@@ -20,19 +21,16 @@ export const ForwardModal: React.FC = () => {
 
   const handleSelectChat = async (chatId: string) => {
     setIsForwarding(true);
-    setForwardedChatId(chatId);
-    await forwardToChat(chatId);
+    setError('');
+    const success = await forwardToChat(chatId);
+    if (!success) setError('Не удалось переслать сообщение. Проверьте права доступа и повторите.');
     setIsForwarding(false);
-    setTimeout(() => {
-      closeForward();
-      setForwardedChatId(null);
-    }, 400);
   };
 
   const getChatIcon = (type: ChatType) => {
     switch (type) {
       case ChatType.SAVED:
-        return <Bookmark size={14} className="text-[#2a8dd4]" />;
+        return <Bookmark size={14} className="text-[var(--accent-primary)]" />;
       case ChatType.GROUP:
         return <Users size={14} className="text-purple-400" />;
       case ChatType.CHANNEL:
@@ -45,8 +43,9 @@ export const ForwardModal: React.FC = () => {
   return (
     <Modal isOpen={isForwardOpen} onClose={closeForward} title="Переслать сообщение" maxWidth="sm">
       <div className="space-y-3 select-none">
+        {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
         {/* Preview of forwarded message snippet */}
-        <div className="p-2.5 bg-dfz-bg border-l-2 border-[#2a8dd4] rounded-dfz-md text-xs text-dfz-text-muted">
+        <div className="p-2.5 bg-dfz-bg border-l-2 border-[var(--accent-primary)] rounded-dfz-md text-xs text-dfz-text-muted">
           <p className="font-semibold text-dfz-text text-[11px] mb-0.5">Пересылаемое сообщение</p>
           <p className="truncate text-dfz-text-muted">
             {forwardingMessage.content || 'Вложение или медиафайл'}
@@ -107,7 +106,7 @@ export const ForwardModal: React.FC = () => {
                         <Check size={16} />
                       </span>
                     ) : (
-                      <span className="p-1 text-dfz-text-muted hover:text-[#2a8dd4]">
+                      <span className="p-1 text-dfz-text-muted hover:text-[var(--accent-primary)]">
                         <Share2 size={16} />
                       </span>
                     )}

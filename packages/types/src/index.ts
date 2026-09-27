@@ -100,7 +100,7 @@ export interface UserProfile {
   callVisibility: PrivacyVisibility;
   groupAddVisibility: PrivacyVisibility;
   photoVisibility: PrivacyVisibility;
-  theme: 'dark' | 'light' | 'system';
+  theme: 'dark' | 'dim' | 'light' | 'system';
   language: string;
 }
 

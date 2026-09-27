@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import { AppUpdates } from '../components/layout/AppUpdates';
 
 export const metadata: Metadata = {
   title: 'DFZ Messenger',
@@ -31,6 +32,7 @@ export default function RootLayout({
       </head>
       <body className="bg-dfz-bg text-dfz-text selection:bg-dfz-accent selection:text-white">
         {children}
+        <AppUpdates />
       </body>
     </html>
   );

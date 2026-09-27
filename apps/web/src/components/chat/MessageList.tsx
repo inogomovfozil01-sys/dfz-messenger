@@ -107,7 +107,7 @@ export const MessageList: React.FC<MessageListProps> = ({ chatId }) => {
     <div
       ref={scrollContainerRef}
       onScroll={handleScroll}
-      className="flex-1 p-4 overflow-y-auto overflow-x-hidden flex flex-col"
+      className="dfz-chat-canvas flex-1 p-4 sm:px-7 overflow-y-auto overflow-x-hidden flex flex-col"
     >
       {/* Lightbox for full image preview */}
       {previewImage && (

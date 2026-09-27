@@ -5,7 +5,7 @@ import { apiRequest } from '../../lib/api';
 interface VideoNoteRecorderProps {
   chatId: string;
   onClose: () => void;
-  onSendVideoNote: (url: string, duration: number) => void;
+  onSendVideoNote: (attachment: any, duration: number) => void;
 }
 
 export const VideoNoteRecorder: React.FC<VideoNoteRecorderProps> = ({
@@ -106,7 +106,7 @@ export const VideoNoteRecorder: React.FC<VideoNoteRecorderProps> = ({
         });
 
         if (uploadRes.success && uploadRes.data) {
-          onSendVideoNote(uploadRes.data.url, seconds || 1);
+          onSendVideoNote(uploadRes.data, seconds || 1);
         } else {
           throw new Error('Ошибка загрузки видеосообщения');
         }

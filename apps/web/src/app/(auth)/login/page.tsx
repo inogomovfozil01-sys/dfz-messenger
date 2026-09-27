@@ -8,7 +8,8 @@ import { useAuthStore } from '../../../stores/authStore';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, isLoading } = useAuthStore();
+  const { login } = useAuthStore();
+  const [isLoading, setIsLoading] = useState(false);
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -17,7 +18,9 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
 
+    setIsLoading(true);
     const res = await login({ usernameOrEmail, password });
+    setIsLoading(false);
     if (res.success) {
       router.push('/');
     } else {

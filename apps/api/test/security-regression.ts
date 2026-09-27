@@ -41,6 +41,11 @@ async function main() {
     await usersService.updateProfile(aid, { avatarUrl: 'https://example.invalid/private.png' });
     await contactsService.addContact(bid, aid);
     assert.equal((await contactsService.getContacts(bid))[0].contactUser.avatarUrl, null);
+    const privateDetail = await chatsService.getChatById(privateChat.id, bid);
+    assert.equal(privateDetail.avatarUrl, null);
+    assert.equal(privateDetail.members.find(member => member.userId === aid)?.avatarUrl, null);
+    assert.equal(privateDetail.members.find(member => member.userId === aid)?.lastSeenAt, null);
+    assert.equal((await chatsService.getUserChats(bid)).find(chat => chat.id === privateChat.id)?.avatarUrl, null);
     const story = await storiesService.createStory(aid, { mediaUrl: 'text', mediaType: 'TEXT' as any, privacy: PrivacyVisibility.CONTACTS });
     assert.equal((await storiesService.getFeed(bid)).some(f => f.stories.some(s => s.id === story.id)), false);
     await denied(() => storiesService.recordView(bid, story.id));
@@ -55,10 +60,12 @@ async function main() {
     await chatsService.clearHistory(group.id, bid);
     assert.equal((await messagesService.getMessages(group.id, bid, {})).items.length, 0);
     assert.equal((await messagesService.getMessages(group.id, aid, {})).items.length, 1);
+    assert.equal((await chatsService.getUserChats(bid)).find(chat => chat.id === group.id)?.lastMessage, null);
+    assert.equal((await chatsService.getChatById(group.id, bid)).pinnedMessages.length, 0);
     const sessionId = (jwt.decode(a.accessToken) as any).sessionId;
     await authService.terminateSession(aid, sessionId);
     await denied(() => requireSession(aid, sessionId));
-    console.log('PASS: 23 authorization, privacy, block, history and revoked-session regression checks');
+    console.log('PASS: authorization, privacy across contacts/chat lists/details, block, cleared history/pins and revoked sessions');
   } finally {
     await prisma.chat.deleteMany({ where: { members: { some: { userId: { in: [aid,bid,cid] } } } } });
     await prisma.user.deleteMany({ where: { id: { in: [aid,bid,cid] } } });

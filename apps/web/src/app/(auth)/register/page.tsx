@@ -9,7 +9,8 @@ import { apiRequest } from '../../../lib/api';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { register, isLoading } = useAuthStore();
+  const { register } = useAuthStore();
+  const [isLoading, setIsLoading] = useState(false);
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -53,12 +54,14 @@ export default function RegisterPage() {
     if (usernameStatus.available === false) return;
     setError('');
 
+    setIsLoading(true);
     const res = await register({
       username: username.trim().toLowerCase(),
       password,
       email: email.trim() || undefined,
     });
 
+    setIsLoading(false);
     if (res.success) {
       router.push('/onboarding');
     } else {

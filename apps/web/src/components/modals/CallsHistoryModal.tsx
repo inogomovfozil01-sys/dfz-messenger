@@ -214,7 +214,7 @@ export const CallsHistoryModal: React.FC<CallsHistoryModalProps> = ({
 
                       <div className="flex items-center gap-1.5 text-[11px] mt-0.5">
                         {isOutgoing ? (
-                          <PhoneOutgoing size={13} className="text-[#2a8dd4]" />
+                          <PhoneOutgoing size={13} className="text-[var(--accent-primary)]" />
                         ) : isMissed ? (
                           <PhoneMissed size={13} className="text-rose-400" />
                         ) : (

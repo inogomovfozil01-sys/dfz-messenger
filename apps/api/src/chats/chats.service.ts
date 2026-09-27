@@ -2,6 +2,7 @@ import { requireCommunication, requireMember, requireRight, httpError } from '..
 import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '../prisma';
 import { ChatType, MemberRole, ReceiptStatus } from '@dfz/types';
+import { usersService } from '../users/users.service';
 import { gatewayInstance } from '../gateway/websocket.gateway';
 
 export class ChatsService {
@@ -40,7 +41,9 @@ export class ChatsService {
     const results = await Promise.all(
       memberships.map(async (m) => {
         const chat = m.chat;
-        const lastMsg = chat.messages[0] || null;
+        const candidate = chat.messages[0];
+        const lastMsg = candidate && !candidate.isDeleted && (!m.clearedAt || candidate.createdAt > m.clearedAt) ? candidate : null;
+        const profiles = new Map(await Promise.all(chat.members.map(async mem => [mem.userId, await usersService.getProfile(userId, mem.userId)] as const)));
 
         // Count unread messages
         let unreadCount = 0;
@@ -49,7 +52,8 @@ export class ChatsService {
             where: {
               chatId: chat.id,
               senderId: { not: userId },
-              createdAt: { gt: m.joinedAt },
+              isDeleted: false,
+              createdAt: { gt: m.clearedAt && m.clearedAt > m.joinedAt ? m.clearedAt : m.joinedAt },
               receipts: {
                 none: {
                   userId,
@@ -68,7 +72,7 @@ export class ChatsService {
           const otherMember = chat.members.find(mem => mem.userId !== userId);
           if (otherMember) {
             title = otherMember.user.profile?.displayName || otherMember.user.username;
-            avatarUrl = otherMember.user.profile?.avatarUrl || null;
+            avatarUrl = profiles.get(otherMember.userId)?.avatarUrl || null;
           }
         } else if (chat.type === ChatType.SAVED) {
           title = 'Saved Messages';
@@ -104,8 +108,9 @@ export class ChatsService {
             role: mem.role,
             username: mem.user.username,
             displayName: mem.user.profile?.displayName || mem.user.username,
-            avatarUrl: mem.user.profile?.avatarUrl,
-            lastSeenAt: mem.user.profile?.lastSeenAt?.toISOString() || null,
+            avatarUrl: profiles.get(mem.userId)?.avatarUrl,
+            lastSeenAt: profiles.get(mem.userId)?.lastSeenAt || null,
+            isOnline: profiles.get(mem.userId)?.isOnline || false,
           })),
           createdAt: chat.createdAt.toISOString(),
           updatedAt: chat.updatedAt.toISOString(),
@@ -155,13 +160,14 @@ export class ChatsService {
       throw err;
     }
 
+    const profiles = new Map(await Promise.all(chat.members.map(async mem => [mem.userId, await usersService.getProfile(userId, mem.userId)] as const)));
     let title = chat.title;
     let avatarUrl = chat.avatarUrl;
     if (chat.type === ChatType.DIRECT) {
       const other = chat.members.find(m => m.userId !== userId);
       if (other) {
         title = other.user.profile?.displayName || other.user.username;
-        avatarUrl = other.user.profile?.avatarUrl || null;
+        avatarUrl = profiles.get(other.userId)?.avatarUrl || null;
       }
     } else if (chat.type === ChatType.SAVED) {
       title = 'Saved Messages';
@@ -188,12 +194,13 @@ export class ChatsService {
         permissions: m.permissions,
         username: m.user.username,
         displayName: m.user.profile?.displayName || m.user.username,
-        avatarUrl: m.user.profile?.avatarUrl,
-        bio: m.user.profile?.bio,
-        lastSeenAt: m.user.profile?.lastSeenAt?.toISOString() || null,
+        avatarUrl: profiles.get(m.userId)?.avatarUrl,
+        bio: profiles.get(m.userId)?.bio,
+        lastSeenAt: profiles.get(m.userId)?.lastSeenAt || null,
+        isOnline: profiles.get(m.userId)?.isOnline || false,
         joinedAt: m.joinedAt.toISOString(),
       })),
-      pinnedMessages: chat.pinnedMessages.map(p => ({
+      pinnedMessages: chat.pinnedMessages.filter(p => !p.message.isDeleted && (!membership?.clearedAt || p.message.createdAt > membership.clearedAt)).map(p => ({
         id: p.message.id,
         content: p.message.content,
         senderId: p.message.senderId,

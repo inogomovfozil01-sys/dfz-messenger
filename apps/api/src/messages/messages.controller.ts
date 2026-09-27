@@ -9,6 +9,15 @@ export const messagesRouter = Router();
 
 messagesRouter.use(authGuard);
 
+messagesRouter.post('/forward', async (req, res, next) => {
+  try {
+    const data = z.object({ messageIds:z.array(z.string()).min(1).max(100), chatId:z.string().min(1) }).parse(req.body);
+    const messages = await messagesService.forward(req.user!.userId, data.messageIds, data.chatId);
+    for (const message of messages) await gatewayInstance?.broadcastToChat(data.chatId, 'message:new', message);
+    res.json({success:true, data:messages});
+  } catch(err) { next(err); }
+});
+
 const sendMessageSchema = z.object({
   chatId: z.string().min(1, 'chatId required'),
   content: z.string().max(4096).default(''),

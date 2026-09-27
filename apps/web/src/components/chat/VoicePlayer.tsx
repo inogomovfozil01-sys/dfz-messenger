@@ -18,12 +18,11 @@ export const VoicePlayer: React.FC<VoicePlayerProps> = ({
   const [currentTime, setCurrentTime] = useState(0);
   const [playbackSpeed, setPlaybackSpeed] = useState<1 | 1.5 | 2>(1);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [measuredDuration,setMeasuredDuration] = useState(0);
 
-  const defaultWaveform = waveform && waveform.length ? waveform : [
-    25, 40, 60, 30, 45, 80, 65, 30, 50, 90, 70, 40, 30, 60, 85, 45, 35, 60, 40, 25
-  ];
+  const defaultWaveform = waveform && waveform.length ? waveform : Array(24).fill(20);
 
-  const totalDuration = duration || 10;
+  const totalDuration = measuredDuration || duration || 0;
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -51,8 +50,7 @@ export const VoicePlayer: React.FC<VoicePlayerProps> = ({
       audio.pause();
       setIsPlaying(false);
     } else {
-      audio.play();
-      setIsPlaying(true);
+      void audio.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
     }
   };
 
@@ -74,7 +72,7 @@ export const VoicePlayer: React.FC<VoicePlayerProps> = ({
 
   return (
     <div className="flex items-center gap-2.5 py-1 min-w-[200px] max-w-[280px]">
-      <audio ref={audioRef} src={url} preload="metadata" />
+      <audio ref={audioRef} src={url} preload="metadata" onLoadedMetadata={() => { const d=audioRef.current?.duration; if(d && Number.isFinite(d)) setMeasuredDuration(d); }} />
 
       {/* Play/Pause Button */}
       <button
@@ -91,7 +89,7 @@ export const VoicePlayer: React.FC<VoicePlayerProps> = ({
 
       {/* Waveform & Time */}
       <div className="flex-1 flex flex-col justify-center gap-1">
-        <div className="flex items-center gap-[2px] h-6 cursor-pointer">
+        <div className="flex items-center gap-[2px] h-6 cursor-pointer" role="slider" aria-label="Позиция воспроизведения" aria-valuemin={0} aria-valuemax={totalDuration} aria-valuenow={currentTime} tabIndex={0} onKeyDown={e=>{ if(audioRef.current && ['ArrowLeft','ArrowRight'].includes(e.key)) audioRef.current.currentTime=Math.max(0,Math.min(totalDuration,currentTime+(e.key==='ArrowRight'?5:-5))); }} onClick={e=>{ if(audioRef.current && totalDuration) { const rect=e.currentTarget.getBoundingClientRect(); audioRef.current.currentTime=(e.clientX-rect.left)/rect.width*totalDuration; } }}>
           {defaultWaveform.map((bar, index) => {
             const barPercent = (index / defaultWaveform.length) * 100;
             const isFilled = barPercent <= progressPercent;

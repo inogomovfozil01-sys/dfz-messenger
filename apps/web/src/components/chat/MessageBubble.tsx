@@ -12,6 +12,7 @@ import { LinkPreviewBubble } from './LinkPreviewBubble';
 import { StarTransferBubble } from './StarTransferBubble';
 import { GiftCardBubble } from './GiftCardBubble';
 import { useChatStore } from '../../stores/chatStore';
+import { ReportModal } from '../modals/ReportModal';
 
 interface MessageBubbleProps {
   message: Message;
@@ -36,6 +37,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 }) => {
   const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [reportOpen,setReportOpen]=useState(false);
   const {
     activeChat,
     pinMessage,
@@ -113,7 +115,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             id: 'report',
             label: 'Пожаловаться',
             icon: <Flag size={15} />,
-            onClick: () => alert('Жалоба на сообщение отправлена модераторам'),
+            onClick: () => setReportOpen(true),
           },
         ]
       : []),
@@ -157,10 +159,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         isSelectMode ? 'cursor-pointer hover:bg-white/[0.02] px-2 py-0.5 rounded transition-colors' : ''
       }`}
     >
+      <ReportModal targetId={reportOpen ? message.id : null} targetType="MESSAGE" onClose={()=>setReportOpen(false)} />
       {isSelectMode && (
         <div className="flex-shrink-0">
           {isSelected ? (
-            <CheckSquare size={18} className="text-[#2a8dd4]" />
+            <CheckSquare size={18} className="text-[var(--accent-primary)]" />
           ) : (
             <Square size={18} className="text-dfz-text-muted" />
           )}
@@ -257,15 +260,15 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       ) : (
         /* Telegram Bubble Container */
         <div
-          className={`relative rounded-[16px] px-3.5 py-2 text-sm leading-relaxed transition-all shadow-sm max-w-[88%] sm:max-w-[72%] ${
+          className={`relative rounded-[18px] px-4 py-2.5 text-sm leading-relaxed transition-all shadow-sm max-w-full ${
             isOutgoing
-              ? 'bg-[#2b5278] text-white rounded-br-[4px]'
-              : 'bg-[#182533] text-white rounded-bl-[4px]'
+              ? 'bg-[var(--bubble-outgoing)] text-[var(--bubble-outgoing-text)] rounded-br-[6px]'
+              : 'bg-[var(--bubble-incoming)] text-[var(--bubble-incoming-text)] rounded-bl-[6px]'
           }`}
         >
           {/* Sender Name in Group/Channel for incoming */}
           {!isOutgoing && showAvatar && (
-            <div className="text-[12px] font-semibold text-[#2481cc] mb-0.5 truncate">
+            <div className="text-[12px] font-semibold text-[var(--accent-primary)] mb-0.5 truncate">
               {message.sender?.profile?.displayName || message.sender?.username}
             </div>
           )}
@@ -273,11 +276,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           {/* Telegram Reply Quote preview */}
           {message.replyTo && (
             <div
-              className={`border-l-[3px] border-[#2481cc] pl-2.5 py-0.5 mb-1.5 rounded-r bg-black/20 text-xs cursor-pointer ${
+              className={`border-l-[3px] border-[var(--accent-primary)] pl-2.5 py-0.5 mb-1.5 rounded-r bg-black/20 text-xs cursor-pointer ${
                 isOutgoing ? 'bg-black/20' : 'bg-black/20'
               }`}
             >
-              <div className="font-semibold text-[#6eb4f7] text-[11px] truncate">
+              <div className="font-semibold text-[var(--accent-text)] text-[11px] truncate">
                 {message.replyTo.senderName || 'Сообщение'}
               </div>
               <div className="truncate text-white/80 text-[12px]">{message.replyTo.content}</div>
@@ -332,7 +335,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                       isOutgoing ? 'bg-white/10' : 'bg-black/20 border border-white/10'
                     }`}
                   >
-                    <div className="p-2 rounded-dfz-md bg-[#2481cc]/20 text-[#2481cc] flex-shrink-0">
+                    <div className="p-2 rounded-dfz-md bg-[var(--accent-primary)]/20 text-[var(--accent-primary)] flex-shrink-0">
                       <FileText size={20} />
                     </div>
                     <div className="flex-1 min-w-0">

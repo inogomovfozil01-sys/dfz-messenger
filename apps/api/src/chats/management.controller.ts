@@ -61,6 +61,7 @@ managementRouter.put('/chats/:id/join-requests/:requestId', wrap(async (req: any
   await manage(req.params.id, req.user.userId);
   const { approve } = z.object({ approve: z.boolean() }).parse(req.body);
   await prisma.$transaction(async tx => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${req.params.requestId}))`;
     const request = await tx.joinRequest.findFirst({ where: { id: req.params.requestId, chatId: req.params.id, status: 'PENDING' } });
     if (!request) throw httpError(404, 'Request unavailable');
     await tx.joinRequest.update({ where: { id: request.id }, data: { status: approve ? 'APPROVED' : 'REJECTED' } });

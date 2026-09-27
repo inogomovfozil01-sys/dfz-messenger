@@ -94,7 +94,7 @@ export const TelegramDrawer: React.FC<TelegramDrawerProps> = ({
         style={{ animationDuration: '0.2s' }}
       >
         {/* Top Header Card */}
-        <div className="p-4 bg-gradient-to-b from-[#2481cc]/20 via-dfz-surface to-dfz-surface border-b border-dfz-border/80">
+        <div className="p-4 bg-gradient-to-b from-[var(--accent-primary)]/20 via-dfz-surface to-dfz-surface border-b border-dfz-border/80">
           <div className="flex items-center justify-between mb-3">
             <button
               onClick={() => {
@@ -241,7 +241,7 @@ export const TelegramDrawer: React.FC<TelegramDrawerProps> = ({
             }}
             className="w-full flex items-center gap-3.5 px-3 py-2.5 rounded-dfz-xl hover:bg-dfz-surface-hover transition-colors text-left"
           >
-            <Bookmark size={18} className="text-[#2481cc]" />
+            <Bookmark size={18} className="text-[var(--accent-primary)]" />
             <span className="flex-1">Избранное</span>
           </button>
 
@@ -339,7 +339,7 @@ export const TelegramDrawer: React.FC<TelegramDrawerProps> = ({
             <LogOut size={16} />
             <span>Выйти</span>
           </button>
-          <span className="text-[11px] text-dfz-text-muted/60 font-mono">DFZ v2.4</span>
+          <span className="text-[11px] text-dfz-text-muted/60 font-mono">DFZ Messenger</span>
         </div>
       </div>
     </div>

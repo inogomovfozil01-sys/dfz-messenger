@@ -21,6 +21,7 @@ import { ContextMenu, ContextMenuItem } from '../ui/ContextMenu';
 import { useChatStore, FolderFilter } from '../../stores/chatStore';
 import { useAuthStore } from '../../stores/authStore';
 import { StoriesStrip } from '../stories/StoriesStrip';
+import { GlobalSearch } from './GlobalSearch';
 
 interface ChatListProps {
   onOpenMenu: () => void;
@@ -183,9 +184,10 @@ export const ChatList: React.FC<ChatListProps> = ({
     : [];
 
   return (
-    <div className="w-full md:w-[380px] lg:w-[410px] h-full bg-dfz-surface border-r border-dfz-border flex flex-col select-none flex-shrink-0 relative overflow-hidden">
+    <div className="dfz-chat-list w-full md:w-[320px] lg:w-[350px] h-full bg-dfz-surface border-r border-dfz-border flex flex-col select-none flex-shrink-0 relative overflow-hidden">
       {/* Telegram Top Header: Hamburger Menu + Search */}
-      <div className="p-2.5 pb-1 space-y-2 border-b border-dfz-border/80">
+      <div className="p-4 pb-2 space-y-3 border-b border-dfz-border/80">
+        <div className="flex items-center justify-between mb-2"><div className="flex items-center gap-3"><span className="dfz-brand-mark md:hidden">DFZ</span><div><h1 className="text-xl font-semibold tracking-tight">Сообщения</h1><p className="text-xs text-dfz-text-muted mt-0.5">Ваше пространство общения</p></div></div><button onClick={onNewChat} title="Новое сообщение" className="w-10 h-10 grid place-items-center rounded-xl bg-dfz-accent-subtle text-dfz-accent"><Edit2 size={18}/></button></div>
         <div className="flex items-center gap-2">
           {/* Hamburger Menu Button */}
           <button
@@ -205,8 +207,8 @@ export const ChatList: React.FC<ChatListProps> = ({
               data-global-search
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Поиск"
-              className="w-full h-9 pl-10 pr-8 bg-dfz-bg border border-dfz-border/60 rounded-full text-xs text-dfz-text placeholder:text-dfz-text-muted focus:outline-none focus:border-[#2481cc] transition-colors"
+              aria-label="Поиск пользователей и сообщений" placeholder="Поиск в DFZ"
+              className="w-full h-11 pl-10 pr-8 bg-dfz-bg border border-dfz-border/60 rounded-xl text-sm text-dfz-text placeholder:text-dfz-text-muted focus:outline-none focus:border-[var(--accent-primary)] transition-colors"
             />
             {searchQuery && (
               <button
@@ -231,7 +233,7 @@ export const ChatList: React.FC<ChatListProps> = ({
                 onClick={() => setActiveFolder(f.id)}
                 className={`relative px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
                   isActive
-                    ? 'bg-[#2481cc] text-white shadow-sm'
+                    ? 'bg-[var(--accent-primary)] text-white shadow-sm'
                     : 'text-dfz-text-muted hover:text-dfz-text hover:bg-dfz-surface-hover'
                 }`}
               >
@@ -239,7 +241,7 @@ export const ChatList: React.FC<ChatListProps> = ({
                 {f.count !== undefined && f.count > 0 && (
                   <span
                     className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                      isActive ? 'bg-white/25 text-white' : 'bg-[#2481cc] text-white'
+                      isActive ? 'bg-white/25 text-white' : 'bg-[var(--accent-primary)] text-white'
                     }`}
                   >
                     {f.count > 99 ? '99+' : f.count}
@@ -251,6 +253,7 @@ export const ChatList: React.FC<ChatListProps> = ({
         </div>
       </div>
 
+      {searchQuery.trim() && <GlobalSearch query={searchQuery} />}
       {/* 24-hour Stories Strip */}
       <StoriesStrip />
 
@@ -285,9 +288,10 @@ export const ChatList: React.FC<ChatListProps> = ({
                 key={chat.id}
                 onClick={() => selectChat(chat.id)}
                 onContextMenu={(e) => handleChatContextMenu(e, chat)}
-                className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors relative ${
+                role="button" tabIndex={0} aria-current={isActive} onKeyDown={e => { if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectChat(chat.id); } }}
+                className={`dfz-chat-row flex items-center gap-3 px-3 py-3 cursor-pointer transition-colors relative ${
                   isActive
-                    ? 'bg-[#2b5278] text-white'
+                    ? 'bg-[var(--bg-surface-active)] text-dfz-text'
                     : 'hover:bg-dfz-surface-hover/80 text-dfz-text'
                 }`}
               >
@@ -298,7 +302,7 @@ export const ChatList: React.FC<ChatListProps> = ({
                   size="md"
                   isOnline={
                     chat.type === ChatType.DIRECT &&
-                    chat.members?.some((m) => m.userId !== user?.id && !!m.lastSeenAt)
+                    chat.members?.some((m) => m.userId !== user?.id && !!(m as any).isOnline)
                   }
                 />
 
@@ -308,25 +312,25 @@ export const ChatList: React.FC<ChatListProps> = ({
                   <div className="flex items-center justify-between gap-1 mb-0.5">
                     <div className="flex items-center gap-1.5 min-w-0 truncate">
                       {chat.type === ChatType.CHANNEL && (
-                        <Radio size={14} className="text-[#2481cc] flex-shrink-0" />
+                        <Radio size={14} className="text-[var(--accent-primary)] flex-shrink-0" />
                       )}
                       {chat.type === ChatType.GROUP && (
                         <Users size={14} className="text-dfz-text-muted flex-shrink-0" />
                       )}
-                      <span className="text-xs font-bold truncate">
+                      <span className="text-sm font-semibold truncate">
                         {chat.title || 'Чат'}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-1 flex-shrink-0">
                       {isLastMessageMine && (
-                        <span className="text-[#6eb4f7]">
-                          <CheckCheck size={14} />
+                        <span className="text-[var(--accent-text)]">
+                          <Check size={14} />
                         </span>
                       )}
                       <span
                         className={`text-[11px] font-mono ${
-                          isActive ? 'text-white/80' : 'text-dfz-text-muted'
+                          'text-dfz-text-muted'
                         }`}
                       >
                         {formatChatTimestamp(chat.lastMessage?.createdAt || chat.updatedAt)}
@@ -338,11 +342,11 @@ export const ChatList: React.FC<ChatListProps> = ({
                   <div className="flex items-center justify-between gap-2">
                     <p
                       className={`text-xs truncate ${
-                        isActive ? 'text-white/90' : 'text-dfz-text-muted'
+                        'text-dfz-text-muted'
                       }`}
                     >
                       {typing && typing.length > 0 ? (
-                        <span className="text-[#2481cc] font-medium italic animate-pulse">
+                        <span className="text-[var(--accent-primary)] font-medium italic animate-pulse">
                           {typing.join(', ')} печатает...
                         </span>
                       ) : chat.lastMessage ? (
@@ -379,13 +383,13 @@ export const ChatList: React.FC<ChatListProps> = ({
                       {chat.isMuted && (
                         <BellOff
                           size={13}
-                          className={isActive ? 'text-white/70' : 'text-dfz-text-muted'}
+                          className={'text-dfz-text-muted'}
                         />
                       )}
                       {chat.isPinned && (
                         <Pin
                           size={13}
-                          className="text-[#2481cc] rotate-45"
+                          className="text-[var(--accent-primary)] rotate-45"
                         />
                       )}
                       {(chat.unreadCount || 0) > 0 && (
@@ -393,7 +397,7 @@ export const ChatList: React.FC<ChatListProps> = ({
                           className={`min-w-[20px] h-5 px-1.5 rounded-full flex items-center justify-center text-[11px] font-bold ${
                             chat.isMuted
                               ? 'bg-dfz-border text-dfz-text-muted'
-                              : 'bg-[#2481cc] text-white'
+                              : 'bg-[var(--accent-primary)] text-white'
                           }`}
                         >
                           {chat.unreadCount}
@@ -414,7 +418,7 @@ export const ChatList: React.FC<ChatListProps> = ({
           <button
             type="button"
             onClick={() => setIsFabOpen(!isFabOpen)}
-            className="w-13 h-13 p-3.5 rounded-full bg-[#2481cc] hover:bg-[#1c74b8] text-white shadow-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+            className="w-13 h-13 p-3.5 rounded-full bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white shadow-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95"
             title="Создать чат"
           >
             <Edit2 size={22} />
@@ -436,7 +440,7 @@ export const ChatList: React.FC<ChatListProps> = ({
                   }}
                   className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-dfz-surface-hover text-left transition-colors"
                 >
-                  <MessageSquare size={17} className="text-[#2481cc]" />
+                  <MessageSquare size={17} className="text-[var(--accent-primary)]" />
                   <span>Новый диалог</span>
                 </button>
                 <button
@@ -447,7 +451,7 @@ export const ChatList: React.FC<ChatListProps> = ({
                   }}
                   className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-dfz-surface-hover text-left transition-colors"
                 >
-                  <Users size={17} className="text-[#2481cc]" />
+                  <Users size={17} className="text-[var(--accent-primary)]" />
                   <span>Создать группу</span>
                 </button>
                 <button
@@ -458,7 +462,7 @@ export const ChatList: React.FC<ChatListProps> = ({
                   }}
                   className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-dfz-surface-hover text-left transition-colors"
                 >
-                  <Radio size={17} className="text-[#2481cc]" />
+                  <Radio size={17} className="text-[var(--accent-primary)]" />
                   <span>Создать канал</span>
                 </button>
               </div>

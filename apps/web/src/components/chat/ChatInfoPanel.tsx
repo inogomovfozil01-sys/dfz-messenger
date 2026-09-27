@@ -185,7 +185,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
                 className="flex flex-col items-center gap-1 text-[11px] text-dfz-text-muted hover:text-dfz-text transition-colors"
                 title="Открыть профиль"
               >
-                <div className="p-2 rounded-full bg-dfz-bg border border-dfz-border text-[#2a8dd4]">
+                <div className="p-2 rounded-full bg-dfz-bg border border-dfz-border text-[var(--accent-primary)]">
                   <User size={16} />
                 </div>
                 <span>Профиль</span>
@@ -197,7 +197,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
                 onClick={handleCopyLink}
                 className="flex flex-col items-center gap-1 text-[11px] text-dfz-text-muted hover:text-dfz-text transition-colors"
               >
-                <div className="p-2 rounded-full bg-dfz-bg border border-dfz-border text-[#2a8dd4]">
+                <div className="p-2 rounded-full bg-dfz-bg border border-dfz-border text-[var(--accent-primary)]">
                   {copied ? <Check size={16} /> : <Copy size={16} />}
                 </div>
                 <span>{copied ? 'Скопировано' : 'Ссылка'}</span>
@@ -213,7 +213,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
               onClick={() => setActiveTab('members')}
               className={`flex-1 py-2.5 text-xs font-semibold border-b-2 text-center transition-colors ${
                 activeTab === 'members'
-                  ? 'border-[#2a8dd4] text-[#2a8dd4]'
+                  ? 'border-[var(--accent-primary)] text-[var(--accent-primary)]'
                   : 'border-transparent text-dfz-text-muted hover:text-dfz-text'
               }`}
             >
@@ -224,7 +224,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
             onClick={() => setActiveTab('media')}
             className={`flex-1 py-2.5 text-xs font-semibold border-b-2 text-center transition-colors ${
               activeTab === 'media'
-                ? 'border-[#2a8dd4] text-[#2a8dd4]'
+                ? 'border-[var(--accent-primary)] text-[var(--accent-primary)]'
                 : 'border-transparent text-dfz-text-muted hover:text-dfz-text'
             }`}
           >
@@ -234,7 +234,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
             onClick={() => setActiveTab('files')}
             className={`flex-1 py-2.5 text-xs font-semibold border-b-2 text-center transition-colors ${
               activeTab === 'files'
-                ? 'border-[#2a8dd4] text-[#2a8dd4]'
+                ? 'border-[var(--accent-primary)] text-[var(--accent-primary)]'
                 : 'border-transparent text-dfz-text-muted hover:text-dfz-text'
             }`}
           >
@@ -244,7 +244,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
             onClick={() => setActiveTab('links')}
             className={`flex-1 py-2.5 text-xs font-semibold border-b-2 text-center transition-colors ${
               activeTab === 'links'
-                ? 'border-[#2a8dd4] text-[#2a8dd4]'
+                ? 'border-[var(--accent-primary)] text-[var(--accent-primary)]'
                 : 'border-transparent text-dfz-text-muted hover:text-dfz-text'
             }`}
           >
@@ -254,7 +254,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
             onClick={() => setActiveTab('voice')}
             className={`flex-1 py-2.5 text-xs font-semibold border-b-2 text-center transition-colors ${
               activeTab === 'voice'
-                ? 'border-[#2a8dd4] text-[#2a8dd4]'
+                ? 'border-[var(--accent-primary)] text-[var(--accent-primary)]'
                 : 'border-transparent text-dfz-text-muted hover:text-dfz-text'
             }`}
           >
@@ -273,7 +273,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
                 {isOwnerOrAdmin && onAddMember && (
                   <button
                     onClick={onAddMember}
-                    className="flex items-center gap-1 text-xs text-[#2a8dd4] hover:underline font-semibold"
+                    className="flex items-center gap-1 text-xs text-[var(--accent-primary)] hover:underline font-semibold"
                   >
                     <UserPlus size={13} />
                     <span>Добавить</span>
@@ -305,7 +305,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
 
                     <div className="flex items-center gap-1.5">
                       {m.role !== MemberRole.MEMBER && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#2a8dd4]/15 text-[#2a8dd4]">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[var(--accent-primary)]/15 text-[var(--accent-primary)]">
                           <ShieldCheck size={10} />
                           {m.role === MemberRole.OWNER ? 'Создатель' : 'Админ'}
                         </span>
@@ -391,7 +391,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
                     className="flex items-center justify-between p-2 rounded-dfz-md bg-dfz-bg hover:bg-dfz-surface-hover border border-dfz-border text-xs transition-colors"
                   >
                     <div className="flex items-center gap-2.5 truncate mr-2">
-                      <FileText size={16} className="text-[#2a8dd4] flex-shrink-0" />
+                      <FileText size={16} className="text-[var(--accent-primary)] flex-shrink-0" />
                       <span className="truncate text-dfz-text">{item.originalName}</span>
                     </div>
                     <span className="text-[10px] text-dfz-text-muted flex-shrink-0">
@@ -438,7 +438,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
                     className="p-2.5 rounded-dfz-md bg-dfz-bg border border-dfz-border text-xs flex items-center justify-between gap-2"
                   >
                     <div className="flex items-center gap-2 truncate">
-                      <Mic size={15} className="text-[#2a8dd4] flex-shrink-0" />
+                      <Mic size={15} className="text-[var(--accent-primary)] flex-shrink-0" />
                       <span className="truncate text-dfz-text text-[11px]">Голосовое</span>
                     </div>
                     <span className="text-[10px] text-dfz-text-muted flex-shrink-0">

@@ -35,7 +35,7 @@ import { PremiumModal } from '../components/economy/PremiumModal';
 import { AdminQuickActionsModal } from '../components/economy/AdminQuickActionsModal';
 import { apiRequest } from '../lib/api';
 import { Modal } from '../components/ui/Modal';
-import { ShieldCheck, MessageSquare, WifiOff, Lock } from 'lucide-react';
+import { ShieldCheck, MessageSquare, WifiOff, Users, Phone, Bookmark, Settings, Plus } from 'lucide-react';
 
 export default function MessengerPage() {
   const router = useRouter();
@@ -68,6 +68,26 @@ export default function MessengerPage() {
   const [isOffline, setIsOffline] = useState(false);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [inviteStatus, setInviteStatus] = useState('');
+
+  useEffect(() => {
+    const theme = profile?.theme || 'dark';
+    const system = window.matchMedia('(prefers-color-scheme: light)');
+    const apply = () => {
+      document.documentElement.classList.remove('light', 'dark', 'dim');
+      document.documentElement.classList.add(theme === 'system' ? system.matches ? 'light' : 'dark' : theme);
+    };
+    apply();
+    system.addEventListener('change', apply);
+    return () => system.removeEventListener('change', apply);
+  }, [profile?.theme]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (user) apiRequest('/api/settings').then(result => {
+      if (!cancelled && result.success) document.documentElement.dataset.density = result.data.density;
+    });
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   // Check Auth on Mount
   useEffect(() => {
@@ -126,11 +146,11 @@ export default function MessengerPage() {
   if (isLoading) {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-dfz-bg text-white select-none">
-        <div className="w-16 h-16 rounded-full bg-[#2481cc] flex items-center justify-center text-white shadow-xl mb-4 animate-bounce">
+        <div className="w-16 h-16 rounded-full bg-[var(--accent-primary)] flex items-center justify-center text-white shadow-xl mb-4 animate-bounce">
           <ShieldCheck size={36} />
         </div>
         <h2 className="text-base font-bold tracking-tight">DFZ Messenger</h2>
-        <p className="text-xs text-[#7f91a4] mt-1 font-medium">Безопасное соединение...</p>
+        <p className="text-xs text-[var(--text-secondary)] mt-1 font-medium">Загружаем ваши чаты…</p>
       </div>
     );
   }
@@ -141,6 +161,16 @@ export default function MessengerPage() {
 
   return (
     <div className="flex h-[100dvh] w-screen bg-dfz-bg text-dfz-text overflow-hidden font-sans select-none">
+      <nav aria-label="Основная навигация" className="dfz-rail hidden md:flex flex-col items-center gap-3 shrink-0">
+        <span className="dfz-brand-mark mb-7" title="DFZ Messenger">DFZ</span>
+        <button title="Сообщения" aria-label="Сообщения" aria-current={currentView === 'chats' ? 'page' : undefined} onClick={() => setCurrentView('chats')}><MessageSquare size={22}/></button>
+        <button title="Контакты" aria-label="Контакты" aria-current={currentView === 'contacts' ? 'page' : undefined} onClick={() => setCurrentView('contacts')}><Users size={22}/></button>
+        <button title="Звонки" aria-label="Звонки" onClick={() => setIsCallsOpen(true)}><Phone size={21}/></button>
+        <button title="Избранное" aria-label="Избранное" onClick={handleOpenSavedMessages}><Bookmark size={21}/></button>
+        <div className="flex-1"/>
+        <button title="Настройки" aria-label="Настройки" onClick={() => setIsSettingsOpen(true)}><Settings size={22}/></button>
+        <button title="Мой профиль" aria-label="Мой профиль" onClick={() => setInspectedUserId(user.id)}><span className="w-9 h-9 grid place-items-center rounded-full bg-dfz-surface-active text-sm font-semibold text-dfz-text">{(profile?.displayName || user.username).slice(0,2).toUpperCase()}</span></button>
+      </nav>
       {/* Network Offline Alert Bar */}
       {isOffline && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-[#e53935] text-white text-xs py-1 px-4 text-center flex items-center justify-center gap-2 font-medium shadow-md">
@@ -195,14 +225,13 @@ export default function MessengerPage() {
           </div>
         ) : (
           /* Telegram Classic Empty State */
-          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center select-none tg-wallpaper">
-            <div className="px-4 py-2 rounded-full bg-black/40 backdrop-blur-md text-white/90 text-xs font-medium flex items-center gap-2 shadow-sm border border-white/5">
-              <Lock size={13} className="text-[#2481cc]" />
-              <span>Выберите, кому хотели бы написать</span>
-            </div>
-            <p className="text-[11px] text-[#7f91a4] mt-3">
-              DFZ Messenger · Личные сообщения, группы и каналы
-            </p>
+          <div className="dfz-chat-canvas flex-1 flex flex-col items-center justify-center p-8 text-center select-none">
+            <div className="dfz-empty-mark mb-7"><MessageSquare size={40} strokeWidth={1.4}/></div>
+            <p className="text-[10px] uppercase tracking-[.25em] text-dfz-text-muted mb-3">DFZ MESSENGER</p>
+            <h2 className="text-3xl font-semibold tracking-tight">Ближе к своим.</h2>
+            <p className="text-sm text-dfz-text-muted mt-3 max-w-xs leading-relaxed">Личные разговоры, общие идеи и важные сообщения — в одном месте.</p>
+            <button onClick={() => setIsNewChatOpen(true)} className="mt-7 px-5 py-3 rounded-xl bg-dfz-accent hover:bg-dfz-accent-hover text-white text-sm font-medium flex items-center gap-2"><Plus size={17}/>Начать разговор</button>
+            <p className="text-xs text-dfz-text-subtle mt-10">Выберите чат слева или найдите человека по имени</p>
           </div>
         )}
       </div>
@@ -278,7 +307,7 @@ export default function MessengerPage() {
 
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 animate-bounce p-3 px-4 rounded-full bg-[#17212b] border border-[#2481cc]/40 shadow-2xl flex items-center gap-2.5 text-xs font-semibold text-white">
+        <div className="fixed bottom-6 right-6 z-50 animate-bounce p-3 px-4 rounded-full bg-[#17212b] border border-[var(--accent-primary)]/40 shadow-2xl flex items-center gap-2.5 text-xs font-semibold text-white">
           <span className="text-amber-400 font-bold">★</span>
           <span>{toastMessage.text}</span>
         </div>

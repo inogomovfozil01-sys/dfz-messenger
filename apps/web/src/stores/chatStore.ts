@@ -73,7 +73,7 @@ interface ChatState {
   bulkDeleteMessages: () => Promise<void>;
   openForward: (msg: Message) => void;
   closeForward: () => void;
-  forwardToChat: (targetChatId: string) => Promise<void>;
+  forwardToChat: (targetChatId: string) => Promise<boolean>;
 
   // Manage modals
   setGroupManageChat: (chat: Chat | null) => void;
@@ -504,15 +504,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
   bulkDeleteMessages: async () => {
     const { selectedMessageIds, activeChatId } = get();
     if (!selectedMessageIds.length) return;
+    const deletedIds: string[] = [];
     for (const id of selectedMessageIds) {
-      await apiRequest(`/api/messages/${id}`, { method: 'DELETE' });
+      const res = await apiRequest(`/api/messages/${id}`, { method: 'DELETE' });
+      if(res.success) deletedIds.push(id);
     }
     if (activeChatId) {
       set((state) => ({
         messages: {
           ...state.messages,
           [activeChatId]: (state.messages[activeChatId] || []).filter(
-            (m) => !selectedMessageIds.includes(m.id)
+            (m) => !deletedIds.includes(m.id)
           ),
         },
         selectedMessageIds: [],
@@ -530,18 +532,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   forwardToChat: async (targetChatId: string) => {
-    const { forwardingMessage } = get();
-    if (!forwardingMessage) return;
-    await apiRequest('/api/messages', {
-      method: 'POST',
-      body: JSON.stringify({
-        chatId: targetChatId,
-        content: forwardingMessage.content,
-        type: forwardingMessage.type,
-        attachments: forwardingMessage.attachments,
-      }),
-    });
-    set({ forwardingMessage: null, isForwardOpen: false });
+    const { forwardingMessage, selectedMessageIds } = get();
+    const messageIds = selectedMessageIds.length ? selectedMessageIds : forwardingMessage ? [forwardingMessage.id] : [];
+    if (!messageIds.length) return false;
+    const res = await apiRequest('/api/messages/forward', { method:'POST', body:JSON.stringify({chatId:targetChatId, messageIds}) });
+    if (res.success) { set({ forwardingMessage:null, isForwardOpen:false, selectedMessageIds:[], isSelectMode:false }); await get().fetchChats(); }
+    return res.success;
   },
 
   setGroupManageChat: (chat: Chat | null) => set({ activeGroupManageChat: chat }),
