@@ -18,10 +18,12 @@ import {
   UsersRound,
   Megaphone,
   CirclePlay,
+  Download,
 } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
 import { useAuthStore } from '../../stores/authStore';
 import { useEconomyStore } from '../../stores/economyStore';
+import { usePwaInstall } from '../../hooks/usePwaInstall';
 import { UserRole } from '@dfz/types';
 
 interface TelegramDrawerProps {
@@ -53,6 +55,7 @@ export const TelegramDrawer: React.FC<TelegramDrawerProps> = ({
   const { user, profile, logout } = useAuthStore();
   const { starBalance, isUnlimitedStars, setStarsOpen, setGiftStoreOpen, setPremiumOpen } =
     useEconomyStore();
+  const { isStandalone, promptInstall } = usePwaInstall();
 
   const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.SUPERADMIN;
   const isPremium = user?.isPremium || (isAdmin && true);
@@ -298,8 +301,21 @@ export const TelegramDrawer: React.FC<TelegramDrawerProps> = ({
             className="w-full flex items-center gap-3.5 px-3 py-2.5 rounded-dfz-xl hover:bg-dfz-surface-hover transition-colors text-left"
           >
             <Gift size={18} className="text-purple-400" />
-            <span className="flex-1">Магазин подарков</span>
+            <span className="flex-1">100 Подарков</span>
           </button>
+
+          {!isStandalone && (
+            <button
+              onClick={() => {
+                onClose();
+                promptInstall();
+              }}
+              className="w-full flex items-center gap-3.5 px-3 py-2.5 rounded-dfz-xl hover:bg-dfz-surface-hover text-emerald-400 transition-colors text-left"
+            >
+              <Download size={18} />
+              <span className="flex-1 font-semibold">Установить PWA</span>
+            </button>
+          )}
 
           <button
             onClick={() => {

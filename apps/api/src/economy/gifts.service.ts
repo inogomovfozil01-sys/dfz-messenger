@@ -3,95 +3,47 @@ import { gatewayInstance } from '../gateway/websocket.gateway';
 import { StarTransactionType, GiftRarity } from '@dfz/types';
 import { starsService } from './stars.service';
 
+import { ALL_100_GIFTS } from './gifts-catalog-data';
+
 export class GiftsService {
   /**
-   * Seed default catalog if empty.
+   * Seed default catalog of 100 gifts if missing or incomplete.
    */
   async seedDefaultGifts() {
     const count = await prisma.giftDefinition.count();
-    if (count > 0) return;
+    if (count >= ALL_100_GIFTS.length) return;
 
-    const defaultGifts = [
-      {
-        name: 'Neon Rose',
-        slug: 'neon-rose',
-        description: 'Светящаяся кибер-роза с голографическими лепестками',
-        artwork: 'rose',
-        priceStars: 500,
-        rarity: GiftRarity.COMMON,
-        category: 'popular',
-        isLimited: false,
-      },
-      {
-        name: 'Cyber Heart',
-        slug: 'cyber-heart',
-        description: 'Пульсирующее неоновое сердце верности и дружбы',
-        artwork: 'heart',
-        priceStars: 750,
-        rarity: GiftRarity.COMMON,
-        category: 'popular',
-        isLimited: false,
-      },
-      {
-        name: 'Quantum Rocket',
-        slug: 'quantum-rocket',
-        description: 'Сверхсветовая ракета к новым горизонтам',
-        artwork: 'rocket',
-        priceStars: 1200,
-        rarity: GiftRarity.RARE,
-        category: 'popular',
-        isLimited: false,
-      },
-      {
-        name: 'Golden Crown',
-        slug: 'golden-crown',
-        description: 'Корона признания и безупречного статуса',
-        artwork: 'crown',
-        priceStars: 3000,
-        rarity: GiftRarity.EPIC,
-        category: 'premium',
-        isLimited: false,
-        isPremiumOnly: true,
-      },
-      {
-        name: 'Quantum Crystal',
-        slug: 'quantum-crystal',
-        description: 'Чистый кристалл гиперпространственной энергии',
-        artwork: 'crystal',
-        priceStars: 5000,
-        rarity: GiftRarity.LEGENDARY,
-        category: 'premium',
-        isLimited: false,
-      },
-      {
-        name: 'Crystal Dragon',
-        slug: 'crystal-dragon',
-        description: 'Лимитированный страж цифровой вселенной DFZ',
-        artwork: 'dragon',
-        priceStars: 10000,
-        rarity: GiftRarity.LEGENDARY,
-        category: 'limited',
-        isLimited: true,
-        totalSupply: 1000,
-        isCollectibleEligible: true,
-      },
-      {
-        name: 'Genesis Phoenix',
-        slug: 'genesis-phoenix',
-        description: 'Мифический феникс возрождения из первого тиража DFZ',
-        artwork: 'phoenix',
-        priceStars: 25000,
-        rarity: GiftRarity.MYTHIC,
-        category: 'collectible',
-        isLimited: true,
-        totalSupply: 500,
-        isCollectibleEligible: true,
-      },
-    ];
-
-    for (const item of defaultGifts) {
-      await prisma.giftDefinition.create({
-        data: item,
+    for (const item of ALL_100_GIFTS) {
+      await prisma.giftDefinition.upsert({
+        where: { slug: item.slug },
+        update: {
+          name: item.name,
+          description: item.description,
+          artwork: item.artwork,
+          priceStars: item.priceStars,
+          rarity: item.rarity,
+          category: item.category,
+          isLimited: item.isLimited,
+          totalSupply: item.totalSupply ?? null,
+          isPremiumOnly: !!item.isPremiumOnly,
+          isCollectibleEligible: !!item.isCollectibleEligible,
+          isActive: true,
+        },
+        create: {
+          name: item.name,
+          slug: item.slug,
+          description: item.description,
+          artwork: item.artwork,
+          priceStars: item.priceStars,
+          rarity: item.rarity,
+          category: item.category,
+          isLimited: item.isLimited,
+          totalSupply: item.totalSupply ?? null,
+          soldCount: 0,
+          isPremiumOnly: !!item.isPremiumOnly,
+          isCollectibleEligible: !!item.isCollectibleEligible,
+          isActive: true,
+        },
       });
     }
   }

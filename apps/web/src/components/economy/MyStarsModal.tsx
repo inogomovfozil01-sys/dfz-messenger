@@ -9,12 +9,13 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   Shield,
-  ShieldCheck,
   Eye,
   EyeOff,
   CheckCircle,
   X,
-  RefreshCw,
+  CreditCard,
+  Plus,
+  Zap,
 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { useEconomyStore } from '../../stores/economyStore';
@@ -37,24 +38,29 @@ export const MyStarsModal: React.FC = () => {
     fetchTransactions,
     fetchBalance,
     fetchActivityState,
+    topupStars,
     transferStars,
     myGifts,
     fetchMyGifts,
-    setSendStarsOpen,
     setGiftStoreOpen,
     setPremiumOpen,
   } = useEconomyStore();
 
-  const [activeTab, setActiveTab] = useState<'balance' | 'earn' | 'send' | 'history' | 'gifts'>('balance');
+  const [activeTab, setActiveTab] = useState<'buy' | 'send' | 'history' | 'gifts' | 'earn'>('buy');
   const [recipientQuery, setRecipientQuery] = useState('');
   const [transferAmount, setTransferAmount] = useState('100');
   const [transferMessage, setTransferMessage] = useState('');
   const [isSubmittingTransfer, setIsSubmittingTransfer] = useState(false);
-  const [selectedTx, setSelectedTx] = useState<any>(null);
+  const [purchasingTier, setPurchasingTier] = useState<string | null>(null);
 
   useEffect(() => {
     if (isMyStarsOpen) {
-      setActiveTab(activeStarsTab || 'balance');
+      if (activeStarsTab === 'send') setActiveTab('send');
+      else if (activeStarsTab === 'gifts') setActiveTab('gifts');
+      else if (activeStarsTab === 'history') setActiveTab('history');
+      else if (activeStarsTab === 'earn') setActiveTab('earn');
+      else setActiveTab('buy');
+
       const target = useEconomyStore.getState().targetUserForStars;
       if (target) {
         setRecipientQuery(target.username ? `@${target.username}` : '');
@@ -66,13 +72,29 @@ export const MyStarsModal: React.FC = () => {
     }
   }, [isMyStarsOpen, activeStarsTab]);
 
+  const starPackages = [
+    { id: 'tier_50', amount: 50, label: '50 Stars', popular: false },
+    { id: 'tier_100', amount: 100, label: '100 Stars', popular: false },
+    { id: 'tier_250', amount: 250, label: '250 Stars', popular: false },
+    { id: 'tier_500', amount: 500, label: '500 Stars', popular: false },
+    { id: 'tier_1000', amount: 1000, label: '1,000 Stars', popular: true },
+    { id: 'tier_2500', amount: 2500, label: '2,500 Stars', popular: false },
+    { id: 'tier_5000', amount: 5000, label: '5,000 Stars', popular: false },
+    { id: 'tier_10000', amount: 10000, label: '10,000 Stars', popular: false },
+  ];
+
+  const handleBuyStars = async (pkg: { id: string; amount: number }) => {
+    setPurchasingTier(pkg.id);
+    await topupStars(pkg.amount, pkg.id);
+    setPurchasingTier(null);
+  };
+
   const handleSendStars = async (e: React.FormEvent) => {
     e.preventDefault();
     const amount = parseInt(transferAmount, 10);
     if (!recipientQuery.trim() || isNaN(amount) || amount <= 0) return;
 
     setIsSubmittingTransfer(true);
-    // Find recipient by username
     const searchRes = await apiRequest<any>(`/api/users/profile/${recipientQuery.trim().replace(/^@/, '')}`);
     if (!searchRes.success || !searchRes.data) {
       setIsSubmittingTransfer(false);
@@ -80,23 +102,13 @@ export const MyStarsModal: React.FC = () => {
       return;
     }
 
-    const success = await transferStars(
-      searchRes.data.id,
-      amount,
-      transferMessage
-    );
+    const success = await transferStars(searchRes.data.id, amount, transferMessage);
     setIsSubmittingTransfer(false);
     if (success) {
       setRecipientQuery('');
       setTransferMessage('');
       setActiveTab('history');
     }
-  };
-
-  const formatRemaining = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
   const handleToggleGiftVisibility = async (giftId: string, currentShow: boolean) => {
@@ -116,48 +128,56 @@ export const MyStarsModal: React.FC = () => {
       title="DFZ Stars"
       maxWidth="lg"
     >
-      <div className="space-y-5">
-        {/* Balance Hero Card */}
-        <div className="p-5 rounded-dfz-2xl bg-dfz-surface-secondary border border-dfz-border shadow-lg relative overflow-hidden">
+      <div className="space-y-4">
+        {/* Strict Telegram Stars Balance Hero Card */}
+        <div className="p-5 rounded-dfz-2xl bg-[#151d26] border border-[#26323e] relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-xs uppercase tracking-wider font-semibold text-dfz-text-muted flex items-center gap-1.5">
-              <Star size={13} className="text-amber-400 fill-amber-400" />
-              <span>Баланс кошелька DFZ Stars</span>
+              <span className="text-amber-400 font-bold">★</span>
+              <span>Баланс кошелька Stars</span>
             </span>
             {isUnlimitedStars && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                Административный безлимит
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/10 text-amber-300 border border-amber-500/25">
+                ADMIN UNLIMITED
               </span>
             )}
           </div>
 
-          <div className="mt-2.5 flex items-baseline gap-2">
-            <span className="text-3xl sm:text-4xl font-extrabold text-amber-300 font-mono tracking-tight">
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-3xl sm:text-4xl font-extrabold text-amber-400 font-mono tracking-tight">
               {isUnlimitedStars ? '★ ∞' : `★ ${starBalance.toLocaleString()}`}
             </span>
-            <span className="text-xs text-amber-400/80 font-medium">Stars</span>
+            <span className="text-xs text-dfz-text-muted font-medium">Stars</span>
           </div>
 
           <p className="mt-1 text-xs text-dfz-text-muted">
-            Внутренняя валюта DFZ Messenger для поощрений, подарков и подписки DFZ Premium.
+            DFZ Stars — официальная цифровая валюта платформы для покупки подарков, подписки Premium и переводов.
           </p>
 
-          {/* Quick Actions Bar */}
+          {/* Quick Shortcuts */}
           <div className="mt-4 flex flex-wrap gap-2">
             <button
-              onClick={() => setActiveTab('send')}
-              className="py-1.5 px-3 rounded-dfz-lg bg-dfz-accent hover:bg-dfz-accent-hover text-white font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-sm"
+              onClick={() => setActiveTab('buy')}
+              className={`py-1.5 px-3 rounded-dfz-lg text-xs font-semibold transition-colors flex items-center gap-1.5 border ${
+                activeTab === 'buy'
+                  ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+                  : 'bg-[#0e141b] border-[#26323e] text-dfz-text hover:bg-[#1a2430]'
+              }`}
             >
-              <Send size={13} />
-              <span>Перевести</span>
+              <Plus size={13} className="text-amber-400" />
+              <span>Пополнить</span>
             </button>
 
             <button
-              onClick={() => setActiveTab('earn')}
-              className="py-1.5 px-3 rounded-dfz-lg bg-dfz-surface hover:bg-dfz-surface-hover border border-dfz-border text-dfz-text font-medium text-xs transition-colors flex items-center gap-1.5"
+              onClick={() => setActiveTab('send')}
+              className={`py-1.5 px-3 rounded-dfz-lg text-xs font-semibold transition-colors flex items-center gap-1.5 border ${
+                activeTab === 'send'
+                  ? 'bg-dfz-accent/20 border-dfz-accent/40 text-dfz-accent'
+                  : 'bg-[#0e141b] border-[#26323e] text-dfz-text hover:bg-[#1a2430]'
+              }`}
             >
-              <Sparkles size={13} className="text-amber-400" />
-              <span>Награды</span>
+              <Send size={13} />
+              <span>Перевести</span>
             </button>
 
             <button
@@ -165,10 +185,10 @@ export const MyStarsModal: React.FC = () => {
                 setStarsOpen(false);
                 setGiftStoreOpen(true);
               }}
-              className="py-1.5 px-3 rounded-dfz-lg bg-dfz-surface hover:bg-dfz-surface-hover border border-dfz-border text-dfz-text font-medium text-xs transition-colors flex items-center gap-1.5"
+              className="py-1.5 px-3 rounded-dfz-lg bg-[#0e141b] border border-[#26323e] hover:bg-[#1a2430] text-dfz-text font-medium text-xs transition-colors flex items-center gap-1.5"
             >
               <Gift size={13} className="text-purple-400" />
-              <span>Подарки</span>
+              <span>100 Подарков</span>
             </button>
 
             <button
@@ -176,7 +196,7 @@ export const MyStarsModal: React.FC = () => {
                 setStarsOpen(false);
                 setPremiumOpen(true);
               }}
-              className="py-1.5 px-3 rounded-dfz-lg bg-dfz-surface hover:bg-dfz-surface-hover border border-dfz-border text-cyan-400 font-medium text-xs transition-colors flex items-center gap-1.5"
+              className="py-1.5 px-3 rounded-dfz-lg bg-[#0e141b] border border-[#26323e] hover:bg-[#1a2430] text-cyan-400 font-medium text-xs transition-colors flex items-center gap-1.5"
             >
               <span>DFZ Premium</span>
               <span className="text-[10px]">◆</span>
@@ -184,357 +204,231 @@ export const MyStarsModal: React.FC = () => {
           </div>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex items-center gap-1 border-b border-dfz-border/60 pb-2 overflow-x-auto no-scrollbar text-xs font-semibold">
-          <button
-            onClick={() => setActiveTab('balance')}
-            className={`px-3 py-1.5 rounded-dfz-md transition-colors ${
-              activeTab === 'balance'
-                ? 'bg-amber-500/20 text-amber-400'
-                : 'text-dfz-text-muted hover:text-dfz-text'
-            }`}
-          >
-            Обзор
-          </button>
-          <button
-            onClick={() => setActiveTab('earn')}
-            className={`px-3 py-1.5 rounded-dfz-md transition-colors flex items-center gap-1.5 ${
-              activeTab === 'earn'
-                ? 'bg-amber-500/20 text-amber-400'
-                : 'text-dfz-text-muted hover:text-dfz-text'
-            }`}
-          >
-            <span>Награды</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          </button>
-          <button
-            onClick={() => setActiveTab('send')}
-            className={`px-3 py-1.5 rounded-dfz-md transition-colors ${
-              activeTab === 'send'
-                ? 'bg-amber-500/20 text-amber-400'
-                : 'text-dfz-text-muted hover:text-dfz-text'
-            }`}
-          >
-            Отправить
-          </button>
-          <button
-            onClick={() => setActiveTab('history')}
-            className={`px-3 py-1.5 rounded-dfz-md transition-colors ${
-              activeTab === 'history'
-                ? 'bg-amber-500/20 text-amber-400'
-                : 'text-dfz-text-muted hover:text-dfz-text'
-            }`}
-          >
-            История
-          </button>
-          <button
-            onClick={() => setActiveTab('gifts')}
-            className={`px-3 py-1.5 rounded-dfz-md transition-colors ${
-              activeTab === 'gifts'
-                ? 'bg-amber-500/20 text-amber-400'
-                : 'text-dfz-text-muted hover:text-dfz-text'
-            }`}
-          >
-            Инвентарь ({myGifts.length})
-          </button>
+        {/* Telegram Tab Navigation */}
+        <div className="flex items-center gap-1 border-b border-[#26323e] pb-1 text-xs font-semibold overflow-x-auto no-scrollbar">
+          {[
+            { id: 'buy', label: 'Пополнение' },
+            { id: 'send', label: 'Перевод' },
+            { id: 'history', label: 'История операций' },
+            { id: 'gifts', label: `Инвентарь (${myGifts.length})` },
+            { id: 'earn', label: 'Награды за активность' },
+          ].map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id as any)}
+              className={`px-3 py-1.5 rounded-dfz-lg transition-colors whitespace-nowrap ${
+                activeTab === t.id
+                  ? 'bg-[#151d26] text-amber-400 border border-[#26323e]'
+                  : 'text-dfz-text-muted hover:text-dfz-text hover:bg-[#151d26]/50'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
 
-        {/* Tab 1: Overview */}
-        {activeTab === 'balance' && (
-          <div className="space-y-4">
-            {/* Activity Reward Card */}
-            <div className="p-4 rounded-dfz-xl bg-dfz-surface border border-dfz-border space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-dfz-lg bg-emerald-500/10 text-emerald-400">
-                    <Clock size={16} />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-dfz-text">Почасовая награда за активность</h4>
-                    <p className="text-[11px] text-dfz-text-muted">
-                      +100 ★ за каждый полный час непрерывной сессии
-                    </p>
-                  </div>
-                </div>
-                <span className="text-xs font-mono font-bold text-emerald-400">
-                  {activityState ? formatRemaining(activityState.remainingSeconds) : '36:00'}
-                </span>
-              </div>
+        {/* Tab Content 1: Buy Stars (Telegram Stars Packages) */}
+        {activeTab === 'buy' && (
+          <div className="space-y-3">
+            <div className="text-xs text-dfz-text-muted flex items-center justify-between">
+              <span>Выберите пакет DFZ Stars для моментального зачисления:</span>
+              <span className="text-emerald-400 text-[11px] flex items-center gap-1">
+                <CheckCircle size={12} />
+                Мгновенное пополнение
+              </span>
+            </div>
 
-              {/* Progress bar */}
-              <div className="w-full bg-dfz-bg rounded-full h-2 overflow-hidden border border-dfz-border/50">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              {starPackages.map((pkg) => (
                 <div
-                  className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full transition-all duration-500"
-                  style={{ width: `${activityState ? (activityState as any).progressPercent || 0 : 0}%` }}
-                />
-              </div>
+                  key={pkg.id}
+                  onClick={() => !purchasingTier && handleBuyStars(pkg)}
+                  className={`p-3.5 rounded-dfz-xl border text-center space-y-2 cursor-pointer transition-all duration-200 relative ${
+                    pkg.popular
+                      ? 'bg-[#151d26] border-amber-500/40 hover:border-amber-400 shadow-sm'
+                      : 'bg-[#151d26] border-[#26323e] hover:border-dfz-accent/40'
+                  }`}
+                >
+                  {pkg.popular && (
+                    <span className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500 text-black">
+                      Хит
+                    </span>
+                  )}
 
-              <div className="flex items-center justify-between text-[11px] text-dfz-text-muted">
-                <span>Прогресс: {(activityState as any)?.progressPercent || 0}%</span>
-                <span className="text-amber-400 font-medium">Следующая выплата: +100 ★</span>
-              </div>
-            </div>
+                  <div className="w-10 h-10 mx-auto rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 font-bold text-lg">
+                    ★
+                  </div>
 
-            {/* Quick explanation */}
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="p-3 rounded-dfz-xl bg-dfz-surface-secondary border border-dfz-border space-y-1">
-                <span className="font-semibold text-dfz-text flex items-center gap-1.5">
-                  <ShieldCheck size={14} className="text-emerald-400" />
-                  <span>Гарантия реестра</span>
-                </span>
-                <p className="text-[11px] text-dfz-text-muted">
-                  Stars — это фиксированные учетные единицы с двойной записью в транзакционном журнале.
-                </p>
-              </div>
-              <div className="p-3 rounded-dfz-xl bg-dfz-surface-secondary border border-dfz-border space-y-1">
-                <span className="font-semibold text-dfz-text flex items-center gap-1.5">
-                  <Gift size={14} className="text-purple-400" />
-                  <span>Коллекции и подарки</span>
-                </span>
-                <p className="text-[11px] text-dfz-text-muted">
-                  Отправляйте авторские подарки с персональными пожеланиями в личные чаты.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
+                  <div>
+                    <h4 className="text-sm font-bold text-dfz-text font-mono">+{pkg.amount.toLocaleString()}</h4>
+                    <p className="text-[10px] text-dfz-text-muted">DFZ Stars</p>
+                  </div>
 
-        {/* Tab 2: Earn Stars */}
-        {activeTab === 'earn' && (
-          <div className="space-y-4">
-            <div className="p-4 rounded-dfz-xl bg-gradient-to-br from-emerald-500/10 to-teal-500/5 border border-emerald-500/20 space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-dfz-xl bg-emerald-500/20 text-emerald-400">
-                  <Clock size={20} />
+                  <button
+                    type="button"
+                    disabled={purchasingTier === pkg.id}
+                    className="w-full py-1.5 px-2 rounded-dfz-lg bg-[#0e141b] hover:bg-amber-500 hover:text-black border border-[#26323e] text-amber-400 text-xs font-semibold transition-colors disabled:opacity-50"
+                  >
+                    {purchasingTier === pkg.id ? 'Зачисление...' : 'Пополнить'}
+                  </button>
                 </div>
-                <div>
-                  <h4 className="text-sm font-bold text-dfz-text">Серверный Activity Engine</h4>
-                  <p className="text-xs text-dfz-text-muted">
-                    Автоматическое начисление ★100 Stars за каждый проверенный час активности
-                  </p>
-                </div>
-              </div>
-
-              <div className="p-3 rounded-dfz-lg bg-dfz-bg/80 border border-dfz-border space-y-2">
-                <div className="flex items-center justify-between text-xs font-semibold">
-                  <span>До следующей выплаты:</span>
-                  <span className="font-mono text-emerald-400 text-sm">
-                    {activityState ? formatRemaining(activityState.remainingSeconds) : '60:00'}
-                  </span>
-                </div>
-                <div className="w-full bg-dfz-surface rounded-full h-2.5 overflow-hidden">
-                  <div
-                    className="bg-emerald-500 h-full transition-all duration-300"
-                    style={{ width: `${(activityState as any)?.progressPercent || 0}%` }}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1 text-xs text-dfz-text-muted leading-relaxed">
-                <p>• <strong>Защита от накрутки:</strong> система учитывает видимость вкладки и действия пользователя.</p>
-                <p>• <strong>Grace period 5 минут:</strong> кратковременные переподключения или смена сети не сбрасывают таймер.</p>
-                <p>• <strong>Единый счет:</strong> активность на нескольких устройствах объединяется, исключая дублирование.</p>
-              </div>
+              ))}
             </div>
           </div>
         )}
 
-        {/* Tab 3: Send Stars */}
+        {/* Tab Content 2: Send Stars */}
         {activeTab === 'send' && (
-          <form onSubmit={handleSendStars} className="space-y-4">
-            <div className="space-y-1.5">
+          <form onSubmit={handleSendStars} className="space-y-3.5 bg-[#151d26] p-4 rounded-dfz-xl border border-[#26323e]">
+            <div className="space-y-1">
               <label className="text-xs font-semibold text-dfz-text">Получатель (@username)</label>
               <input
                 type="text"
                 value={recipientQuery}
                 onChange={(e) => setRecipientQuery(e.target.value)}
-                placeholder="@username друга"
-                className="w-full px-3 py-2 rounded-dfz-lg bg-dfz-bg border border-dfz-border text-dfz-text text-xs focus:outline-none focus:border-amber-500"
+                placeholder="@alex_dev или username"
+                className="w-full px-3 py-2 rounded-dfz-lg bg-[#0e141b] border border-[#26323e] text-dfz-text text-xs focus:outline-none focus:border-dfz-accent"
                 required
               />
             </div>
 
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-dfz-text">Количество Stars</label>
-              <input
-                type="number"
-                min="1"
-                max="50000"
-                value={transferAmount}
-                onChange={(e) => setTransferAmount(e.target.value)}
-                className="w-full px-3 py-2 rounded-dfz-lg bg-dfz-bg border border-dfz-border text-dfz-text text-xs font-mono font-bold focus:outline-none focus:border-amber-500"
-                required
-              />
-
-              {/* Quick Pills */}
-              <div className="flex gap-2 pt-1">
-                {[50, 100, 500, 1000].map((amt) => (
+              <div className="grid grid-cols-5 gap-1.5">
+                {['50', '100', '250', '500', '1000'].map((preset) => (
                   <button
-                    key={amt}
+                    key={preset}
                     type="button"
-                    onClick={() => setTransferAmount(amt.toString())}
-                    className="px-2.5 py-1 rounded-dfz-md bg-dfz-surface hover:bg-dfz-surface-hover border border-dfz-border text-xs text-amber-400 font-mono font-semibold"
+                    onClick={() => setTransferAmount(preset)}
+                    className={`py-1.5 rounded-dfz-lg border text-xs font-mono font-bold transition-colors ${
+                      transferAmount === preset
+                        ? 'bg-amber-500/20 border-amber-500 text-amber-300'
+                        : 'bg-[#0e141b] border-[#26323e] text-dfz-text hover:bg-[#1a2430]'
+                    }`}
                   >
-                    ★ {amt}
+                    ★ {preset}
                   </button>
                 ))}
               </div>
+              <input
+                type="number"
+                min="1"
+                max="100000"
+                value={transferAmount}
+                onChange={(e) => setTransferAmount(e.target.value)}
+                className="w-full mt-1.5 px-3 py-2 rounded-dfz-lg bg-[#0e141b] border border-[#26323e] text-dfz-text font-mono text-xs focus:outline-none focus:border-dfz-accent"
+                required
+              />
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-dfz-text">Сообщение (необязательно)</label>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-dfz-text">Сообщение к переводу</label>
               <input
                 type="text"
                 value={transferMessage}
                 onChange={(e) => setTransferMessage(e.target.value)}
-                placeholder="За помощь в проекте..."
-                className="w-full px-3 py-2 rounded-dfz-lg bg-dfz-bg border border-dfz-border text-dfz-text text-xs focus:outline-none focus:border-amber-500"
+                placeholder="За отличную работу!"
                 maxLength={100}
+                className="w-full px-3 py-2 rounded-dfz-lg bg-[#0e141b] border border-[#26323e] text-dfz-text text-xs focus:outline-none focus:border-dfz-accent"
               />
             </div>
 
             <button
               type="submit"
-              disabled={isSubmittingTransfer}
-              className="w-full py-2.5 rounded-dfz-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black font-bold text-xs transition-colors flex items-center justify-center gap-2 shadow-md"
+              disabled={isSubmittingTransfer || (!isUnlimitedStars && starBalance < parseInt(transferAmount || '0', 10))}
+              className="w-full py-2.5 rounded-dfz-lg bg-dfz-accent hover:bg-dfz-accent-hover text-white text-xs font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-sm"
             >
-              {isSubmittingTransfer ? 'Отправка...' : `Отправить ★ ${transferAmount || 0} Stars`}
+              <Send size={13} />
+              <span>{isSubmittingTransfer ? 'Отправка...' : `Перевести ★ ${transferAmount} Stars`}</span>
             </button>
           </form>
         )}
 
-        {/* Tab 4: History */}
+        {/* Tab Content 3: Transaction History */}
         {activeTab === 'history' && (
-          <div className="space-y-3">
-            {/* Filters */}
-            <div className="flex gap-1 overflow-x-auto no-scrollbar pb-1 text-[11px] font-medium">
-              {['ALL', 'EARNED', 'SENT', 'RECEIVED', 'GIFTS', 'ADMIN'].map((f) => (
-                <button
-                  key={f}
-                  onClick={() => fetchTransactions(f)}
-                  className={`px-2.5 py-1 rounded-dfz-md whitespace-nowrap transition-colors ${
-                    historyFilter === f
-                      ? 'bg-amber-500/20 text-amber-400 font-semibold'
-                      : 'text-dfz-text-muted hover:text-dfz-text hover:bg-dfz-surface'
-                  }`}
-                >
-                  {f === 'ALL'
-                    ? 'Все'
-                    : f === 'EARNED'
-                    ? 'Награды'
-                    : f === 'SENT'
-                    ? 'Отправленные'
-                    : f === 'RECEIVED'
-                    ? 'Полученные'
-                    : f === 'GIFTS'
-                    ? 'Подарки'
-                    : 'Админ'}
-                </button>
-              ))}
-            </div>
-
-            {/* List */}
+          <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
             {isLoadingTransactions ? (
-              <div className="p-8 text-center text-xs text-dfz-text-muted">Загрузка транзакций...</div>
+              <div className="p-8 text-center text-xs text-dfz-text-muted">Загрузка операций...</div>
             ) : transactions.length === 0 ? (
-              <div className="p-8 text-center text-xs text-dfz-text-muted">
-                В этой категории нет транзакций
+              <div className="p-8 text-center text-xs text-dfz-text-muted bg-[#151d26] rounded-dfz-xl border border-[#26323e]">
+                Операций со Stars пока нет.
               </div>
             ) : (
-              <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
-                {transactions.map((tx) => {
-                  const isPositive = tx.amount > 0;
-                  return (
+              transactions.map((tx) => (
+                <div
+                  key={tx.id}
+                  className="p-3 rounded-dfz-xl bg-[#151d26] border border-[#26323e] flex items-center justify-between text-xs"
+                >
+                  <div className="flex items-center gap-2.5">
                     <div
-                      key={tx.id}
-                      onClick={() => setSelectedTx(tx)}
-                      className="p-2.5 rounded-dfz-xl bg-dfz-surface hover:bg-dfz-surface-hover border border-dfz-border/70 flex items-center justify-between cursor-pointer transition-colors"
+                      className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
+                        tx.amount > 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'
+                      }`}
                     >
-                      <div className="flex items-center gap-2.5">
-                        <div
-                          className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
-                            isPositive
-                              ? 'bg-emerald-500/10 text-emerald-400'
-                              : 'bg-dfz-text-muted/10 text-dfz-text-muted'
-                          }`}
-                        >
-                          {isPositive ? <ArrowDownLeft size={14} /> : <ArrowUpRight size={14} />}
-                        </div>
-                        <div>
-                          <p className="text-xs font-medium text-dfz-text">
-                            {tx.reason || tx.type}
-                          </p>
-                          <p className="text-[10px] text-dfz-text-muted">
-                            {new Date(tx.createdAt).toLocaleString('ru', {
-                              day: 'numeric',
-                              month: 'short',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </p>
-                        </div>
-                      </div>
-
-                      <span
-                        className={`text-xs font-mono font-bold ${
-                          isPositive ? 'text-emerald-400' : 'text-dfz-text-muted'
-                        }`}
-                      >
-                        {isPositive ? `+${tx.amount.toLocaleString()} ★` : `${tx.amount.toLocaleString()} ★`}
-                      </span>
+                      {tx.amount > 0 ? <ArrowDownLeft size={14} /> : <ArrowUpRight size={14} />}
                     </div>
-                  );
-                })}
-              </div>
+                    <div>
+                      <h4 className="font-semibold text-dfz-text">{tx.reason || tx.type}</h4>
+                      <p className="text-[10px] text-dfz-text-muted">
+                        {new Date(tx.createdAt).toLocaleString('ru-RU')}
+                      </p>
+                    </div>
+                  </div>
+
+                  <span
+                    className={`font-mono font-bold ${
+                      tx.amount > 0 ? 'text-emerald-400' : 'text-dfz-text'
+                    }`}
+                  >
+                    {tx.amount > 0 ? `+${tx.amount.toLocaleString()}` : tx.amount.toLocaleString()} ★
+                  </span>
+                </div>
+              ))
             )}
           </div>
         )}
 
-        {/* Tab 5: Gifts Inventory */}
+        {/* Tab Content 4: Inventory & Gifts */}
         {activeTab === 'gifts' && (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {myGifts.length === 0 ? (
-              <div className="p-8 text-center text-xs text-dfz-text-muted space-y-2">
-                <Gift size={28} className="mx-auto text-dfz-text-muted opacity-50" />
-                <p>У вас пока нет подарков</p>
+              <div className="p-10 text-center text-xs text-dfz-text-muted bg-[#151d26] rounded-dfz-xl border border-[#26323e] space-y-2">
+                <Gift size={28} className="mx-auto text-dfz-text-muted opacity-60" />
+                <p>У вас пока нет подарков.</p>
                 <button
                   onClick={() => {
                     setStarsOpen(false);
                     setGiftStoreOpen(true);
                   }}
-                  className="px-3 py-1.5 rounded-dfz-lg bg-dfz-accent text-white text-xs font-medium"
+                  className="px-3 py-1.5 rounded-dfz-lg bg-dfz-accent text-white font-semibold text-xs"
                 >
-                  Перейти в магазин
+                  Перейти в каталог 100 подарков
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-80 overflow-y-auto pr-1">
-                {myGifts.map((g) => (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-72 overflow-y-auto pr-1">
+                {myGifts.map((inst) => (
                   <div
-                    key={g.id}
-                    className="p-3 rounded-dfz-xl bg-dfz-surface border border-dfz-border flex flex-col items-center text-center space-y-1.5 relative group"
+                    key={inst.id}
+                    className="p-3 rounded-dfz-xl bg-[#151d26] border border-[#26323e] flex flex-col items-center text-center space-y-1.5"
                   >
-                    <GiftArtwork name={g.giftDefinition.artwork} size={48} />
-                    <h5 className="text-xs font-bold text-dfz-text truncate w-full">
-                      {g.giftDefinition.name}
-                    </h5>
-                    {g.serialNumber && (
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-dfz-bg text-amber-400 border border-amber-500/20">
-                        #{g.serialNumber.toString().padStart(4, '0')}
-                      </span>
-                    )}
-                    {g.message && (
-                      <p className="text-[10px] text-dfz-text-muted italic truncate w-full">
-                        "{g.message}"
-                      </p>
-                    )}
+                    <GiftArtwork
+                      artworkKey={inst.giftDefinition.artwork}
+                      name={inst.giftDefinition.name}
+                      rarity={inst.giftDefinition.rarity}
+                      size={48}
+                    />
+                    <h5 className="font-bold text-xs text-dfz-text truncate w-full">{inst.giftDefinition.name}</h5>
+                    <p className="text-[10px] text-dfz-text-muted">
+                      {inst.isAnonymous ? 'Анонимно' : inst.sender ? `От @${inst.sender.username}` : 'Подарок'}
+                    </p>
+
                     <button
-                      onClick={() => handleToggleGiftVisibility(g.id, g.showOnProfile)}
+                      onClick={() => handleToggleGiftVisibility(inst.id, inst.showOnProfile)}
                       className="mt-1 text-[10px] text-dfz-text-muted hover:text-dfz-text flex items-center gap-1"
-                      title={g.showOnProfile ? 'Скрыть из профиля' : 'Показать в профиле'}
                     >
-                      {g.showOnProfile ? <Eye size={12} className="text-emerald-400" /> : <EyeOff size={12} />}
-                      <span>{g.showOnProfile ? 'В профиле' : 'Скрыт'}</span>
+                      {inst.showOnProfile ? <Eye size={12} className="text-emerald-400" /> : <EyeOff size={12} />}
+                      <span>{inst.showOnProfile ? 'В профиле' : 'Скрыт'}</span>
                     </button>
                   </div>
                 ))}
@@ -543,59 +437,21 @@ export const MyStarsModal: React.FC = () => {
           </div>
         )}
 
-        {/* Transaction Details Modal */}
-        {selectedTx && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className="w-full max-w-sm rounded-dfz-2xl bg-dfz-surface border border-dfz-border p-5 space-y-4 text-xs shadow-2xl">
-              <div className="flex items-center justify-between border-b border-dfz-border pb-3">
-                <span className="font-bold text-dfz-text">Детали транзакции</span>
-                <button
-                  onClick={() => setSelectedTx(null)}
-                  className="p-1 rounded-dfz-md hover:bg-dfz-surface-hover text-dfz-text-muted"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-dfz-text-muted">Тип:</span>
-                  <span className="font-semibold text-dfz-text">{selectedTx.type}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-dfz-text-muted">Сумма:</span>
-                  <span className={`font-mono font-bold ${selectedTx.amount > 0 ? 'text-emerald-400' : 'text-dfz-text'}`}>
-                    {selectedTx.amount > 0 ? `+${selectedTx.amount}` : selectedTx.amount} ★
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-dfz-text-muted">Баланс после:</span>
-                  <span className="font-mono text-dfz-text">{selectedTx.balanceAfter} ★</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-dfz-text-muted">Дата:</span>
-                  <span className="text-dfz-text">{new Date(selectedTx.createdAt).toLocaleString('ru')}</span>
-                </div>
-                {selectedTx.reason && (
-                  <div className="flex justify-between">
-                    <span className="text-dfz-text-muted">Назначение:</span>
-                    <span className="text-dfz-text">{selectedTx.reason}</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-dfz-text-muted">Статус:</span>
-                  <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                    <CheckCircle size={12} /> Подтверждено
-                  </span>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setSelectedTx(null)}
-                className="w-full py-2 rounded-dfz-xl bg-dfz-surface-hover hover:bg-dfz-border text-dfz-text font-semibold"
-              >
-                Закрыть
-              </button>
+        {/* Tab Content 5: Activity Rewards */}
+        {activeTab === 'earn' && (
+          <div className="p-4 rounded-dfz-xl bg-[#151d26] border border-[#26323e] space-y-3 text-xs">
+            <div className="flex items-center gap-2">
+              <Clock size={16} className="text-emerald-400" />
+              <h4 className="font-bold text-dfz-text">Автоматические награды за активность</h4>
+            </div>
+            <p className="text-dfz-text-muted text-[11px]">
+              За каждый час непрерывной активности в DFZ Messenger система автоматически начисляет вам ★ Stars на баланс.
+            </p>
+            <div className="p-3 rounded-dfz-lg bg-[#0e141b] border border-[#26323e] flex items-center justify-between font-mono">
+              <span className="text-dfz-text-muted">Текущая непрерывная сессия:</span>
+              <span className="text-emerald-400 font-bold">
+                {activityState ? `${Math.floor(activityState.continuousActiveSeconds / 60)} мин.` : '0 мин.'}
+              </span>
             </div>
           </div>
         )}

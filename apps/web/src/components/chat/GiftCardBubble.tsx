@@ -13,26 +13,12 @@ export const GiftCardBubble: React.FC<GiftCardBubbleProps> = ({
   senderName,
   isSelf,
 }) => {
-  // content might be "Подарок: Neon Rose" or similar
-  const giftName = content.replace(/^Подарок:\s*/i, '');
-  const artworkKey = giftName.toLowerCase().includes('rose')
-    ? 'rose'
-    : giftName.toLowerCase().includes('heart')
-    ? 'heart'
-    : giftName.toLowerCase().includes('rocket')
-    ? 'rocket'
-    : giftName.toLowerCase().includes('crown')
-    ? 'crown'
-    : giftName.toLowerCase().includes('dragon')
-    ? 'dragon'
-    : giftName.toLowerCase().includes('phoenix')
-    ? 'phoenix'
-    : 'crystal';
+  const giftName = content.replace(/^Подарок:\s*/i, '').trim();
 
   return (
-    <div className="p-4 rounded-dfz-2xl bg-gradient-to-br from-purple-900/30 via-indigo-900/20 to-dfz-surface border border-purple-500/40 text-dfz-text shadow-lg max-w-xs space-y-3 select-none text-center flex flex-col items-center">
-      <div className="p-2 rounded-2xl bg-purple-500/10 border border-purple-500/20">
-        <GiftArtwork name={artworkKey} size={64} />
+    <div className="p-4 rounded-dfz-2xl bg-[#151d26] border border-[#26323e] text-dfz-text shadow-lg max-w-xs space-y-3 select-none text-center flex flex-col items-center">
+      <div className="p-2.5 rounded-2xl bg-[#0e141b] border border-[#26323e]">
+        <GiftArtwork artworkKey={giftName} name={giftName} size={64} />
       </div>
 
       <div className="space-y-0.5">

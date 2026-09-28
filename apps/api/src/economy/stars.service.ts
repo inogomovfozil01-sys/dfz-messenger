@@ -621,6 +621,62 @@ export class StarsService {
       status: 'CONFIRMED',
     };
   }
+
+  /**
+   * Top up stars for a user account (Telegram Stars purchase simulation).
+   */
+  async topupStars(userId: string, amount: number, packageId: string = 'custom', idempotencyKey?: string) {
+    if (!Number.isInteger(amount) || amount <= 0) {
+      throw new Error('Количество Stars должно быть положительным числом');
+    }
+
+    const account = await this.getOrCreateAccount(userId);
+
+    const result = await prisma.$transaction(async (tx) => {
+      const updatedAccount = await tx.starAccount.update({
+        where: { id: account.id },
+        data: {
+          balance: { increment: amount },
+          totalEarned: { increment: amount },
+        },
+      });
+
+      const txRecord = await tx.starTransaction.create({
+        data: {
+          accountId: account.id,
+          userId,
+          type: StarTransactionType.SYSTEM_REWARD,
+          amount,
+          balanceBefore: account.balance,
+          balanceAfter: updatedAccount.balance,
+          referenceType: 'TOPUP',
+          referenceId: packageId,
+          reason: `Пополнение баланса DFZ Stars (+${amount.toLocaleString()} ★)`,
+          idempotencyKey: idempotencyKey ? `topup:${userId}:${idempotencyKey}` : undefined,
+        },
+      });
+
+      return {
+        balance: updatedAccount.balance,
+        transaction: txRecord,
+      };
+    });
+
+    // Real-time balance notification to client
+    try {
+      if (gatewayInstance) {
+        gatewayInstance.notifyUser(userId, 'star:transfer', {
+          amount,
+          balance: result.balance,
+          senderName: 'DFZ Top-Up System',
+        });
+      }
+    } catch {
+      // Gateway might not be initialized in serverless
+    }
+
+    return result;
+  }
 }
 
 export const starsService = new StarsService();

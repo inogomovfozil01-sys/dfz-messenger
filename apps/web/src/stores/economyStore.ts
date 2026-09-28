@@ -43,7 +43,7 @@ interface EconomyState {
   isCollectibleViewerOpen: boolean;
   isAdminQuickActionOpen: boolean;
 
-  activeStarsTab: 'balance' | 'earn' | 'send' | 'history' | 'gifts';
+  activeStarsTab: 'buy' | 'balance' | 'earn' | 'send' | 'history' | 'gifts';
   activeCollectible: any | null;
   selectedGiftForSending: GiftDefinition | null;
   targetUserForGift: { id: string; username: string; displayName: string; avatarUrl?: string } | null;
@@ -54,7 +54,7 @@ interface EconomyState {
   toastMessage: { text: string; type: 'success' | 'info' | 'star' } | null;
 
   // Actions
-  setStarsOpen: (open: boolean, initialTab?: 'balance' | 'earn' | 'send' | 'history' | 'gifts') => void;
+  setStarsOpen: (open: boolean, initialTab?: 'buy' | 'balance' | 'earn' | 'send' | 'history' | 'gifts') => void;
   setGiftStoreOpen: (open: boolean) => void;
   setSendGiftOpen: (open: boolean, gift?: GiftDefinition | null, targetUser?: any) => void;
   setSendStarsOpen: (open: boolean, targetUser?: any) => void;
@@ -71,6 +71,7 @@ interface EconomyState {
   fetchMyCollectibles: () => Promise<void>;
   fetchTransactions: (filter?: string, isNext?: boolean) => Promise<void>;
 
+  topupStars: (amount: number, packageId: string) => Promise<boolean>;
   transferStars: (recipientId: string, amount: number, message?: string, chatId?: string) => Promise<boolean>;
   sendGift: (recipientId: string, giftId: string, message?: string, isAnonymous?: boolean, chatId?: string) => Promise<boolean>;
   transferCollectible: (recipientId: string, collectibleId: string) => Promise<boolean>;
@@ -220,6 +221,29 @@ export const useEconomyStore = create<EconomyState>((set, get) => ({
         hasMoreTransactions: res.data.hasMore,
         nextTransactionCursor: res.data.nextCursor,
       });
+    }
+  },
+
+  topupStars: async (amount: number, packageId: string) => {
+    const res = await apiRequest<{ balance: number }>('/api/economy/stars/topup', {
+      method: 'POST',
+      body: JSON.stringify({ amount, packageId }),
+    });
+
+    if (res.success && res.data) {
+      set({ starBalance: res.data.balance });
+      get().fetchTransactions();
+      get().setToast({
+        text: `★ Баланс успешно пополнен на +${amount.toLocaleString()} Stars!`,
+        type: 'star',
+      });
+      return true;
+    } else {
+      get().setToast({
+        text: res.error?.message || 'Ошибка пополнения Stars',
+        type: 'info',
+      });
+      return false;
     }
   },
 

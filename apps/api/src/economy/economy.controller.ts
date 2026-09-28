@@ -68,6 +68,28 @@ economyRouter.post('/stars/transfer', async (req: Request, res: Response, next: 
   }
 });
 
+// Top up stars (purchase packages simulation)
+economyRouter.post('/stars/topup', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { amount, packageId, idempotencyKey } = req.body;
+    const parsedAmount = parseInt(amount, 10);
+    if (!parsedAmount || parsedAmount <= 0) {
+      return res.status(400).json({ success: false, error: { message: 'Некорректная сумма Stars' } });
+    }
+
+    const data = await starsService.topupStars(
+      req.user!.userId,
+      parsedAmount,
+      packageId || 'custom',
+      idempotencyKey
+    );
+
+    return res.json({ success: true, data });
+  } catch (err: any) {
+    return res.status(400).json({ success: false, error: { message: err.message } });
+  }
+});
+
 // Get transaction history
 economyRouter.get('/stars/history', async (req: Request, res: Response, next: NextFunction) => {
   try {

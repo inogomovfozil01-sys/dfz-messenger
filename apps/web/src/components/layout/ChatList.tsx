@@ -22,6 +22,7 @@ import { useChatStore, FolderFilter } from '../../stores/chatStore';
 import { useAuthStore } from '../../stores/authStore';
 import { StoriesStrip } from '../stories/StoriesStrip';
 import { GlobalSearch } from './GlobalSearch';
+import { BrandMark } from '../ui/BrandMark';
 
 interface ChatListProps {
   onOpenMenu: () => void;
@@ -187,7 +188,7 @@ export const ChatList: React.FC<ChatListProps> = ({
     <div className="dfz-chat-list w-full md:w-[320px] lg:w-[350px] h-full bg-dfz-surface border-r border-dfz-border flex flex-col select-none flex-shrink-0 relative overflow-hidden">
       {/* Telegram Top Header: Hamburger Menu + Search */}
       <div className="p-4 pb-2 space-y-3 border-b border-dfz-border/80">
-        <div className="flex items-center justify-between mb-2"><div className="flex items-center gap-3"><span className="dfz-brand-mark md:hidden">DFZ</span><div><h1 className="text-xl font-semibold tracking-tight">Сообщения</h1><p className="text-xs text-dfz-text-muted mt-0.5">Ваше пространство общения</p></div></div><button onClick={onNewChat} title="Новое сообщение" className="w-10 h-10 grid place-items-center rounded-xl bg-dfz-accent-subtle text-dfz-accent"><Edit2 size={18}/></button></div>
+        <div className="flex items-center justify-between mb-2"><div className="flex items-center gap-3"><BrandMark className="w-10 h-10 md:hidden" /><div><h1 className="text-xl font-semibold tracking-tight">Сообщения</h1><p className="text-xs text-dfz-text-muted mt-0.5">Ваше пространство общения</p></div></div><button onClick={onNewChat} title="Новое сообщение" className="w-10 h-10 grid place-items-center rounded-xl bg-dfz-accent-subtle text-dfz-accent"><Edit2 size={18}/></button></div>
         <div className="flex items-center gap-2">
           {/* Hamburger Menu Button */}
           <button

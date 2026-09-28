@@ -28,7 +28,8 @@ export default function RootLayout({
   return (
     <html lang="ru" className="dark">
       <head>
-        <link rel="icon" href="/icon.svg" />
+        <link rel="icon" href="/icon.svg?v=2" type="image/svg+xml" />
+        <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png" />
       </head>
       <body className="bg-dfz-bg text-dfz-text selection:bg-dfz-accent selection:text-white">
         {children}

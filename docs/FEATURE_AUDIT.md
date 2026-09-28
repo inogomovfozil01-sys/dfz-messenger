@@ -68,3 +68,13 @@ This is progress, not completion of all 115 request sections. Still required: co
 Calls need real microphone/camera, ICE/TURN and two-device verification. Redis is unavailable locally; memory fallback is not equivalent to production Redis. No production deployment or remote database migration was performed. Existing-database migration adoption needs a backup and schema comparison; do not apply the initial baseline CREATE statements blindly to an existing database.
 
 Final build result: `@dfz/types`, API and Next.js production build passed after theme schema/type alignment. The fresh economy rerun passed all 14 cases, and management HTTP tests also verified persisted `dim` theme. `git diff --check` passed. A standalone lint configuration is still not established; the build's type-check stage must not be reported as a complete lint audit.
+
+## Authentication deployment — 2026-09-28
+
+The Next.js API route now runs the shared Express application on Vercel when no external API_INTERNAL_URL is configured. The standalone API entry retains its HTTP/WebSocket server. Vercel builds generate Prisma and build shared packages before Next.js. Local environment files and build artifacts are excluded from deployment uploads.
+
+Registration ignores stale username-availability responses and enforces the same 3–32 character username bounds as the API. Existing local form loading fixes are included in the published version.
+
+Production schema drift was confirmed by P2022 on chats and P2021 on settings after successful login. The configured database was verified against a freshly created QA account before any change. An inspected Prisma diff contained only the nullable ChatMember.clearedAt column, six new tables, indexes and foreign keys. Those additions were applied in a single transaction; existing data was not dropped or rewritten. Existing Prisma migration-baseline adoption remains a separate maintenance task.
+
+Live HTTPS checks on messenger-two-theta.vercel.app: registration 201, login 200, authenticated /me 200, chats 200, settings 200, refresh 200, wrong password 401. Browser automation could not attach during this run; these are HTTP/cookie integration checks, not a completed browser UI test. WebSockets and durable file storage still require their separate production infrastructure and are outside this auth fix.

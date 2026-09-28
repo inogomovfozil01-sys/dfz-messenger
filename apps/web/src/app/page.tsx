@@ -35,6 +35,7 @@ import { PremiumModal } from '../components/economy/PremiumModal';
 import { AdminQuickActionsModal } from '../components/economy/AdminQuickActionsModal';
 import { apiRequest } from '../lib/api';
 import { Modal } from '../components/ui/Modal';
+import { BrandMark } from '../components/ui/BrandMark';
 import { ShieldCheck, MessageSquare, WifiOff, Users, Phone, Bookmark, Settings, Plus } from 'lucide-react';
 
 export default function MessengerPage() {
@@ -146,9 +147,7 @@ export default function MessengerPage() {
   if (isLoading) {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-dfz-bg text-white select-none">
-        <div className="w-16 h-16 rounded-full bg-[var(--accent-primary)] flex items-center justify-center text-white shadow-xl mb-4 animate-bounce">
-          <ShieldCheck size={36} />
-        </div>
+        <BrandMark className="w-16 h-16 mb-4 animate-pulse" />
         <h2 className="text-base font-bold tracking-tight">DFZ Messenger</h2>
         <p className="text-xs text-[var(--text-secondary)] mt-1 font-medium">Загружаем ваши чаты…</p>
       </div>
@@ -162,7 +161,7 @@ export default function MessengerPage() {
   return (
     <div className="flex h-[100dvh] w-screen bg-dfz-bg text-dfz-text overflow-hidden font-sans select-none">
       <nav aria-label="Основная навигация" className="dfz-rail hidden md:flex flex-col items-center gap-3 shrink-0">
-        <span className="dfz-brand-mark mb-7" title="DFZ Messenger">DFZ</span>
+        <BrandMark className="w-11 h-11 mb-7" />
         <button title="Сообщения" aria-label="Сообщения" aria-current={currentView === 'chats' ? 'page' : undefined} onClick={() => setCurrentView('chats')}><MessageSquare size={22}/></button>
         <button title="Контакты" aria-label="Контакты" aria-current={currentView === 'contacts' ? 'page' : undefined} onClick={() => setCurrentView('contacts')}><Users size={22}/></button>
         <button title="Звонки" aria-label="Звонки" onClick={() => setIsCallsOpen(true)}><Phone size={21}/></button>
@@ -226,7 +225,7 @@ export default function MessengerPage() {
         ) : (
           /* Telegram Classic Empty State */
           <div className="dfz-chat-canvas flex-1 flex flex-col items-center justify-center p-8 text-center select-none">
-            <div className="dfz-empty-mark mb-7"><MessageSquare size={40} strokeWidth={1.4}/></div>
+            <BrandMark className="w-24 h-24 mb-7 shadow-dfz-lg" />
             <p className="text-[10px] uppercase tracking-[.25em] text-dfz-text-muted mb-3">DFZ MESSENGER</p>
             <h2 className="text-3xl font-semibold tracking-tight">Ближе к своим.</h2>
             <p className="text-sm text-dfz-text-muted mt-3 max-w-xs leading-relaxed">Личные разговоры, общие идеи и важные сообщения — в одном месте.</p>

@@ -2,14 +2,18 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { BrandMark } from '../../../components/ui/BrandMark';
 import { useRouter } from 'next/navigation';
-import { ShieldCheck, ArrowRight, Lock, User, Mail, Check, AlertCircle } from 'lucide-react';
+import { ArrowRight, Lock, User, Mail, Check, AlertCircle, CheckCircle, Smartphone } from 'lucide-react';
 import { useAuthStore } from '../../../stores/authStore';
 import { apiRequest } from '../../../lib/api';
+import { usePwaInstall } from '../../../hooks/usePwaInstall';
+import { PwaInstallGate } from '../../../components/pwa/PwaInstallGate';
 
 export default function RegisterPage() {
   const router = useRouter();
   const { register } = useAuthStore();
+  const { isStandalone, isBypassed, bypassPwa } = usePwaInstall();
   const [isLoading, setIsLoading] = useState(false);
 
   const [username, setUsername] = useState('');
@@ -24,17 +28,31 @@ export default function RegisterPage() {
     message?: string;
   }>({ checking: false });
 
+  // If NOT in standalone PWA and NOT explicitly bypassed for browser testing:
+  if (!isStandalone && !isBypassed) {
+    return (
+      <PwaInstallGate
+        title="Регистрация в DFZ Messenger"
+        description="Для регистрации аккаунта и создания защищенной сессии требуется PWA-приложение на вашем устройстве."
+        onBypass={() => bypassPwa()}
+      />
+    );
+  }
+
   useEffect(() => {
     if (!username.trim() || username.length < 3) {
       setUsernameStatus({ checking: false });
       return;
     }
 
+    let active = true;
+    setUsernameStatus({ checking: true });
     const timer = setTimeout(async () => {
       setUsernameStatus({ checking: true });
       const res = await apiRequest<{ available: boolean; message: string }>(
         `/api/users/check-username/${username.trim().toLowerCase()}`
       );
+      if (!active) return;
       if (res.success && res.data) {
         setUsernameStatus({
           checking: false,
@@ -46,7 +64,7 @@ export default function RegisterPage() {
       }
     }, 400);
 
-    return () => clearTimeout(timer);
+    return () => { active = false; clearTimeout(timer); };
   }, [username]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -74,9 +92,21 @@ export default function RegisterPage() {
       <div className="w-full max-w-sm bg-dfz-surface border border-dfz-border rounded-dfz-xl p-8 shadow-dfz-dropdown space-y-6 animate-scale-in">
         {/* Logo & Header */}
         <div className="text-center space-y-1">
-          <div className="w-12 h-12 bg-dfz-accent rounded-dfz-lg mx-auto flex items-center justify-center text-white shadow-dfz-md mb-3">
-            <ShieldCheck size={26} />
-          </div>
+          <BrandMark className="w-14 h-14 mx-auto mb-3 shadow-dfz-md" />
+
+          {/* PWA Mode Badge */}
+          {isStandalone ? (
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-mono font-semibold mb-2">
+              <CheckCircle size={11} />
+              <span>DFZ PWA CLIENT • ЗАЩИЩЕННАЯ СРЕДА</span>
+            </div>
+          ) : (
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-mono font-semibold mb-2">
+              <Smartphone size={11} />
+              <span>WEB BROWSER SESSION</span>
+            </div>
+          )}
+
           <h1 className="text-xl font-bold tracking-tight text-dfz-text">Регистрация</h1>
           <p className="text-xs text-dfz-text-muted">Создайте аккаунт в новом поколении мессенджера</p>
         </div>
@@ -96,6 +126,9 @@ export default function RegisterPage() {
               <input
                 type="text"
                 required
+                minLength={3}
+                maxLength={32}
+                autoComplete="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
                 placeholder="никнейм (например: alex_99)"
