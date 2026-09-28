@@ -21,6 +21,7 @@ import { Modal } from '../ui/Modal';
 import { useEconomyStore } from '../../stores/economyStore';
 import { useAuthStore } from '../../stores/authStore';
 import { GiftArtwork } from './GiftArtworks';
+import { RecipientPicker, RecipientUser } from './RecipientPicker';
 import { apiRequest } from '../../lib/api';
 
 export const MyStarsModal: React.FC = () => {
@@ -47,7 +48,7 @@ export const MyStarsModal: React.FC = () => {
   } = useEconomyStore();
 
   const [activeTab, setActiveTab] = useState<'buy' | 'send' | 'history' | 'gifts' | 'earn'>('buy');
-  const [recipientQuery, setRecipientQuery] = useState('');
+  const [selectedRecipient, setSelectedRecipient] = useState<RecipientUser | null>(null);
   const [transferAmount, setTransferAmount] = useState('100');
   const [transferMessage, setTransferMessage] = useState('');
   const [isSubmittingTransfer, setIsSubmittingTransfer] = useState(false);
@@ -63,7 +64,13 @@ export const MyStarsModal: React.FC = () => {
 
       const target = useEconomyStore.getState().targetUserForStars;
       if (target) {
-        setRecipientQuery(target.username ? `@${target.username}` : '');
+        setSelectedRecipient({
+          id: target.id,
+          username: target.username,
+          displayName: target.displayName || target.username,
+          avatarUrl: target.avatarUrl,
+          isSelf: false,
+        });
       }
       fetchBalance();
       fetchActivityState();
@@ -92,20 +99,13 @@ export const MyStarsModal: React.FC = () => {
   const handleSendStars = async (e: React.FormEvent) => {
     e.preventDefault();
     const amount = parseInt(transferAmount, 10);
-    if (!recipientQuery.trim() || isNaN(amount) || amount <= 0) return;
+    if (!selectedRecipient || isNaN(amount) || amount <= 0) return;
 
     setIsSubmittingTransfer(true);
-    const searchRes = await apiRequest<any>(`/api/users/profile/${recipientQuery.trim().replace(/^@/, '')}`);
-    if (!searchRes.success || !searchRes.data) {
-      setIsSubmittingTransfer(false);
-      alert('Пользователь не найден. Укажите точный @username');
-      return;
-    }
-
-    const success = await transferStars(searchRes.data.id, amount, transferMessage);
+    const success = await transferStars(selectedRecipient.id, amount, transferMessage);
     setIsSubmittingTransfer(false);
     if (success) {
-      setRecipientQuery('');
+      setSelectedRecipient(null);
       setTransferMessage('');
       setActiveTab('history');
     }
@@ -280,17 +280,11 @@ export const MyStarsModal: React.FC = () => {
         {/* Tab Content 2: Send Stars */}
         {activeTab === 'send' && (
           <form onSubmit={handleSendStars} className="space-y-3.5 bg-[#212126] p-4 rounded-dfz-xl border border-[#292930]">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-dfz-text">Получатель (@username)</label>
-              <input
-                type="text"
-                value={recipientQuery}
-                onChange={(e) => setRecipientQuery(e.target.value)}
-                placeholder="@alex_dev или username"
-                className="w-full px-3 py-2 rounded-dfz-lg bg-[#18181c] border border-[#292930] text-dfz-text text-xs focus:outline-none focus:border-[#8774e1]"
-                required
-              />
-            </div>
+            <RecipientPicker
+              selectedRecipient={selectedRecipient}
+              onSelect={(rec) => setSelectedRecipient(rec)}
+              allowSelf={false}
+            />
 
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-dfz-text">Количество Stars</label>
@@ -335,7 +329,7 @@ export const MyStarsModal: React.FC = () => {
 
             <button
               type="submit"
-              disabled={isSubmittingTransfer || (!isUnlimitedStars && starBalance < parseInt(transferAmount || '0', 10))}
+              disabled={isSubmittingTransfer || !selectedRecipient || (!isUnlimitedStars && starBalance < parseInt(transferAmount || '0', 10))}
               className="w-full py-2.5 rounded-dfz-lg bg-[#8774e1] hover:bg-[#7662d8] text-white text-xs font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-sm"
             >
               <Send size={13} />

@@ -78,9 +78,7 @@ export class GiftsService {
       idempotencyKey?: string;
     } = {}
   ) {
-    if (senderId === recipientId) {
-      throw new Error('You cannot send a gift to yourself');
-    }
+    const isSelfGift = senderId === recipientId;
 
     const recipient = await prisma.user.findUnique({
       where: { id: recipientId },
@@ -184,7 +182,9 @@ export class GiftsService {
           balanceAfter: senderBalanceAfter,
           referenceType: 'GIFT',
           referenceId: giftDef.id,
-          reason: `Gift "${giftDef.name}" to @${recipient.username}`,
+          reason: isSelfGift
+            ? `Подарок в свою коллекцию: "${giftDef.name}"`
+            : `Gift "${giftDef.name}" to @${recipient.username}`,
           idempotencyKey: options.idempotencyKey,
         },
       });
@@ -194,10 +194,10 @@ export class GiftsService {
         data: {
           giftDefinitionId: giftDef.id,
           ownerId: recipientId,
-          senderId: options.isAnonymous ? null : senderId,
-          message: options.message ? options.message.slice(0, 200) : null,
+          senderId: isSelfGift ? senderId : (options.isAnonymous ? null : senderId),
+          message: options.message ? options.message.slice(0, 200) : (isSelfGift ? 'В личную коллекцию' : null),
           serialNumber,
-          isAnonymous: !!options.isAnonymous,
+          isAnonymous: isSelfGift ? false : !!options.isAnonymous,
           showOnProfile: true,
         },
         include: {

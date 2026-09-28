@@ -14,11 +14,14 @@ import {
 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { useEconomyStore } from '../../stores/economyStore';
+import { useAuthStore } from '../../stores/authStore';
 import { GiftArtwork } from './GiftArtworks';
+import { RecipientPicker, RecipientUser } from './RecipientPicker';
 import { GiftDefinition } from '@dfz/types';
 import { apiRequest } from '../../lib/api';
 
 export const GiftStoreModal: React.FC = () => {
+  const { user, profile } = useAuthStore();
   const {
     isGiftStoreOpen,
     setGiftStoreOpen,
@@ -36,7 +39,7 @@ export const GiftStoreModal: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState<'default' | 'asc' | 'desc'>('default');
   const [selectedGift, setSelectedGift] = useState<GiftDefinition | null>(null);
-  const [recipientUsername, setRecipientUsername] = useState('');
+  const [selectedRecipient, setSelectedRecipient] = useState<RecipientUser | null>(null);
   const [giftMessage, setGiftMessage] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -46,10 +49,24 @@ export const GiftStoreModal: React.FC = () => {
     if (isGiftStoreOpen) {
       fetchGiftCatalog(activeCategory);
       if (targetUserForGift) {
-        setRecipientUsername(targetUserForGift.username);
+        setSelectedRecipient({
+          id: targetUserForGift.id,
+          username: targetUserForGift.username,
+          displayName: targetUserForGift.displayName || targetUserForGift.username,
+          avatarUrl: targetUserForGift.avatarUrl,
+          isSelf: user ? targetUserForGift.id === user.id : false,
+        });
+      } else if (user && !selectedRecipient) {
+        setSelectedRecipient({
+          id: user.id,
+          username: user.username,
+          displayName: profile?.displayName || user.username,
+          avatarUrl: profile?.avatarUrl,
+          isSelf: true,
+        });
       }
     }
-  }, [isGiftStoreOpen, activeCategory]);
+  }, [isGiftStoreOpen, activeCategory, targetUserForGift, user]);
 
   const filteredCatalog = useMemo(() => {
     let list = [...giftCatalog];
@@ -74,22 +91,15 @@ export const GiftStoreModal: React.FC = () => {
 
   const handleSendGift = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedGift || !recipientUsername.trim()) return;
+    if (!selectedGift || !selectedRecipient) return;
 
     setIsSubmitting(true);
-    const cleanUser = recipientUsername.trim().replace(/^@/, '');
-    const userRes = await apiRequest<any>(`/api/users/profile/${cleanUser}`);
-    if (!userRes.success || !userRes.data) {
-      setIsSubmitting(false);
-      alert('Пользователь не найден. Проверьте @username.');
-      return;
-    }
 
     const success = await sendGift(
-      userRes.data.id,
+      selectedRecipient.id,
       selectedGift.id,
-      giftMessage,
-      isAnonymous
+      giftMessage.trim() || (selectedRecipient.isSelf ? 'В личную коллекцию' : undefined),
+      selectedRecipient.isSelf ? false : isAnonymous
     );
 
     setIsSubmitting(false);
@@ -291,8 +301,16 @@ export const GiftStoreModal: React.FC = () => {
               {sendSuccess ? (
                 <div className="py-8 text-center space-y-3">
                   <CheckCircle size={44} className="mx-auto text-emerald-400 animate-bounce" />
-                  <h4 className="text-sm font-bold text-dfz-text">Подарок успешно отправлен!</h4>
-                  <p className="text-xs text-dfz-text-muted">Пользователь получит уведомление в чате.</p>
+                  <h4 className="text-sm font-bold text-dfz-text">
+                    {selectedRecipient?.isSelf
+                      ? 'Подарок добавлен в вашу коллекцию!'
+                      : 'Подарок успешно отправлен!'}
+                  </h4>
+                  <p className="text-xs text-dfz-text-muted">
+                    {selectedRecipient?.isSelf
+                      ? 'Он уже отображается в вашем профиле в разделе подарков.'
+                      : 'Пользователь получит уведомление в чате.'}
+                  </p>
                 </div>
               ) : (
                 <>
@@ -324,17 +342,11 @@ export const GiftStoreModal: React.FC = () => {
                   </div>
 
                   <form onSubmit={handleSendGift} className="space-y-3.5">
-                    <div className="space-y-1">
-                      <label className="font-semibold text-dfz-text">Кому (@username)</label>
-                      <input
-                        type="text"
-                        value={recipientUsername}
-                        onChange={(e) => setRecipientUsername(e.target.value)}
-                        placeholder="@alex_dev или admin"
-                        className="w-full px-3 py-2 rounded-dfz-lg bg-[#212126] border border-[#292930] text-dfz-text text-xs focus:outline-none focus:border-[#8774e1]"
-                        required
-                      />
-                    </div>
+                    <RecipientPicker
+                      selectedRecipient={selectedRecipient}
+                      onSelect={(rec) => setSelectedRecipient(rec)}
+                      allowSelf={true}
+                    />
 
                     <div className="space-y-1">
                       <div className="flex justify-between">
@@ -345,26 +357,43 @@ export const GiftStoreModal: React.FC = () => {
                         rows={2}
                         value={giftMessage}
                         onChange={(e) => setGiftMessage(e.target.value)}
-                        placeholder="С праздником! Пусть удача всегда будет рядом 🎁"
+                        placeholder={
+                          selectedRecipient?.isSelf
+                            ? 'Заметка для личной коллекции 🎁'
+                            : 'С праздником! Пусть удача всегда будет рядом 🎁'
+                        }
                         maxLength={200}
                         className="w-full px-3 py-2 rounded-dfz-lg bg-[#212126] border border-[#292930] text-dfz-text text-xs resize-none focus:outline-none focus:border-[#8774e1]"
                       />
                     </div>
 
-                    <label className="flex items-center gap-2 cursor-pointer pt-1 select-none">
-                      <input
-                        type="checkbox"
-                        checked={isAnonymous}
-                        onChange={(e) => setIsAnonymous(e.target.checked)}
-                        className="rounded border-[#292930] text-[#8774e1] focus:ring-0 bg-[#212126]"
-                      />
-                      <span className="text-dfz-text-muted text-[11px]">Отправить анонимно (скрыть имя в карточке)</span>
-                    </label>
+                    {!selectedRecipient?.isSelf && (
+                      <label className="flex items-center gap-2 cursor-pointer pt-1 select-none">
+                        <input
+                          type="checkbox"
+                          checked={isAnonymous}
+                          onChange={(e) => setIsAnonymous(e.target.checked)}
+                          className="rounded border-[#292930] text-[#8774e1] focus:ring-0 bg-[#212126]"
+                        />
+                        <span className="text-dfz-text-muted text-[11px]">Отправить анонимно (скрыть имя в карточке)</span>
+                      </label>
+                    )}
 
                     {/* Insufficient balance warning */}
                     {!isUnlimitedStars && starBalance < selectedGift.priceStars && (
-                      <div className="p-2.5 rounded-dfz-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px]">
-                        Недостаточно Stars на балансе (требуется ★ {selectedGift.priceStars.toLocaleString()}).
+                      <div className="p-2.5 rounded-dfz-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] flex items-center justify-between">
+                        <span>Недостаточно Stars на балансе</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedGift(null);
+                            setGiftStoreOpen(false);
+                            setStarsOpen(true, 'balance');
+                          }}
+                          className="text-amber-400 font-bold hover:underline"
+                        >
+                          Пополнить
+                        </button>
                       </div>
                     )}
 
@@ -378,11 +407,17 @@ export const GiftStoreModal: React.FC = () => {
                       </button>
                       <button
                         type="submit"
-                        disabled={isSubmitting || (!isUnlimitedStars && starBalance < selectedGift.priceStars)}
+                        disabled={isSubmitting || !selectedRecipient || (!isUnlimitedStars && starBalance < selectedGift.priceStars)}
                         className="flex-1 py-2 rounded-dfz-lg bg-dfz-accent hover:bg-dfz-accent-hover text-white font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-sm"
                       >
                         <Send size={13} />
-                        <span>{isSubmitting ? 'Отправка...' : `Подарить за ★ ${selectedGift.priceStars.toLocaleString()}`}</span>
+                        <span>
+                          {isSubmitting
+                            ? 'Отправка...'
+                            : selectedRecipient?.isSelf
+                            ? `Подарить себе за ★ ${selectedGift.priceStars.toLocaleString()}`
+                            : `Подарить за ★ ${selectedGift.priceStars.toLocaleString()}`}
+                        </span>
                       </button>
                     </div>
                   </form>

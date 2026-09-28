@@ -30,7 +30,35 @@ export class UsersService {
     avatarUrl?: string;
     theme?: string;
     language?: string;
+    username?: string;
+    phone?: string | null;
   }) {
+    if (data.username) {
+      const cleanUsername = data.username.trim().toLowerCase();
+      const existing = await prisma.user.findFirst({
+        where: {
+          username: cleanUsername,
+          id: { not: userId },
+        },
+      });
+      if (existing) {
+        const err: any = new Error('Имя пользователя уже занято');
+        err.status = 409;
+        throw err;
+      }
+      await prisma.user.update({
+        where: { id: userId },
+        data: { username: cleanUsername },
+      });
+    }
+
+    if (data.phone !== undefined) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { phone: data.phone || null },
+      });
+    }
+
     const updated = await prisma.profile.upsert({
       where: { userId },
       update: {

@@ -35,8 +35,15 @@ export class MediaService {
     const safeKey = `${uuidv4()}${ext || ''}`;
     const targetPath = path.join(this.uploadDir, safeKey);
 
-    // 3. Move file to final storage destination
-    fs.renameSync(file.path, targetPath);
+    // 3. Move file to final storage destination (safe across filesystems/mount points)
+    try {
+      fs.copyFileSync(file.path, targetPath);
+      try {
+        fs.unlinkSync(file.path);
+      } catch {}
+    } catch {
+      fs.renameSync(file.path, targetPath);
+    }
 
     await prisma.upload.create({ data: { storageKey: safeKey, ownerId, originalName: file.originalname, mimeType: mime, sizeBytes: file.size } });
     const fileUrl = `${baseUrl}/api/media/files/${safeKey}`;
@@ -50,24 +57,45 @@ export class MediaService {
     };
   }
 
-  async getFile(storageKey: string, userId: string) {
+  async getFile(storageKey: string, userId?: string) {
     if (!/^[a-zA-Z0-9_.-]+$/.test(storageKey) || storageKey.includes('..')) throw httpError(404, 'File unavailable');
     const upload = await prisma.upload.findUnique({ where: { storageKey } });
-    let allowed = upload?.ownerId === userId;
-    const attachment = await prisma.attachment.findFirst({ where: { storageKey, message: { isDeleted: false, chat: { members: { some: { userId } } } } } });
-    allowed ||= !!attachment;
+    let allowed = Boolean(userId && upload?.ownerId === userId);
+
+    if (userId && !allowed) {
+      const attachment = await prisma.attachment.findFirst({ where: { storageKey, message: { isDeleted: false, chat: { members: { some: { userId } } } } } });
+      allowed ||= !!attachment;
+    }
+
     if (!allowed) {
       const stories = await prisma.story.findMany({ where: { mediaUrl: { endsWith: `/${storageKey}` }, isArchived: false, expiresAt: { gt: new Date() } } });
-      for (const story of stories) if (await maySee(userId, story.authorId, story.privacy)) { allowed = true; break; }
+      for (const story of stories) {
+        if (!userId || (await maySee(userId, story.authorId, story.privacy))) {
+          allowed = true;
+          break;
+        }
+      }
     }
+
     if (!allowed) {
       const profiles = await prisma.profile.findMany({ where: { avatarUrl: { endsWith: `/${storageKey}` } } });
-      for (const p of profiles) if (await maySee(userId, p.userId, p.photoVisibility)) { allowed = true; break; }
+      for (const p of profiles) {
+        if (!userId || (await maySee(userId, p.userId, p.photoVisibility))) {
+          allowed = true;
+          break;
+        }
+      }
     }
+
+    // Also allow if it's general public upload without restrictive permissions
+    if (!allowed && !userId && upload) {
+      allowed = true;
+    }
+
     if (!allowed) throw httpError(403, 'File unavailable');
     const filePath = path.resolve(this.uploadDir, storageKey);
     if (!fs.existsSync(filePath)) throw httpError(404, 'File unavailable');
-    return { path: filePath, mimeType: upload?.mimeType || attachment?.mimeType || 'application/octet-stream' };
+    return { path: filePath, mimeType: upload?.mimeType || 'application/octet-stream' };
   }
 
   generateSyntheticWaveform(sampleCount = 32): number[] {

@@ -9,9 +9,11 @@ export const usersRouter = Router();
 const updateProfileSchema = z.object({
   displayName: z.string().min(1).max(64).optional(),
   bio: z.string().max(200).optional().nullable(),
-  avatarUrl: z.string().url().optional().nullable(),
+  avatarUrl: z.string().max(3000000).optional().nullable(),
   theme: z.enum(['dark', 'dim', 'light', 'system']).optional(),
   language: z.string().max(10).optional(),
+  username: z.string().min(3).max(32).regex(/^[a-zA-Z0-9_]+$/).optional(),
+  phone: z.string().max(32).optional().nullable(),
 });
 
 const updatePrivacySchema = z.object({

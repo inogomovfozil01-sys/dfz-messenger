@@ -5,14 +5,9 @@ import {
   ArrowLeft,
   Check,
   Camera,
+  Plus,
   X,
-  User,
-  AtSign,
-  Calendar,
-  Phone,
-  HelpCircle,
   Sparkles,
-  Link as LinkIcon,
 } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
 import { useAuthStore } from '../../stores/authStore';
@@ -31,8 +26,6 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
   const [bio, setBio] = useState('');
   const [username, setUsername] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
-  const [birthday, setBirthday] = useState('');
-  const [phone, setPhone] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -47,8 +40,6 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
       setBio(profile.bio || '');
       setAvatarUrl(profile.avatarUrl || '');
       setUsername(user?.username || '');
-      setPhone(user?.phone || '');
-      setBirthday((profile as any)?.birthday || '22 февраля');
       setErrorMessage('');
       setSuccessMessage('');
     }
@@ -63,6 +54,11 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
       return;
     }
 
+    if (username.trim() && username.trim().length < 5) {
+      setErrorMessage('Минимальная длина имени пользователя — 5 символов');
+      return;
+    }
+
     setIsSaving(true);
     setErrorMessage('');
 
@@ -70,36 +66,45 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
       ? `${firstName.trim()} ${lastName.trim()}`
       : firstName.trim();
 
-    // 1. Update Profile (displayName, bio, avatarUrl)
-    const success = await updateProfile({
-      displayName: fullDisplayName,
-      bio: bio.trim() || null,
-      avatarUrl: avatarUrl.trim() || null,
-    });
+    try {
+      // 1. Update Profile via PUT /api/users/profile
+      const payload: any = {
+        displayName: fullDisplayName,
+        bio: bio.trim() || null,
+        avatarUrl: avatarUrl.trim() || null,
+      };
 
-    // 2. Check if username changed
-    if (username.trim() && username.trim().toLowerCase() !== user.username) {
-      const uRes = await apiRequest('/api/users/profile', {
-        method: 'PUT',
-        body: JSON.stringify({ username: username.trim().toLowerCase() }),
-      });
-      if (!uRes.success) {
-        setErrorMessage(uRes.error?.message || 'Не удалось обновить имя пользователя');
-        setIsSaving(false);
-        return;
+      if (username.trim() && username.trim().toLowerCase() !== user.username) {
+        payload.username = username.trim().toLowerCase();
       }
-    }
 
-    setIsSaving(false);
-    if (success) {
-      setSuccessMessage('Профиль успешно сохранен');
+      const res = await apiRequest('/api/users/profile', {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.success) {
+        throw new Error(res.error?.message || 'Ошибка сохранения профиля');
+      }
+
+      // Also sync local store
+      await updateProfile({
+        displayName: fullDisplayName,
+        bio: bio.trim() || null,
+        avatarUrl: avatarUrl.trim() || null,
+      });
+
       await checkAuth();
+
+      setSuccessMessage('Профиль успешно сохранен');
       setTimeout(() => {
         setSuccessMessage('');
         onClose();
-      }, 700);
-    } else {
-      setErrorMessage('Ошибка сохранения профиля');
+      }, 500);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Ошибка сохранения профиля');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -107,27 +112,36 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatarUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+    if (!file) return;
 
-  const handlePromptUrl = () => {
-    const url = prompt('Или введите URL аватарки:', avatarUrl);
-    if (url !== null) {
-      setAvatarUrl(url.trim());
+    // Show instant preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAvatarUrl(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    // Also upload file to backend
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await apiRequest<{ url: string }>('/api/media/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      if (res.success && res.data?.url) {
+        setAvatarUrl(res.data.url);
+      }
+    } catch {
+      // Keep data URI preview as fallback
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm animate-fade-in select-none">
-      <div className="relative w-full max-w-md max-h-[92vh] bg-[#18181c] border border-[#292930] rounded-dfz-2xl shadow-2xl flex flex-col overflow-hidden text-dfz-text">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/75 backdrop-blur-sm animate-fade-in select-none">
+      <div className="relative w-full max-w-[420px] h-full sm:h-auto sm:max-h-[92vh] bg-[#18181c] sm:border sm:border-[#292930] sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden text-dfz-text">
         {/* Hidden File Input */}
         <input
           type="file"
@@ -137,179 +151,156 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
           className="hidden"
         />
 
-        {/* Telegram Top Header Bar with Checkmark */}
-        <div className="h-14 px-4 border-b border-[#292930] flex items-center justify-between shrink-0 bg-[#18181c]">
-          <div className="flex items-center gap-3">
+        {/* Telegram Top Header Bar 1:1 like Screenshot */}
+        <div className="h-14 px-4 border-b border-[#292930]/80 flex items-center justify-between shrink-0 bg-[#18181c] z-10">
+          <div className="flex items-center gap-4">
             <button
               onClick={onClose}
-              className="p-2 -ml-2 rounded-full hover:bg-[#28282e] text-dfz-text-muted hover:text-dfz-text transition-colors"
+              className="p-1 -ml-1 rounded-full text-white/80 hover:text-white hover:bg-white/10 transition-colors"
               title="Назад"
             >
-              <ArrowLeft size={20} />
+              <ArrowLeft size={22} />
             </button>
-            <h2 className="text-base font-bold text-dfz-text">Изменить профиль</h2>
+            <h2 className="text-lg font-bold text-white tracking-wide">Изменить профиль</h2>
           </div>
 
           <button
             onClick={() => handleSave()}
             disabled={isSaving}
-            className="p-2 -mr-2 rounded-full hover:bg-[#8774e1]/15 text-[#8774e1] hover:text-[#7662d8] transition-colors disabled:opacity-50"
+            className="p-1 -mr-1 rounded-full text-[#8774e1] hover:text-[#9987ea] hover:bg-[#8774e1]/10 transition-colors disabled:opacity-40"
             title="Сохранить"
           >
             {isSaving ? (
               <span className="w-5 h-5 border-2 border-[#8774e1] border-t-transparent rounded-full block animate-spin" />
             ) : (
-              <Check size={22} strokeWidth={2.5} />
+              <Check size={24} strokeWidth={2.6} />
             )}
           </button>
         </div>
 
         {/* Scrollable Form Content */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto px-4 py-5 space-y-6">
           {errorMessage && (
-            <div className="p-3 bg-[#ef5350]/10 border border-[#ef5350]/25 rounded-dfz-xl text-xs text-[#ef5350]">
+            <div className="p-3 bg-[#ef5350]/10 border border-[#ef5350]/25 rounded-xl text-xs text-[#ef5350]">
               {errorMessage}
             </div>
           )}
 
           {successMessage && (
-            <div className="p-3 bg-emerald-500/10 border border-emerald-500/25 rounded-dfz-xl text-xs text-emerald-400">
+            <div className="p-3 bg-emerald-500/10 border border-emerald-500/25 rounded-xl text-xs text-emerald-400">
               {successMessage}
             </div>
           )}
 
-          {/* Telegram Large Centered Avatar with Camera Overlay */}
-          <div className="flex flex-col items-center pt-2">
+          {/* Telegram Large Centered Avatar with Camera+ Overlay 1:1 */}
+          <div className="flex flex-col items-center pt-1 pb-2">
             <div
               onClick={handleAvatarClick}
-              className="relative w-24 h-24 rounded-full cursor-pointer group select-none shadow-lg ring-2 ring-transparent hover:ring-[#8774e1] transition-all"
+              className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full cursor-pointer group shadow-xl transition-transform active:scale-95"
             >
               <Avatar
                 src={avatarUrl}
                 name={firstName || user.username}
                 size="xl"
-                className="w-24 h-24 text-2xl"
+                className="w-28 h-28 sm:w-32 sm:h-32 text-3xl ring-2 ring-[#292930] group-hover:ring-[#8774e1] transition-all"
               />
-              <div className="absolute inset-0 bg-black/45 rounded-full flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <Camera size={26} className="text-white drop-shadow" />
-                <span className="text-[10px] text-white font-medium mt-0.5">Выбрать</span>
+
+              {/* Exact Camera+ Icon Overlay from Screenshot */}
+              <div className="absolute inset-0 bg-black/35 group-hover:bg-black/50 rounded-full flex items-center justify-center transition-all">
+                <div className="relative">
+                  <Camera size={38} className="text-white drop-shadow-md" strokeWidth={1.8} />
+                  <div className="absolute -bottom-1 -right-1 bg-white text-black rounded-full p-0.5 shadow">
+                    <Plus size={12} strokeWidth={3} />
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-3 mt-2">
-              <button
-                type="button"
-                onClick={handleAvatarClick}
-                className="text-xs text-[#8774e1] hover:underline font-semibold"
-              >
-                Выбрать фото
-              </button>
-              <span className="text-dfz-text-muted text-xs">•</span>
-              <button
-                type="button"
-                onClick={handlePromptUrl}
-                className="text-xs text-dfz-text-muted hover:text-dfz-text hover:underline"
-              >
-                Ввести URL
-              </button>
             </div>
           </div>
 
-          {/* Name Card (First & Last Name) */}
-          <div className="p-3.5 rounded-dfz-xl bg-[#212126] border border-[#292930] space-y-3">
-            <div className="space-y-1">
-              <label className="text-[11px] font-semibold text-dfz-text-muted">Имя</label>
+          {/* First Group: Outlined Notch Fields (Имя, Фамилия, О себе) */}
+          <div className="p-3 sm:p-4 rounded-2xl bg-[#212126] border border-[#2c2c34] space-y-3 shadow-sm">
+            {/* Field 1: Имя */}
+            <div className="relative rounded-xl border border-[#383842] focus-within:border-[#8774e1] bg-[#18181c]/60 px-3.5 pt-2 pb-1.5 transition-colors">
+              <label className="block text-[11px] font-medium text-[#8e8e93] leading-none mb-0.5">
+                Имя
+              </label>
               <input
                 type="text"
                 required
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 placeholder="Имя"
-                className="w-full h-9 px-3 rounded-dfz-lg bg-[#18181c] border border-[#292930] text-sm text-dfz-text placeholder:text-dfz-text-muted focus:outline-none focus:border-[#8774e1]"
+                className="w-full bg-transparent text-[15px] font-medium text-white placeholder:text-[#5c5c66] focus:outline-none"
               />
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[11px] font-semibold text-dfz-text-muted">Фамилия (необязательно)</label>
+            {/* Field 2: Фамилия */}
+            <div className="relative rounded-xl border border-[#383842] focus-within:border-[#8774e1] bg-[#18181c]/60 px-3.5 pt-2 pb-1.5 transition-colors">
+              <label className="block text-[11px] font-medium text-[#8e8e93] leading-none mb-0.5">
+                Фамилия
+              </label>
               <input
                 type="text"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 placeholder="Фамилия"
-                className="w-full h-9 px-3 rounded-dfz-lg bg-[#18181c] border border-[#292930] text-sm text-dfz-text placeholder:text-dfz-text-muted focus:outline-none focus:border-[#8774e1]"
+                className="w-full bg-transparent text-[15px] font-medium text-white placeholder:text-[#5c5c66] focus:outline-none"
+              />
+            </div>
+
+            {/* Field 3: О себе (необязательно) */}
+            <div className="relative rounded-xl border border-[#383842] focus-within:border-[#8774e1] bg-[#18181c]/60 px-3.5 pt-2 pb-2 transition-colors">
+              <div className="flex justify-between items-center mb-0.5">
+                <label className="block text-[11px] font-medium text-[#8e8e93] leading-none">
+                  О себе (необязательно)
+                </label>
+                <span className="text-[10px] text-[#8e8e93] font-mono">{bio.length}/70</span>
+              </div>
+              <textarea
+                rows={2}
+                maxLength={70}
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder="О себе"
+                className="w-full bg-transparent text-[14px] text-white placeholder:text-[#5c5c66] leading-snug resize-none focus:outline-none"
               />
             </div>
           </div>
 
-          {/* Bio / About */}
-          <div className="p-3.5 rounded-dfz-xl bg-[#212126] border border-[#292930] space-y-1.5">
-            <div className="flex justify-between items-center">
-              <label className="text-[11px] font-semibold text-dfz-text-muted">О себе</label>
-              <span className="text-[10px] text-dfz-text-muted font-mono">{bio.length}/70</span>
-            </div>
-            <textarea
-              rows={2}
-              maxLength={70}
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              placeholder="Любые подробности, например: возраст, профессия или город."
-              className="w-full px-3 py-2 rounded-dfz-lg bg-[#18181c] border border-[#292930] text-xs text-dfz-text placeholder:text-dfz-text-muted resize-none focus:outline-none focus:border-[#8774e1]"
-            />
-            <p className="text-[10px] text-dfz-text-muted leading-tight">
-              Любые подробности о вас, которые увидят другие пользователи.
-            </p>
-          </div>
+          {/* Helper caption 1 under Card 1 (Exact from Screenshot) */}
+          <p className="px-2 text-[13px] text-[#8e8e93] leading-relaxed -mt-3">
+            Любые подробности, например: возраст, род занятий или город. Пример: 23 года, дизайнер из Санкт-Петербурга.
+          </p>
 
-          {/* Username (@username) */}
-          <div className="p-3.5 rounded-dfz-xl bg-[#212126] border border-[#292930] space-y-1.5">
-            <label className="text-[11px] font-semibold text-dfz-text-muted">Имя пользователя</label>
-            <div className="relative">
-              <span className="absolute left-3 top-2 text-dfz-text-muted text-sm font-mono">@</span>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                placeholder="username"
-                className="w-full h-9 pl-7 pr-3 rounded-dfz-lg bg-[#18181c] border border-[#292930] text-sm font-mono text-dfz-text focus:outline-none focus:border-[#8774e1]"
-              />
+          {/* Second Group: Имя пользователя */}
+          <div className="space-y-1.5 pt-1">
+            <h3 className="px-2 text-sm font-semibold text-[#8774e1] tracking-wide">
+              Имя пользователя
+            </h3>
+
+            <div className="p-3 sm:p-4 rounded-2xl bg-[#212126] border border-[#2c2c34] shadow-sm">
+              <div className="relative rounded-xl border border-[#383842] focus-within:border-[#8774e1] bg-[#18181c]/60 px-3.5 pt-2 pb-1.5 transition-colors">
+                <label className="block text-[11px] font-medium text-[#8e8e93] leading-none mb-0.5">
+                  Имя пользователя (необязательно)
+                </label>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                  placeholder="realDFZ"
+                  className="w-full bg-transparent text-[15px] font-medium text-white placeholder:text-[#5c5c66] focus:outline-none font-mono"
+                />
+              </div>
             </div>
-            <p className="text-[10px] text-dfz-text-muted leading-tight">
-              Вы можете выбрать публичное имя в DFZ Messenger. По этому имени другие пользователи смогут найти вас.
-            </p>
-            {username && (
-              <p className="text-[11px] text-[#8774e1] font-mono truncate">
-                https://dfz.im/{username}
+
+            {/* Helper captions 2 under Card 2 (Exact from Screenshot) */}
+            <div className="px-2 space-y-3 pt-2 text-[13px] text-[#8e8e93] leading-relaxed">
+              <p>
+                Вы можете выбрать публичное имя пользователя в <strong className="text-white font-medium">Telegram</strong>. В этом случае другие люди смогут найти Вас по такому имени и связаться, не зная Вашего телефона.
               </p>
-            )}
-          </div>
-
-          {/* Birthday & Phone (Exact as Telegram Screenshot 1) */}
-          <div className="p-3.5 rounded-dfz-xl bg-[#212126] border border-[#292930] space-y-3">
-            <div className="space-y-1">
-              <label className="text-[11px] font-semibold text-dfz-text-muted flex items-center gap-1.5">
-                <Calendar size={13} className="text-[#8774e1]" />
-                <span>День рождения</span>
-              </label>
-              <input
-                type="text"
-                value={birthday}
-                onChange={(e) => setBirthday(e.target.value)}
-                placeholder="например: 22 февраля"
-                className="w-full h-9 px-3 rounded-dfz-lg bg-[#18181c] border border-[#292930] text-xs text-dfz-text focus:outline-none focus:border-[#8774e1]"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-[11px] font-semibold text-dfz-text-muted flex items-center gap-1.5">
-                <Phone size={13} className="text-[#8774e1]" />
-                <span>Номер телефона</span>
-              </label>
-              <input
-                type="text"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+7 999 123 4567"
-                className="w-full h-9 px-3 rounded-dfz-lg bg-[#18181c] border border-[#292930] text-xs text-dfz-text focus:outline-none focus:border-[#8774e1]"
-              />
+              <p>
+                Вы можете использовать символы <strong className="text-white font-medium">a–z</strong>, <strong className="text-white font-medium">0–9</strong> и подчёркивания. Минимальная длина — <strong className="text-white font-medium">5</strong> символов.
+              </p>
             </div>
           </div>
         </div>

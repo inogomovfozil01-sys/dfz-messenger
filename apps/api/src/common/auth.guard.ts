@@ -24,7 +24,7 @@ declare global {
 
 export async function authGuard(req: Request, res: Response, next: NextFunction) {
   try {
-    let token = req.cookies?.dfz_access_token;
+    let token = req.cookies?.dfz_access_token || (req.query?.token as string);
 
     if (!token && req.headers.authorization) {
       const parts = req.headers.authorization.split(' ');
