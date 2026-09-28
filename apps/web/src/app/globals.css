@@ -15,31 +15,31 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 }
 
 :root {
-  /* DFZ Serious Professional Dark Theme (Default) */
-  --bg-main: #101115;
-  --bg-surface: #17181e;
-  --bg-surface-secondary: #202129;
-  --bg-surface-hover: #202129;
-  --bg-surface-active: #2d2845;
-  --border-subtle: #2b2c36;
-  --border-focus: #6d5bd0;
-  --text-primary: #efeff5;
-  --text-secondary: #9a9ba9;
-  --text-tertiary: #737585;
-  --accent-primary: #6d5bd0;
-  --accent-hover: #5b49bd;
-  --accent-subtle: rgba(137, 116, 235, 0.15);
-  --accent-text: #b9a9ff;
-  --color-danger: #e53935;
-  --color-danger-hover: #c62828;
-  --color-success: #38a169;
-  --color-warning: #d69e2e;
-  --bubble-outgoing: #403565;
+  /* Exact Telegram Dark Graphite & Violet Theme */
+  --bg-main: #0e0e10;
+  --bg-surface: #18181c;
+  --bg-surface-secondary: #212126;
+  --bg-surface-hover: #28282e;
+  --bg-surface-active: #2f2a48;
+  --border-subtle: #292930;
+  --border-focus: #8774e1;
+  --text-primary: #ffffff;
+  --text-secondary: #9e9ea7;
+  --text-tertiary: #6b6b75;
+  --accent-primary: #8774e1;
+  --accent-hover: #7662d8;
+  --accent-subtle: rgba(135, 116, 225, 0.15);
+  --accent-text: #b3a5f5;
+  --color-danger: #ef5350;
+  --color-danger-hover: #e53935;
+  --color-success: #4caf50;
+  --color-warning: #f5c542;
+  --bubble-outgoing: #7b61ff;
   --bubble-outgoing-text: #ffffff;
-  --bubble-incoming: #22232d;
-  --bubble-incoming-text: #efeff5;
-  --badge-unread: #6d5bd0;
-  --badge-muted: #3d4f61;
+  --bubble-incoming: #212126;
+  --bubble-incoming-text: #ffffff;
+  --badge-unread: #8774e1;
+  --badge-muted: #3a3a44;
 }
 
 .dim {

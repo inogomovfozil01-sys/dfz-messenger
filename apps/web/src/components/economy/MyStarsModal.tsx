@@ -130,7 +130,7 @@ export const MyStarsModal: React.FC = () => {
     >
       <div className="space-y-4">
         {/* Strict Telegram Stars Balance Hero Card */}
-        <div className="p-5 rounded-dfz-2xl bg-[#151d26] border border-[#26323e] relative overflow-hidden">
+        <div className="p-5 rounded-dfz-2xl bg-[#212126] border border-[#292930] relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-xs uppercase tracking-wider font-semibold text-dfz-text-muted flex items-center gap-1.5">
               <span className="text-amber-400 font-bold">★</span>
@@ -161,7 +161,7 @@ export const MyStarsModal: React.FC = () => {
               className={`py-1.5 px-3 rounded-dfz-lg text-xs font-semibold transition-colors flex items-center gap-1.5 border ${
                 activeTab === 'buy'
                   ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
-                  : 'bg-[#0e141b] border-[#26323e] text-dfz-text hover:bg-[#1a2430]'
+                  : 'bg-[#18181c] border-[#292930] text-dfz-text hover:bg-[#28282e]'
               }`}
             >
               <Plus size={13} className="text-amber-400" />
@@ -172,8 +172,8 @@ export const MyStarsModal: React.FC = () => {
               onClick={() => setActiveTab('send')}
               className={`py-1.5 px-3 rounded-dfz-lg text-xs font-semibold transition-colors flex items-center gap-1.5 border ${
                 activeTab === 'send'
-                  ? 'bg-dfz-accent/20 border-dfz-accent/40 text-dfz-accent'
-                  : 'bg-[#0e141b] border-[#26323e] text-dfz-text hover:bg-[#1a2430]'
+                  ? 'bg-[#8774e1]/20 border-[#8774e1]/40 text-[#8774e1]'
+                  : 'bg-[#18181c] border-[#292930] text-dfz-text hover:bg-[#28282e]'
               }`}
             >
               <Send size={13} />
@@ -185,7 +185,7 @@ export const MyStarsModal: React.FC = () => {
                 setStarsOpen(false);
                 setGiftStoreOpen(true);
               }}
-              className="py-1.5 px-3 rounded-dfz-lg bg-[#0e141b] border border-[#26323e] hover:bg-[#1a2430] text-dfz-text font-medium text-xs transition-colors flex items-center gap-1.5"
+              className="py-1.5 px-3 rounded-dfz-lg bg-[#18181c] border border-[#292930] hover:bg-[#28282e] text-dfz-text font-medium text-xs transition-colors flex items-center gap-1.5"
             >
               <Gift size={13} className="text-purple-400" />
               <span>100 Подарков</span>
@@ -196,7 +196,7 @@ export const MyStarsModal: React.FC = () => {
                 setStarsOpen(false);
                 setPremiumOpen(true);
               }}
-              className="py-1.5 px-3 rounded-dfz-lg bg-[#0e141b] border border-[#26323e] hover:bg-[#1a2430] text-cyan-400 font-medium text-xs transition-colors flex items-center gap-1.5"
+              className="py-1.5 px-3 rounded-dfz-lg bg-[#18181c] border border-[#292930] hover:bg-[#28282e] text-[#8774e1] font-medium text-xs transition-colors flex items-center gap-1.5"
             >
               <span>DFZ Premium</span>
               <span className="text-[10px]">◆</span>
@@ -205,7 +205,7 @@ export const MyStarsModal: React.FC = () => {
         </div>
 
         {/* Telegram Tab Navigation */}
-        <div className="flex items-center gap-1 border-b border-[#26323e] pb-1 text-xs font-semibold overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-1 border-b border-[#292930] pb-1 text-xs font-semibold overflow-x-auto no-scrollbar">
           {[
             { id: 'buy', label: 'Пополнение' },
             { id: 'send', label: 'Перевод' },
@@ -218,8 +218,8 @@ export const MyStarsModal: React.FC = () => {
               onClick={() => setActiveTab(t.id as any)}
               className={`px-3 py-1.5 rounded-dfz-lg transition-colors whitespace-nowrap ${
                 activeTab === t.id
-                  ? 'bg-[#151d26] text-amber-400 border border-[#26323e]'
-                  : 'text-dfz-text-muted hover:text-dfz-text hover:bg-[#151d26]/50'
+                  ? 'bg-[#212126] text-amber-400 border border-[#292930]'
+                  : 'text-dfz-text-muted hover:text-dfz-text hover:bg-[#212126]/50'
               }`}
             >
               {t.label}
@@ -245,8 +245,8 @@ export const MyStarsModal: React.FC = () => {
                   onClick={() => !purchasingTier && handleBuyStars(pkg)}
                   className={`p-3.5 rounded-dfz-xl border text-center space-y-2 cursor-pointer transition-all duration-200 relative ${
                     pkg.popular
-                      ? 'bg-[#151d26] border-amber-500/40 hover:border-amber-400 shadow-sm'
-                      : 'bg-[#151d26] border-[#26323e] hover:border-dfz-accent/40'
+                      ? 'bg-[#212126] border-amber-500/40 hover:border-amber-400 shadow-sm'
+                      : 'bg-[#212126] border-[#292930] hover:border-[#8774e1]/40'
                   }`}
                 >
                   {pkg.popular && (
@@ -267,7 +267,7 @@ export const MyStarsModal: React.FC = () => {
                   <button
                     type="button"
                     disabled={purchasingTier === pkg.id}
-                    className="w-full py-1.5 px-2 rounded-dfz-lg bg-[#0e141b] hover:bg-amber-500 hover:text-black border border-[#26323e] text-amber-400 text-xs font-semibold transition-colors disabled:opacity-50"
+                    className="w-full py-1.5 px-2 rounded-dfz-lg bg-[#18181c] hover:bg-amber-500 hover:text-black border border-[#292930] text-amber-400 text-xs font-semibold transition-colors disabled:opacity-50"
                   >
                     {purchasingTier === pkg.id ? 'Зачисление...' : 'Пополнить'}
                   </button>
@@ -279,7 +279,7 @@ export const MyStarsModal: React.FC = () => {
 
         {/* Tab Content 2: Send Stars */}
         {activeTab === 'send' && (
-          <form onSubmit={handleSendStars} className="space-y-3.5 bg-[#151d26] p-4 rounded-dfz-xl border border-[#26323e]">
+          <form onSubmit={handleSendStars} className="space-y-3.5 bg-[#212126] p-4 rounded-dfz-xl border border-[#292930]">
             <div className="space-y-1">
               <label className="text-xs font-semibold text-dfz-text">Получатель (@username)</label>
               <input
@@ -287,7 +287,7 @@ export const MyStarsModal: React.FC = () => {
                 value={recipientQuery}
                 onChange={(e) => setRecipientQuery(e.target.value)}
                 placeholder="@alex_dev или username"
-                className="w-full px-3 py-2 rounded-dfz-lg bg-[#0e141b] border border-[#26323e] text-dfz-text text-xs focus:outline-none focus:border-dfz-accent"
+                className="w-full px-3 py-2 rounded-dfz-lg bg-[#18181c] border border-[#292930] text-dfz-text text-xs focus:outline-none focus:border-[#8774e1]"
                 required
               />
             </div>
@@ -303,7 +303,7 @@ export const MyStarsModal: React.FC = () => {
                     className={`py-1.5 rounded-dfz-lg border text-xs font-mono font-bold transition-colors ${
                       transferAmount === preset
                         ? 'bg-amber-500/20 border-amber-500 text-amber-300'
-                        : 'bg-[#0e141b] border-[#26323e] text-dfz-text hover:bg-[#1a2430]'
+                        : 'bg-[#18181c] border-[#292930] text-dfz-text hover:bg-[#28282e]'
                     }`}
                   >
                     ★ {preset}
@@ -316,7 +316,7 @@ export const MyStarsModal: React.FC = () => {
                 max="100000"
                 value={transferAmount}
                 onChange={(e) => setTransferAmount(e.target.value)}
-                className="w-full mt-1.5 px-3 py-2 rounded-dfz-lg bg-[#0e141b] border border-[#26323e] text-dfz-text font-mono text-xs focus:outline-none focus:border-dfz-accent"
+                className="w-full mt-1.5 px-3 py-2 rounded-dfz-lg bg-[#18181c] border border-[#292930] text-dfz-text font-mono text-xs focus:outline-none focus:border-[#8774e1]"
                 required
               />
             </div>
@@ -329,14 +329,14 @@ export const MyStarsModal: React.FC = () => {
                 onChange={(e) => setTransferMessage(e.target.value)}
                 placeholder="За отличную работу!"
                 maxLength={100}
-                className="w-full px-3 py-2 rounded-dfz-lg bg-[#0e141b] border border-[#26323e] text-dfz-text text-xs focus:outline-none focus:border-dfz-accent"
+                className="w-full px-3 py-2 rounded-dfz-lg bg-[#18181c] border border-[#292930] text-dfz-text text-xs focus:outline-none focus:border-[#8774e1]"
               />
             </div>
 
             <button
               type="submit"
               disabled={isSubmittingTransfer || (!isUnlimitedStars && starBalance < parseInt(transferAmount || '0', 10))}
-              className="w-full py-2.5 rounded-dfz-lg bg-dfz-accent hover:bg-dfz-accent-hover text-white text-xs font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-sm"
+              className="w-full py-2.5 rounded-dfz-lg bg-[#8774e1] hover:bg-[#7662d8] text-white text-xs font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-sm"
             >
               <Send size={13} />
               <span>{isSubmittingTransfer ? 'Отправка...' : `Перевести ★ ${transferAmount} Stars`}</span>
@@ -350,14 +350,14 @@ export const MyStarsModal: React.FC = () => {
             {isLoadingTransactions ? (
               <div className="p-8 text-center text-xs text-dfz-text-muted">Загрузка операций...</div>
             ) : transactions.length === 0 ? (
-              <div className="p-8 text-center text-xs text-dfz-text-muted bg-[#151d26] rounded-dfz-xl border border-[#26323e]">
+              <div className="p-8 text-center text-xs text-dfz-text-muted bg-[#212126] rounded-dfz-xl border border-[#292930]">
                 Операций со Stars пока нет.
               </div>
             ) : (
               transactions.map((tx) => (
                 <div
                   key={tx.id}
-                  className="p-3 rounded-dfz-xl bg-[#151d26] border border-[#26323e] flex items-center justify-between text-xs"
+                  className="p-3 rounded-dfz-xl bg-[#212126] border border-[#292930] flex items-center justify-between text-xs"
                 >
                   <div className="flex items-center gap-2.5">
                     <div
@@ -392,7 +392,7 @@ export const MyStarsModal: React.FC = () => {
         {activeTab === 'gifts' && (
           <div className="space-y-2.5">
             {myGifts.length === 0 ? (
-              <div className="p-10 text-center text-xs text-dfz-text-muted bg-[#151d26] rounded-dfz-xl border border-[#26323e] space-y-2">
+              <div className="p-10 text-center text-xs text-dfz-text-muted bg-[#212126] rounded-dfz-xl border border-[#292930] space-y-2">
                 <Gift size={28} className="mx-auto text-dfz-text-muted opacity-60" />
                 <p>У вас пока нет подарков.</p>
                 <button
@@ -400,7 +400,7 @@ export const MyStarsModal: React.FC = () => {
                     setStarsOpen(false);
                     setGiftStoreOpen(true);
                   }}
-                  className="px-3 py-1.5 rounded-dfz-lg bg-dfz-accent text-white font-semibold text-xs"
+                  className="px-3 py-1.5 rounded-dfz-lg bg-[#8774e1] text-white font-semibold text-xs"
                 >
                   Перейти в каталог 100 подарков
                 </button>
@@ -410,7 +410,7 @@ export const MyStarsModal: React.FC = () => {
                 {myGifts.map((inst) => (
                   <div
                     key={inst.id}
-                    className="p-3 rounded-dfz-xl bg-[#151d26] border border-[#26323e] flex flex-col items-center text-center space-y-1.5"
+                    className="p-3 rounded-dfz-xl bg-[#212126] border border-[#292930] flex flex-col items-center text-center space-y-1.5"
                   >
                     <GiftArtwork
                       artworkKey={inst.giftDefinition.artwork}
@@ -439,7 +439,7 @@ export const MyStarsModal: React.FC = () => {
 
         {/* Tab Content 5: Activity Rewards */}
         {activeTab === 'earn' && (
-          <div className="p-4 rounded-dfz-xl bg-[#151d26] border border-[#26323e] space-y-3 text-xs">
+          <div className="p-4 rounded-dfz-xl bg-[#212126] border border-[#292930] space-y-3 text-xs">
             <div className="flex items-center gap-2">
               <Clock size={16} className="text-emerald-400" />
               <h4 className="font-bold text-dfz-text">Автоматические награды за активность</h4>
@@ -447,7 +447,7 @@ export const MyStarsModal: React.FC = () => {
             <p className="text-dfz-text-muted text-[11px]">
               За каждый час непрерывной активности в DFZ Messenger система автоматически начисляет вам ★ Stars на баланс.
             </p>
-            <div className="p-3 rounded-dfz-lg bg-[#0e141b] border border-[#26323e] flex items-center justify-between font-mono">
+            <div className="p-3 rounded-dfz-lg bg-[#18181c] border border-[#292930] flex items-center justify-between font-mono">
               <span className="text-dfz-text-muted">Текущая непрерывная сессия:</span>
               <span className="text-emerald-400 font-bold">
                 {activityState ? `${Math.floor(activityState.continuousActiveSeconds / 60)} мин.` : '0 мин.'}

@@ -367,7 +367,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 onClose();
                 setPremiumOpen(true);
               }}
-              className="flex items-center gap-2.5 px-3 py-2 rounded-dfz-lg font-medium text-left text-cyan-400 hover:bg-cyan-500/10 transition-colors"
+              className="flex items-center gap-2.5 px-3 py-2 rounded-dfz-lg font-medium text-left text-[#8774e1] hover:bg-[#8774e1]/10 transition-colors"
             >
               <Sparkles size={16} />
               <span>DFZ Premium</span>
@@ -416,7 +416,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               {/* Status Banner */}
               <div className="p-3 rounded-dfz-xl bg-dfz-surface-secondary border border-dfz-border flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className={`p-2 rounded-dfz-lg ${user?.isPremium ? 'bg-cyan-500/15 text-cyan-400' : 'bg-dfz-surface text-dfz-text-muted'}`}>
+                  <div className={`p-2 rounded-dfz-lg ${user?.isPremium ? 'bg-[#8774e1]/15 text-[#8774e1]' : 'bg-dfz-surface text-dfz-text-muted'}`}>
                     <Sparkles size={16} />
                   </div>
                   <div>
@@ -436,7 +436,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                     onClose();
                     setPremiumOpen(true);
                   }}
-                  className="px-3 py-1.5 rounded-dfz-lg bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-400 text-xs font-semibold transition-colors"
+                  className="px-3 py-1.5 rounded-dfz-lg bg-[#8774e1]/15 hover:bg-[#8774e1]/25 border border-[#8774e1]/30 text-[#8774e1] text-xs font-semibold transition-colors"
                 >
                   {user?.isPremium ? 'Продлить' : 'Подключить'}
                 </button>

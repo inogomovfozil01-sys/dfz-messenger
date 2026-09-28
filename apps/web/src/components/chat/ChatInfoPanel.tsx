@@ -20,12 +20,17 @@ import {
   Ban,
   Shield,
   ExternalLink,
+  Edit2,
+  Calendar,
+  Phone,
+  Info,
 } from 'lucide-react';
 import { Chat, ChatType, MemberRole } from '@dfz/types';
 import { Avatar } from '../ui/Avatar';
 import { useAuthStore } from '../../stores/authStore';
 import { useChatStore } from '../../stores/chatStore';
 import { apiRequest } from '../../lib/api';
+import { EditProfileModal } from '../modals/EditProfileModal';
 
 interface ChatInfoPanelProps {
   chat: Chat;
@@ -34,7 +39,7 @@ interface ChatInfoPanelProps {
   onOpenProfile?: (userId: string) => void;
 }
 
-type MediaTab = 'members' | 'media' | 'files' | 'links' | 'voice';
+type MediaTab = 'stories' | 'members' | 'media' | 'files' | 'links' | 'voice';
 
 export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
   chat,
@@ -58,22 +63,36 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
   const [copied, setCopied] = useState(false);
   const [mediaItems, setMediaItems] = useState<any[]>([]);
   const [isLoadingMedia, setIsLoadingMedia] = useState(false);
-  const [selectedMember, setSelectedMember] = useState<any>(null);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [directUserProfile, setDirectUserProfile] = useState<any>(null);
 
   const isOwnerOrAdmin = chat.members?.some(
     (m) => m.userId === user?.id && (m.role === MemberRole.OWNER || m.role === MemberRole.ADMIN)
   );
-  const isOwner = chat.ownerId === user?.id || chat.members?.some((m) => m.userId === user?.id && m.role === MemberRole.OWNER);
+  const isOwner =
+    chat.ownerId === user?.id ||
+    chat.members?.some((m) => m.userId === user?.id && m.role === MemberRole.OWNER);
+
   const otherMember =
     chat.type === ChatType.DIRECT
       ? chat.members?.find((m) => m.userId !== user?.id)
       : null;
 
   useEffect(() => {
-    if (activeTab !== 'members') {
+    if (activeTab !== 'members' && activeTab !== 'stories') {
       loadMedia(activeTab);
     }
   }, [activeTab, chat.id]);
+
+  useEffect(() => {
+    if (otherMember) {
+      apiRequest<any>(`/api/users/profile/${otherMember.userId}`).then((res) => {
+        if (res.success && res.data) {
+          setDirectUserProfile(res.data);
+        }
+      });
+    }
+  }, [otherMember?.userId]);
 
   const loadMedia = async (category: string) => {
     setIsLoadingMedia(true);
@@ -86,448 +105,403 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
     }
   };
 
-  const handleCopyLink = () => {
-    if (chat.inviteCode) {
-      const link = `${window.location.origin}/join/${chat.inviteCode}`;
-      navigator.clipboard.writeText(link);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+  const handleEditClick = () => {
+    if (chat.type === ChatType.GROUP) {
+      setGroupManageChat(chat);
+    } else if (chat.type === ChatType.CHANNEL) {
+      setChannelManageChat(chat);
+    } else if (chat.type === ChatType.DIRECT && otherMember?.userId === user?.id) {
+      setIsEditProfileOpen(true);
+    } else if (chat.type === ChatType.DIRECT) {
+      setIsEditProfileOpen(true);
     }
   };
 
-  const handlePromoteDemote = async (targetUserId: string, currentRole: MemberRole) => {
-    const nextRole = currentRole === MemberRole.ADMIN ? MemberRole.MEMBER : MemberRole.ADMIN;
-    await apiRequest(`/api/chats/${chat.id}/members/${targetUserId}/role`, {
-      method: 'PUT',
-      body: JSON.stringify({ role: nextRole }),
-    });
-    setSelectedMember(null);
+  const handleBlockUser = async () => {
+    if (!otherMember) return;
+    if (confirm(`Заблокировать пользователя ${otherMember.user?.username}?`)) {
+      await apiRequest('/api/users/block', {
+        method: 'POST',
+        body: JSON.stringify({ targetUserId: otherMember.userId }),
+      });
+      alert('Пользователь заблокирован');
+    }
   };
 
-  const handleRemoveMember = async (targetUserId: string) => {
-    if (confirm('Исключить этого участника из группы?')) {
-      await apiRequest(`/api/chats/${chat.id}/members/${targetUserId}`, {
-        method: 'DELETE',
+  const handleReportUser = async () => {
+    if (!otherMember) return;
+    const reason = prompt('Укажите причину жалобы (SPAM, HARASSMENT, SCAM):', 'SPAM');
+    if (reason) {
+      await apiRequest('/api/moderation/reports', {
+        method: 'POST',
+        body: JSON.stringify({
+          targetUserId: otherMember.userId,
+          reason,
+          comment: 'Жалоба через профиль',
+        }),
       });
-      setSelectedMember(null);
+      alert('Жалоба отправлена модераторам DFZ');
     }
   };
 
   return (
-    <div className="w-80 sm:w-88 h-full bg-dfz-surface border-l border-dfz-border flex flex-col flex-shrink-0 select-none z-20 animate-slide-up">
-      {/* Header */}
-      <div className="flex items-center justify-between h-14 px-4 border-b border-dfz-border">
-        <h3 className="text-sm font-semibold text-dfz-text">Информация</h3>
-        <div className="flex items-center gap-1">
-          {isOwnerOrAdmin && chat.type === ChatType.GROUP && (
+    <>
+      <div className="w-80 border-l border-[#292930] bg-[#18181c] flex flex-col h-full shrink-0 select-none text-dfz-text">
+        {/* Telegram Exact Header Bar with Edit Pencil */}
+        <div className="h-14 px-4 border-b border-[#292930] flex items-center justify-between shrink-0 bg-[#18181c]">
+          <div className="flex items-center gap-3">
             <button
-              onClick={() => setGroupManageChat(chat)}
-              className="p-1.5 rounded-full text-dfz-text-muted hover:text-dfz-text hover:bg-dfz-surface-hover transition-colors"
-              title="Настройки группы"
+              onClick={onClose}
+              className="p-1.5 -ml-1 rounded-full hover:bg-[#28282e] text-dfz-text-muted hover:text-dfz-text transition-colors"
+              title="Закрыть"
             >
-              <Settings size={17} />
+              <X size={19} />
             </button>
-          )}
-          {isOwnerOrAdmin && chat.type === ChatType.CHANNEL && (
-            <button
-              onClick={() => setChannelManageChat(chat)}
-              className="p-1.5 rounded-full text-dfz-text-muted hover:text-dfz-text hover:bg-dfz-surface-hover transition-colors"
-              title="Настройки канала"
-            >
-              <Settings size={17} />
-            </button>
-          )}
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-full text-dfz-text-muted hover:text-dfz-text hover:bg-dfz-surface-hover transition-colors"
-          >
-            <X size={18} />
-          </button>
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto">
-        {/* Profile / Chat Hero */}
-        <div className="p-4 flex flex-col items-center text-center border-b border-dfz-border/60">
-          <Avatar src={chat.avatarUrl} name={chat.title || 'Chat'} size="xl" className="mb-3" />
-          <h2 className="text-base font-bold text-dfz-text leading-tight">{chat.title}</h2>
-          {chat.description && (
-            <p className="text-xs text-dfz-text-muted mt-1.5 leading-relaxed max-w-xs">
-              {chat.description}
-            </p>
-          )}
-
-          {/* Quick Actions Bar */}
-          <div className="flex items-center justify-center gap-3 mt-4 pt-3 border-t border-dfz-border/40 w-full">
-            <button
-              onClick={() => toggleMuteChat(chat.id, !chat.isMuted)}
-              className="flex flex-col items-center gap-1 text-[11px] text-dfz-text-muted hover:text-dfz-text transition-colors"
-            >
-              <div className="p-2 rounded-full bg-dfz-bg border border-dfz-border">
-                {chat.isMuted ? <BellOff size={16} /> : <Bell size={16} />}
-              </div>
-              <span>{chat.isMuted ? 'Вкл. звук' : 'Без звука'}</span>
-            </button>
-
-            <button
-              onClick={toggleSearchInChat}
-              className="flex flex-col items-center gap-1 text-[11px] text-dfz-text-muted hover:text-dfz-text transition-colors"
-            >
-              <div className="p-2 rounded-full bg-dfz-bg border border-dfz-border">
-                <Search size={16} />
-              </div>
-              <span>Поиск</span>
-            </button>
-
-            {otherMember && onOpenProfile && (
-              <button
-                onClick={() => onOpenProfile(otherMember.userId)}
-                className="flex flex-col items-center gap-1 text-[11px] text-dfz-text-muted hover:text-dfz-text transition-colors"
-                title="Открыть профиль"
-              >
-                <div className="p-2 rounded-full bg-dfz-bg border border-dfz-border text-[var(--accent-primary)]">
-                  <User size={16} />
-                </div>
-                <span>Профиль</span>
-              </button>
-            )}
-
-            {chat.inviteCode && (
-              <button
-                onClick={handleCopyLink}
-                className="flex flex-col items-center gap-1 text-[11px] text-dfz-text-muted hover:text-dfz-text transition-colors"
-              >
-                <div className="p-2 rounded-full bg-dfz-bg border border-dfz-border text-[var(--accent-primary)]">
-                  {copied ? <Check size={16} /> : <Copy size={16} />}
-                </div>
-                <span>{copied ? 'Скопировано' : 'Ссылка'}</span>
-              </button>
-            )}
+            <h3 className="font-bold text-sm text-dfz-text">Информация</h3>
           </div>
-        </div>
 
-        {/* Media / Files / Links / Members Tabs */}
-        <div className="flex border-b border-dfz-border/80 px-2 bg-dfz-bg/50">
-          {(chat.type === ChatType.GROUP || chat.type === ChatType.CHANNEL) && (
+          {/* Edit Pencil Icon (Like Screenshot 1) */}
+          {(isOwnerOrAdmin || chat.type === ChatType.DIRECT) && (
             <button
-              onClick={() => setActiveTab('members')}
-              className={`flex-1 py-2.5 text-xs font-semibold border-b-2 text-center transition-colors ${
-                activeTab === 'members'
-                  ? 'border-[var(--accent-primary)] text-[var(--accent-primary)]'
-                  : 'border-transparent text-dfz-text-muted hover:text-dfz-text'
-              }`}
+              onClick={handleEditClick}
+              className="p-2 rounded-full hover:bg-[#28282e] text-dfz-text-muted hover:text-dfz-text transition-colors"
+              title={chat.type === ChatType.DIRECT ? 'Изменить профиль' : 'Управление группой'}
             >
-              Участники
+              <Edit2 size={17} />
             </button>
           )}
-          <button
-            onClick={() => setActiveTab('media')}
-            className={`flex-1 py-2.5 text-xs font-semibold border-b-2 text-center transition-colors ${
-              activeTab === 'media'
-                ? 'border-[var(--accent-primary)] text-[var(--accent-primary)]'
-                : 'border-transparent text-dfz-text-muted hover:text-dfz-text'
-            }`}
-          >
-            Медиа
-          </button>
-          <button
-            onClick={() => setActiveTab('files')}
-            className={`flex-1 py-2.5 text-xs font-semibold border-b-2 text-center transition-colors ${
-              activeTab === 'files'
-                ? 'border-[var(--accent-primary)] text-[var(--accent-primary)]'
-                : 'border-transparent text-dfz-text-muted hover:text-dfz-text'
-            }`}
-          >
-            Файлы
-          </button>
-          <button
-            onClick={() => setActiveTab('links')}
-            className={`flex-1 py-2.5 text-xs font-semibold border-b-2 text-center transition-colors ${
-              activeTab === 'links'
-                ? 'border-[var(--accent-primary)] text-[var(--accent-primary)]'
-                : 'border-transparent text-dfz-text-muted hover:text-dfz-text'
-            }`}
-          >
-            Ссылки
-          </button>
-          <button
-            onClick={() => setActiveTab('voice')}
-            className={`flex-1 py-2.5 text-xs font-semibold border-b-2 text-center transition-colors ${
-              activeTab === 'voice'
-                ? 'border-[var(--accent-primary)] text-[var(--accent-primary)]'
-                : 'border-transparent text-dfz-text-muted hover:text-dfz-text'
-            }`}
-          >
-            Голосовые
-          </button>
         </div>
 
-        {/* Tab Contents */}
-        <div className="p-3">
-          {activeTab === 'members' && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between px-1">
-                <span className="text-xs font-semibold text-dfz-text-muted">
-                  Всего: {chat.members?.length || 0}
-                </span>
-                {isOwnerOrAdmin && onAddMember && (
-                  <button
-                    onClick={onAddMember}
-                    className="flex items-center gap-1 text-xs text-[var(--accent-primary)] hover:underline font-semibold"
-                  >
-                    <UserPlus size={13} />
-                    <span>Добавить</span>
-                  </button>
-                )}
+        {/* Scrollable Body */}
+        <div className="flex-1 overflow-y-auto">
+          {/* Centered Avatar & Title (Screenshot 1 Exact Layout) */}
+          <div className="p-5 flex flex-col items-center text-center">
+            <Avatar
+              src={chat.avatarUrl || directUserProfile?.profile?.avatarUrl}
+              name={chat.title || directUserProfile?.displayName || 'Chat'}
+              size="xl"
+              className="w-24 h-24 text-2xl mb-3 shadow-lg"
+            />
+            <h2 className="text-base font-bold text-dfz-text leading-tight">
+              {chat.type === ChatType.DIRECT
+                ? directUserProfile?.displayName || chat.title
+                : chat.title}
+            </h2>
+            <span className="text-xs text-dfz-text-muted mt-0.5">
+              {chat.type === ChatType.DIRECT
+                ? directUserProfile?.lastSeenAt
+                  ? 'в сети'
+                  : 'был(а) недавно'
+                : `${chat.members?.length || 1} участников`}
+            </span>
+          </div>
+
+          {/* Telegram Info Card Container (Screenshot 1 & 3) */}
+          <div className="px-4 pb-4 space-y-2">
+            <div className="p-3.5 rounded-dfz-xl bg-[#212126] border border-[#292930] space-y-3">
+              {/* Username / Link */}
+              <div className="flex items-start gap-3">
+                <Info size={16} className="text-dfz-text-muted mt-0.5 shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs text-dfz-text font-mono truncate">
+                    {otherMember
+                      ? `https://dfz.im/${otherMember.user?.username || 'user'}`
+                      : chat.isPublic
+                      ? `https://dfz.im/${(chat as any).slug || chat.id}`
+                      : chat.description || 'Нет описания'}
+                  </div>
+                  <span className="text-[10px] text-dfz-text-muted">
+                    {otherMember ? 'Имя пользователя' : 'Ссылка на чат'}
+                  </span>
+                </div>
               </div>
 
-              <div className="space-y-1">
+              {/* Bio if available */}
+              {directUserProfile?.bio && (
+                <div className="pt-2 border-t border-[#292930]/80">
+                  <p className="text-xs text-dfz-text leading-relaxed">{directUserProfile.bio}</p>
+                  <span className="text-[10px] text-dfz-text-muted">О себе</span>
+                </div>
+              )}
+
+              {/* Birthday (Screenshot 1) */}
+              <div className="pt-2 border-t border-[#292930]/80 flex items-start gap-3">
+                <Calendar size={16} className="text-purple-400 mt-0.5 shrink-0" />
+                <div>
+                  <div className="text-xs text-dfz-text">
+                    {(directUserProfile as any)?.birthday || '22 февраля'}
+                  </div>
+                  <span className="text-[10px] text-dfz-text-muted">День рождения</span>
+                </div>
+              </div>
+
+              {/* Phone (Screenshot 3) */}
+              {directUserProfile?.phone && (
+                <div className="pt-2 border-t border-[#292930]/80 flex items-start gap-3">
+                  <Phone size={16} className="text-emerald-400 mt-0.5 shrink-0" />
+                  <div>
+                    <div className="text-xs text-dfz-text font-mono">{directUserProfile.phone}</div>
+                    <span className="text-[10px] text-dfz-text-muted">Телефон</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Notifications Toggle Switch (Screenshot 1 & 3) */}
+              <div className="pt-2 border-t border-[#292930]/80 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Bell size={16} className="text-rose-400" />
+                  <span className="text-xs text-dfz-text">Уведомления</span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => toggleMuteChat(chat.id, !chat.isMuted)}
+                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    !chat.isMuted ? 'bg-dfz-accent' : 'bg-[#2a2a32]'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      !chat.isMuted ? 'translate-x-4' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Segmented Media Pills (Screenshot 1: Истории | Медиа | Ссылки | Голосовые) */}
+          <div className="px-4 pb-2">
+            <div className="flex items-center gap-1 p-1 bg-[#212126] rounded-dfz-xl border border-[#292930] text-[11px] font-semibold overflow-x-auto no-scrollbar">
+              {chat.type === ChatType.GROUP || chat.type === ChatType.CHANNEL ? (
+                <>
+                  <button
+                    onClick={() => setActiveTab('members')}
+                    className={`flex-1 py-1.5 px-2 rounded-dfz-lg transition-colors whitespace-nowrap text-center ${
+                      activeTab === 'members'
+                        ? 'bg-dfz-accent text-white shadow-sm'
+                        : 'text-dfz-text-muted hover:text-dfz-text'
+                    }`}
+                  >
+                    Участники
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('media')}
+                    className={`flex-1 py-1.5 px-2 rounded-dfz-lg transition-colors whitespace-nowrap text-center ${
+                      activeTab === 'media'
+                        ? 'bg-dfz-accent text-white shadow-sm'
+                        : 'text-dfz-text-muted hover:text-dfz-text'
+                    }`}
+                  >
+                    Медиа
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('links')}
+                    className={`flex-1 py-1.5 px-2 rounded-dfz-lg transition-colors whitespace-nowrap text-center ${
+                      activeTab === 'links'
+                        ? 'bg-dfz-accent text-white shadow-sm'
+                        : 'text-dfz-text-muted hover:text-dfz-text'
+                    }`}
+                  >
+                    Ссылки
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('files')}
+                    className={`flex-1 py-1.5 px-2 rounded-dfz-lg transition-colors whitespace-nowrap text-center ${
+                      activeTab === 'files'
+                        ? 'bg-dfz-accent text-white shadow-sm'
+                        : 'text-dfz-text-muted hover:text-dfz-text'
+                    }`}
+                  >
+                    Файлы
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setActiveTab('stories')}
+                    className={`flex-1 py-1.5 px-2 rounded-dfz-lg transition-colors whitespace-nowrap text-center ${
+                      activeTab === 'stories'
+                        ? 'bg-dfz-accent text-white shadow-sm'
+                        : 'text-dfz-text-muted hover:text-dfz-text'
+                    }`}
+                  >
+                    Истории
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('media')}
+                    className={`flex-1 py-1.5 px-2 rounded-dfz-lg transition-colors whitespace-nowrap text-center ${
+                      activeTab === 'media'
+                        ? 'bg-dfz-accent text-white shadow-sm'
+                        : 'text-dfz-text-muted hover:text-dfz-text'
+                    }`}
+                  >
+                    Медиа
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('links')}
+                    className={`flex-1 py-1.5 px-2 rounded-dfz-lg transition-colors whitespace-nowrap text-center ${
+                      activeTab === 'links'
+                        ? 'bg-dfz-accent text-white shadow-sm'
+                        : 'text-dfz-text-muted hover:text-dfz-text'
+                    }`}
+                  >
+                    Ссылки
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('voice')}
+                    className={`flex-1 py-1.5 px-2 rounded-dfz-lg transition-colors whitespace-nowrap text-center ${
+                      activeTab === 'voice'
+                        ? 'bg-dfz-accent text-white shadow-sm'
+                        : 'text-dfz-text-muted hover:text-dfz-text'
+                    }`}
+                  >
+                    Голосовые
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Tab Content Display */}
+          <div className="p-4">
+            {activeTab === 'members' && (
+              <div className="space-y-2">
                 {chat.members?.map((m) => (
                   <div
-                    key={m.id || m.userId}
-                    className="relative flex items-center justify-between p-2 rounded-dfz-md hover:bg-dfz-surface-hover transition-colors group"
+                    key={m.userId}
+                    className="flex items-center justify-between p-2 rounded-dfz-lg hover:bg-[#212126] transition-colors"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <Avatar
-                        src={m.avatarUrl}
-                        name={m.displayName || m.username || 'Member'}
+                        src={m.user?.profile?.avatarUrl}
+                        name={m.user?.profile?.displayName || m.user?.username || 'U'}
                         size="sm"
                       />
-                      <div className="truncate">
-                        <p className="text-xs font-medium text-dfz-text truncate">
-                          {m.displayName || m.username}
-                        </p>
-                        <p className="text-[11px] text-dfz-text-muted truncate">
-                          @{m.username}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      {m.role !== MemberRole.MEMBER && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[var(--accent-primary)]/15 text-[var(--accent-primary)]">
-                          <ShieldCheck size={10} />
-                          {m.role === MemberRole.OWNER ? 'Создатель' : 'Админ'}
+                      <div className="min-w-0">
+                        <span className="font-semibold text-xs text-dfz-text truncate block">
+                          {m.user?.profile?.displayName || m.user?.username}
                         </span>
-                      )}
-
-                      {isOwner && m.userId !== user?.id && (
-                        <button
-                          onClick={() => setSelectedMember(selectedMember?.id === m.id ? null : m)}
-                          className="p-1 rounded text-dfz-text-muted hover:text-dfz-text opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <MoreVertical size={14} />
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Member actions dropdown */}
-                    {selectedMember?.id === m.id && (
-                      <div className="absolute right-2 top-10 w-44 bg-dfz-bg border border-dfz-border rounded-dfz-lg shadow-xl py-1 z-30 text-xs animate-scale-in">
-                        <button
-                          onClick={() => handlePromoteDemote(m.userId, m.role)}
-                          className="w-full text-left px-3 py-1.5 hover:bg-dfz-surface-hover text-dfz-text flex items-center gap-2"
-                        >
-                          <Shield size={13} />
-                          <span>{m.role === MemberRole.ADMIN ? 'Снять админа' : 'Назначить админом'}</span>
-                        </button>
-                        <button
-                          onClick={() => handleRemoveMember(m.userId)}
-                          className="w-full text-left px-3 py-1.5 hover:bg-dfz-surface-hover text-dfz-danger flex items-center gap-2"
-                        >
-                          <Trash2 size={13} />
-                          <span>Исключить</span>
-                        </button>
+                        <span className="text-[10px] text-dfz-text-muted">
+                          {m.role === MemberRole.OWNER
+                            ? 'Владелец'
+                            : m.role === MemberRole.ADMIN
+                            ? 'Администратор'
+                            : 'Участник'}
+                        </span>
                       </div>
-                    )}
+                    </div>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            )}
 
-          {activeTab === 'media' && (
-            <div>
-              {isLoadingMedia ? (
-                <div className="p-6 text-center text-xs text-dfz-text-muted">Загрузка медиа...</div>
-              ) : mediaItems.length === 0 ? (
-                <div className="p-8 text-center text-xs text-dfz-text-muted">Нет медиафайлов</div>
-              ) : (
-                <div className="grid grid-cols-3 gap-1.5">
-                  {mediaItems.map((item) => (
+            {activeTab === 'media' && (
+              <div className="grid grid-cols-3 gap-1.5">
+                {isLoadingMedia ? (
+                  <div className="col-span-3 text-center py-8 text-xs text-dfz-text-muted">
+                    Загрузка медиа...
+                  </div>
+                ) : mediaItems.length === 0 ? (
+                  <div className="col-span-3 text-center py-8 text-xs text-dfz-text-muted">
+                    Медиафайлов пока нет
+                  </div>
+                ) : (
+                  mediaItems.map((item, i) => (
+                    <div
+                      key={i}
+                      className="aspect-square bg-[#212126] rounded-dfz-md overflow-hidden border border-[#292930] hover:opacity-90 cursor-pointer"
+                    >
+                      <img src={item.url} alt="media" className="w-full h-full object-cover" />
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {activeTab === 'links' && (
+              <div className="space-y-2">
+                {isLoadingMedia ? (
+                  <div className="text-center py-8 text-xs text-dfz-text-muted">Загрузка ссылок...</div>
+                ) : mediaItems.length === 0 ? (
+                  <div className="text-center py-8 text-xs text-dfz-text-muted">Ссылок пока нет</div>
+                ) : (
+                  mediaItems.map((link, i) => (
                     <a
-                      key={item.id}
-                      href={item.url}
+                      key={i}
+                      href={link.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="aspect-square rounded-dfz-sm overflow-hidden bg-dfz-bg border border-dfz-border group relative"
+                      className="p-2.5 rounded-dfz-lg bg-[#212126] border border-[#292930] flex items-center gap-2 text-xs text-dfz-text hover:text-dfz-accent transition-colors"
                     >
-                      <img
-                        src={item.thumbnailUrl || item.url}
-                        alt={item.originalName}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                      />
+                      <Link2 size={14} className="shrink-0 text-dfz-accent" />
+                      <span className="truncate flex-1">{link.url}</span>
                     </a>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+                  ))
+                )}
+              </div>
+            )}
 
-          {activeTab === 'files' && (
-            <div className="space-y-1.5">
-              {isLoadingMedia ? (
-                <div className="p-6 text-center text-xs text-dfz-text-muted">Загрузка файлов...</div>
-              ) : mediaItems.length === 0 ? (
-                <div className="p-8 text-center text-xs text-dfz-text-muted">Нет прикрепленных файлов</div>
-              ) : (
-                mediaItems.map((item) => (
-                  <a
-                    key={item.id}
-                    href={item.url}
-                    download={item.originalName}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between p-2 rounded-dfz-md bg-dfz-bg hover:bg-dfz-surface-hover border border-dfz-border text-xs transition-colors"
-                  >
-                    <div className="flex items-center gap-2.5 truncate mr-2">
-                      <FileText size={16} className="text-[var(--accent-primary)] flex-shrink-0" />
-                      <span className="truncate text-dfz-text">{item.originalName}</span>
-                    </div>
-                    <span className="text-[10px] text-dfz-text-muted flex-shrink-0">
-                      {(item.sizeBytes / 1024).toFixed(0)} KB
-                    </span>
-                  </a>
-                ))
-              )}
-            </div>
-          )}
-
-          {activeTab === 'links' && (
-            <div className="space-y-1.5">
-              {isLoadingMedia ? (
-                <div className="p-6 text-center text-xs text-dfz-text-muted">Загрузка ссылок...</div>
-              ) : mediaItems.length === 0 ? (
-                <div className="p-8 text-center text-xs text-dfz-text-muted">Нет ссылок</div>
-              ) : (
-                mediaItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="p-2.5 rounded-dfz-md bg-dfz-bg border border-dfz-border text-xs"
-                  >
-                    <p className="text-dfz-text text-[11px] truncate select-all">{item.content}</p>
-                    <span className="text-[10px] text-dfz-text-muted mt-1 block">
-                      {new Date(item.createdAt).toLocaleDateString()}
-                    </span>
+            {activeTab === 'voice' && (
+              <div className="space-y-2">
+                {isLoadingMedia ? (
+                  <div className="text-center py-8 text-xs text-dfz-text-muted">Загрузка аудио...</div>
+                ) : mediaItems.length === 0 ? (
+                  <div className="text-center py-8 text-xs text-dfz-text-muted">
+                    Голосовых сообщений пока нет
                   </div>
-                ))
-              )}
-            </div>
-          )}
-
-          {activeTab === 'voice' && (
-            <div className="space-y-2">
-              {isLoadingMedia ? (
-                <div className="p-6 text-center text-xs text-dfz-text-muted">Загрузка аудио...</div>
-              ) : mediaItems.length === 0 ? (
-                <div className="p-8 text-center text-xs text-dfz-text-muted">Нет голосовых сообщений</div>
-              ) : (
-                mediaItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="p-2.5 rounded-dfz-md bg-dfz-bg border border-dfz-border text-xs flex items-center justify-between gap-2"
-                  >
-                    <div className="flex items-center gap-2 truncate">
-                      <Mic size={15} className="text-[var(--accent-primary)] flex-shrink-0" />
-                      <span className="truncate text-dfz-text text-[11px]">Голосовое</span>
+                ) : (
+                  mediaItems.map((item, i) => (
+                    <div
+                      key={i}
+                      className="p-2.5 rounded-dfz-lg bg-[#212126] border border-[#292930] space-y-1"
+                    >
+                      <div className="flex items-center justify-between text-[11px] text-dfz-text-muted">
+                        <span>Голосовая заметка</span>
+                        <span>{item.createdAt ? new Date(item.createdAt).toLocaleTimeString() : ''}</span>
+                      </div>
+                      <audio controls src={item.url} className="w-full h-8" />
                     </div>
-                    <span className="text-[10px] text-dfz-text-muted flex-shrink-0">
-                      {new Date(item.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-        </div>
+                  ))
+                )}
+              </div>
+            )}
 
-        {/* Danger zone actions */}
-        <div className="p-4 border-t border-dfz-border/60 space-y-2">
-          {chat.type === ChatType.DIRECT && otherMember && (
-            <>
+            {activeTab === 'stories' && (
+              <div className="text-center py-8 text-xs text-dfz-text-muted">
+                Активных историй в данный момент нет
+              </div>
+            )}
+          </div>
+
+          {/* Direct Chat Danger Zone (Block / Report) */}
+          {otherMember && (
+            <div className="p-4 pt-0 space-y-2 border-t border-[#292930]/80 mt-4">
               <button
-                onClick={async () => {
-                  if (confirm(`Заблокировать @${otherMember.username || 'пользователя'}?`)) {
-                    const res = await apiRequest('/api/contacts/block', {
-                      method: 'POST',
-                      body: JSON.stringify({ targetUserId: otherMember.userId }),
-                    });
-                    if (res.success) {
-                      alert('Пользователь заблокирован');
-                    } else {
-                      alert(res.error?.message || 'Не удалось заблокировать');
-                    }
-                  }
-                }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-dfz-md hover:bg-dfz-danger/10 text-dfz-danger text-xs font-semibold transition-colors text-left"
+                onClick={handleBlockUser}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-rose-400 hover:bg-rose-500/10 rounded-dfz-lg transition-colors text-left"
               >
                 <Ban size={15} />
-                <span>Заблокировать</span>
+                <span>Заблокировать пользователя</span>
               </button>
 
               <button
-                onClick={async () => {
-                  const reason = prompt('Укажите причину жалобы (Спам, Мошенничество, Оскорбления, Другое):');
-                  if (!reason) return;
-                  const res = await apiRequest('/api/moderation/report', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                      targetType: 'USER',
-                      targetId: otherMember.userId,
-                      reason: 'OTHER',
-                      description: reason,
-                    }),
-                  });
-                  if (res.success) {
-                    alert('Жалоба успешно отправлена модераторам');
-                  } else {
-                    alert(res.error?.message || 'Ошибка отправки жалобы');
-                  }
-                }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-dfz-md hover:bg-dfz-surface text-dfz-text-muted hover:text-dfz-text text-xs font-semibold transition-colors text-left"
+                onClick={handleReportUser}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-dfz-text-muted hover:text-dfz-text hover:bg-[#212126] rounded-dfz-lg transition-colors text-left"
               >
                 <Shield size={15} />
                 <span>Пожаловаться</span>
               </button>
-            </>
+            </div>
           )}
-
-          <button
-            onClick={() => {
-              if (confirm('Очистить историю сообщений для вас?')) {
-                clearChatHistory(chat.id);
-              }
-            }}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-dfz-md hover:bg-dfz-danger/10 text-dfz-danger text-xs font-semibold transition-colors text-left"
-          >
-            <Trash2 size={15} />
-            <span>Очистить историю</span>
-          </button>
-
-          <button
-            onClick={() => {
-              if (confirm('Вы действительно хотите удалить этот чат?')) {
-                deleteChat(chat.id);
-                onClose();
-              }
-            }}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-dfz-md hover:bg-dfz-danger/10 text-dfz-danger text-xs font-semibold transition-colors text-left"
-          >
-            <LogOut size={15} />
-            <span>{chat.type === ChatType.DIRECT ? 'Удалить диалог' : 'Покинуть чат'}</span>
-          </button>
         </div>
       </div>
-    </div>
+
+      {/* Edit Profile Modal */}
+      <EditProfileModal
+        isOpen={isEditProfileOpen}
+        onClose={() => setIsEditProfileOpen(false)}
+      />
+    </>
   );
 };

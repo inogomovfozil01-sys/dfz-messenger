@@ -229,7 +229,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ userId, onCl
               {profile.isPremium && (
                 <span
                   title="DFZ Premium"
-                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-[10px] font-bold text-cyan-400"
+                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-[#8774e1]/15 border border-[#8774e1]/30 text-[10px] font-bold text-[#8774e1]"
                 >
                   <span>◆</span>
                   <span>PREMIUM</span>

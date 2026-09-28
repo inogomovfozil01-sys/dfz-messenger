@@ -1,24 +1,33 @@
-import { InviteManager } from './InviteManager';
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import {
+  ArrowLeft,
   X,
-  Users,
-  Shield,
-  Link2,
-  Lock,
-  Globe,
-  Trash2,
-  Camera,
   Check,
-  Copy,
-  RefreshCw,
+  Camera,
+  Globe,
+  Lock,
+  MessageSquare,
+  Smile,
+  Shield,
+  ShieldCheck,
+  Link2,
+  Users,
+  Clock,
+  Trash2,
   LogOut,
   ChevronRight,
-  ShieldAlert,
-  Sliders,
-  UserCheck,
-  UserX,
+  Copy,
+  RefreshCw,
   UserPlus,
+  UserX,
+  Search,
+  Sliders,
+  CheckCircle,
+  AlertCircle,
+  FileText,
+  Share2,
 } from 'lucide-react';
 import { Chat, MemberRole } from '@dfz/types';
 import { Avatar } from '../ui/Avatar';
@@ -32,7 +41,14 @@ interface GroupManageModalProps {
   chat: Chat | null;
 }
 
-type TabType = 'general' | 'permissions' | 'admins' | 'members' | 'invites';
+type ManageView =
+  | 'main'
+  | 'type'
+  | 'permissions'
+  | 'admins'
+  | 'members'
+  | 'invites'
+  | 'reactions';
 
 export const GroupManageModal: React.FC<GroupManageModalProps> = ({
   isOpen,
@@ -42,32 +58,47 @@ export const GroupManageModal: React.FC<GroupManageModalProps> = ({
   const { user } = useAuthStore();
   const { fetchChats, selectChat } = useChatStore();
 
-  const [activeTab, setActiveTab] = useState<TabType>('general');
+  const [currentView, setCurrentView] = useState<ManageView>('main');
+
+  // Main Info
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [isPublic, setIsPublic] = useState(false);
+  const [publicHandle, setPublicHandle] = useState('');
   const [isForum, setIsForum] = useState(false);
+  const [isHistoryVisible, setIsHistoryVisible] = useState(true);
+
+  // Policy / Permissions
+  const [permSendMessages, setPermSendMessages] = useState(true);
+  const [permSendMedia, setPermSendMedia] = useState(true);
+  const [permSendStickers, setPermSendStickers] = useState(true);
+  const [permSendPolls, setPermSendPolls] = useState(true);
+  const [permEmbedLinks, setPermEmbedLinks] = useState(true);
+  const [permAddMembers, setPermAddMembers] = useState(true);
+  const [permPinMessages, setPermPinMessages] = useState(false);
+  const [permChangeInfo, setPermChangeInfo] = useState(false);
+  const [permProtectedContent, setPermProtectedContent] = useState(false);
+  const [slowModeSeconds, setSlowModeSeconds] = useState(0);
+
+  // Members & Admins
+  const [members, setMembers] = useState<any[]>([]);
+  const [memberSearch, setMemberSearch] = useState('');
   const [inviteCode, setInviteCode] = useState('');
   const [copied, setCopied] = useState(false);
+
+  // Admin promotion sub-flow
+  const [selectedMemberForAdmin, setSelectedMemberForAdmin] = useState<any | null>(null);
+  const [adminCustomTitle, setAdminCustomTitle] = useState('Администратор');
+
+  // Status & Feedback
   const [isSaving, setIsSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Permissions state
-  const [permSendMessages, setPermSendMessages] = useState(true);
-  const [permSendMedia, setPermSendMedia] = useState(true);
-  const [permAddUsers, setPermAddUsers] = useState(true);
-  const [permPinMessages, setPermPinMessages] = useState(false);
-  const [permChangeInfo, setPermChangeInfo] = useState(false);
-
-  // Members list & management
-  const [members, setMembers] = useState<any[]>([]);
-  const [memberSearch, setMemberSearch] = useState('');
-  const [selectedMemberForAdmin, setSelectedMemberForAdmin] = useState<any | null>(null);
-  const [adminTitle, setAdminTitle] = useState('');
-
-  const isOwner = chat?.ownerId === user?.id || chat?.members?.some((m) => m.userId === user?.id && m.role === MemberRole.OWNER);
+  const isOwner =
+    chat?.ownerId === user?.id ||
+    chat?.members?.some((m) => m.userId === user?.id && m.role === MemberRole.OWNER);
 
   useEffect(() => {
     if (chat && isOpen) {
@@ -75,27 +106,48 @@ export const GroupManageModal: React.FC<GroupManageModalProps> = ({
       setDescription(chat.description || '');
       setAvatarUrl(chat.avatarUrl || '');
       setIsPublic(!!chat.isPublic);
+      setPublicHandle((chat as any).publicHandle || '');
       setIsForum(!!chat.isForum);
       setInviteCode(chat.inviteCode || '');
       setMembers(chat.members || []);
-      apiRequest<any>(`/api/chats/${chat.id}/policy`).then(res => { if(res.success && res.data) { setPermSendMessages(res.data.sendMessages); setPermSendMedia(res.data.sendMedia); setPermAddUsers(res.data.addMembers); setPermPinMessages(res.data.pinMessages); setPermChangeInfo(res.data.changeInfo); } });
+      setCurrentView('main');
       setStatusMessage(null);
       setErrorMessage(null);
       setSelectedMemberForAdmin(null);
+
+      // Load policy from API
+      apiRequest<any>(`/api/chats/${chat.id}/policy`).then((res) => {
+        if (res.success && res.data) {
+          const p = res.data;
+          if (p.sendMessages !== undefined) setPermSendMessages(p.sendMessages);
+          if (p.sendMedia !== undefined) setPermSendMedia(p.sendMedia);
+          if (p.sendStickers !== undefined) setPermSendStickers(p.sendStickers);
+          if (p.sendPolls !== undefined) setPermSendPolls(p.sendPolls);
+          if (p.embedLinks !== undefined) setPermEmbedLinks(p.embedLinks);
+          if (p.addMembers !== undefined) setPermAddMembers(p.addMembers);
+          if (p.pinMessages !== undefined) setPermPinMessages(p.pinMessages);
+          if (p.changeInfo !== undefined) setPermChangeInfo(p.changeInfo);
+          if (p.protectedContent !== undefined) setPermProtectedContent(p.protectedContent);
+          if (p.slowModeSeconds !== undefined) setSlowModeSeconds(p.slowModeSeconds);
+        }
+      });
     }
   }, [chat, isOpen]);
 
   if (!isOpen || !chat) return null;
 
-  const handleSaveGeneral = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim()) return;
+  const handleSaveAll = async () => {
+    if (!title.trim()) {
+      setErrorMessage('Пожалуйста, введите название группы');
+      return;
+    }
 
     setIsSaving(true);
     setStatusMessage(null);
     setErrorMessage(null);
 
-    const res = await apiRequest<Chat>(`/api/chats/${chat.id}`, {
+    // 1. Update basic Chat settings
+    const chatRes = await apiRequest<Chat>(`/api/chats/${chat.id}`, {
       method: 'PUT',
       body: JSON.stringify({
         title: title.trim(),
@@ -106,14 +158,36 @@ export const GroupManageModal: React.FC<GroupManageModalProps> = ({
       }),
     });
 
+    // 2. Update Group Policy / Permissions
+    const policyRes = await apiRequest(`/api/chats/${chat.id}/policy`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        sendMessages: permSendMessages,
+        sendMedia: permSendMedia,
+        sendStickers: permSendStickers,
+        sendPolls: permSendPolls,
+        embedLinks: permEmbedLinks,
+        addMembers: permAddMembers,
+        pinMessages: permPinMessages,
+        changeInfo: permChangeInfo,
+        protectedContent: permProtectedContent,
+        slowModeSeconds,
+      }),
+    });
+
     setIsSaving(false);
 
-    if (res.success && res.data) {
-      setStatusMessage('Настройки группы успешно сохранены');
+    if (chatRes.success && policyRes.success) {
+      setStatusMessage('Настройки сохранены');
       await fetchChats();
-      setTimeout(() => setStatusMessage(null), 3000);
+      setTimeout(() => {
+        setStatusMessage(null);
+        onClose();
+      }, 700);
     } else {
-      setErrorMessage(res.error?.message || 'Не удалось сохранить настройки');
+      setErrorMessage(
+        chatRes.error?.message || policyRes.error?.message || 'Ошибка сохранения настроек'
+      );
     }
   };
 
@@ -125,7 +199,7 @@ export const GroupManageModal: React.FC<GroupManageModalProps> = ({
   };
 
   const handleRegenerateInvite = async () => {
-    if (!confirm('Аннулировать текущую ссылку и создать новую? Старая ссылка перестанет работать.')) {
+    if (!confirm('Аннулировать текущую ссылку и создать новую? Предыдущая ссылка перестанет работать.')) {
       return;
     }
     const res = await apiRequest<any>(`/api/chats/${chat.id}/invite-link`, {
@@ -134,31 +208,34 @@ export const GroupManageModal: React.FC<GroupManageModalProps> = ({
     if (res.success && res.data) {
       setInviteCode(res.data.inviteCode);
       setStatusMessage('Новая ссылка сгенерирована');
-      setTimeout(() => setStatusMessage(null), 3000);
+      setTimeout(() => setStatusMessage(null), 2500);
     }
   };
 
   const handlePromoteToAdmin = async (targetUser: any) => {
-    const res = await apiRequest(`/api/chats/${chat.id}/members/${targetUser.userId || targetUser.id}/role`, {
-      method: 'PUT',
-      body: JSON.stringify({
-        role: MemberRole.ADMIN,
-        customTitle: adminTitle.trim() || 'Администратор',
-      }),
-    });
+    const res = await apiRequest(
+      `/api/chats/${chat.id}/members/${targetUser.userId || targetUser.id}/role`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({
+          role: MemberRole.ADMIN,
+          customTitle: adminCustomTitle.trim() || 'Администратор',
+        }),
+      }
+    );
 
     if (res.success) {
       setMembers((prev) =>
         prev.map((m) =>
-          (m.userId === targetUser.userId || m.userId === targetUser.id)
-            ? { ...m, role: MemberRole.ADMIN, customTitle: adminTitle.trim() || 'Администратор' }
+          m.userId === targetUser.userId || m.userId === targetUser.id
+            ? { ...m, role: MemberRole.ADMIN, customTitle: adminCustomTitle.trim() || 'Администратор' }
             : m
         )
       );
       setSelectedMemberForAdmin(null);
-      setAdminTitle('');
-      setStatusMessage(`Пользователь ${targetUser.user?.profile?.displayName || targetUser.user?.username} назначен администратором`);
+      setStatusMessage('Администратор назначен');
       await fetchChats();
+      setTimeout(() => setStatusMessage(null), 2500);
     }
   };
 
@@ -177,8 +254,9 @@ export const GroupManageModal: React.FC<GroupManageModalProps> = ({
           m.userId === targetUserId ? { ...m, role: MemberRole.MEMBER, customTitle: null } : m
         )
       );
-      setStatusMessage('Администратор переведен в статус участника');
+      setStatusMessage('Полномочия сняты');
       await fetchChats();
+      setTimeout(() => setStatusMessage(null), 2500);
     }
   };
 
@@ -191,11 +269,16 @@ export const GroupManageModal: React.FC<GroupManageModalProps> = ({
       setMembers((prev) => prev.filter((m) => m.userId !== targetUserId));
       setStatusMessage('Участник исключен');
       await fetchChats();
+      setTimeout(() => setStatusMessage(null), 2500);
     }
   };
 
   const handleDeleteGroup = async () => {
-    if (confirm('ВЫ УВЕРЕНЫ, ЧТО ХОТИТЕ УДАЛИТЬ ЭТУ ГРУППУ? Это действие необратимо и удалит всю историю для всех участников.')) {
+    if (
+      confirm(
+        'ВЫ УВЕРЕНЫ, ЧТО ХОТИТЕ УДАЛИТЬ ЭТУ ГРУППУ? Это действие необратимо и удалит всю историю сообщений для всех участников.'
+      )
+    ) {
       const res = await apiRequest(`/api/chats/${chat.id}`, { method: 'DELETE' });
       if (res.success) {
         onClose();
@@ -205,286 +288,544 @@ export const GroupManageModal: React.FC<GroupManageModalProps> = ({
     }
   };
 
-  const filteredMembers = members.filter((m) => {
-    const name = m.displayName || m.username || '';
-    return name.toLowerCase().includes(memberSearch.toLowerCase());
-  });
+  const handleLeaveGroup = async () => {
+    if (confirm('Покинуть эту группу?')) {
+      await apiRequest(`/api/chats/${chat.id}/members/${user?.id}`, { method: 'DELETE' });
+      onClose();
+      await fetchChats();
+      useChatStore.setState({ activeChatId: null, activeChat: null });
+    }
+  };
+
+  const handleAvatarSelect = () => {
+    const url = prompt('Введите URL аватара группы:', avatarUrl);
+    if (url !== null) {
+      setAvatarUrl(url.trim());
+    }
+  };
 
   const adminsList = members.filter(
     (m) => m.role === MemberRole.OWNER || m.role === MemberRole.ADMIN
   );
 
+  const filteredMembers = members.filter((m) => {
+    const name = m.displayName || m.username || '';
+    return name.toLowerCase().includes(memberSearch.toLowerCase());
+  });
+
+  const slowModeOptions = [
+    { label: 'Выкл', val: 0 },
+    { label: '10с', val: 10 },
+    { label: '30с', val: 30 },
+    { label: '1м', val: 60 },
+    { label: '5м', val: 300 },
+    { label: '15м', val: 900 },
+    { label: '1ч', val: 3600 },
+  ];
+
+  // Title depending on current view
+  const viewTitleMap: Record<ManageView, string> = {
+    main: 'Управление группой',
+    type: 'Тип группы',
+    permissions: 'Разрешения',
+    admins: 'Администраторы',
+    members: 'Участники',
+    invites: 'Пригласительные ссылки',
+    reactions: 'Реакции',
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 select-none">
-      <div
-        className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
-      />
-
-      <div className="relative z-10 w-full max-w-lg max-h-[90vh] bg-dfz-surface border border-dfz-border rounded-dfz-2xl shadow-2xl flex flex-col overflow-hidden animate-slide-up">
-        {/* Top Header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-dfz-border bg-dfz-surface-secondary">
-          <div className="flex items-center gap-2.5">
-            <Sliders size={18} className="text-dfz-accent" />
-            <h3 className="text-sm font-bold text-dfz-text">Управление группой</h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm animate-fade-in select-none">
+      <div className="relative w-full max-w-md max-h-[92vh] bg-[#18181c] border border-[#292930] rounded-dfz-2xl shadow-2xl flex flex-col overflow-hidden text-dfz-text">
+        {/* Telegram Top Bar: [← or ✕] [Title] [✓ Checkmark] */}
+        <div className="h-14 px-4 border-b border-[#292930] flex items-center justify-between shrink-0 bg-[#18181c]">
+          <div className="flex items-center gap-3">
+            {currentView === 'main' ? (
+              <button
+                onClick={onClose}
+                className="p-2 -ml-2 rounded-full hover:bg-[#28282e] text-dfz-text-muted hover:text-dfz-text transition-colors"
+                title="Закрыть"
+              >
+                <X size={20} />
+              </button>
+            ) : (
+              <button
+                onClick={() => setCurrentView('main')}
+                className="p-2 -ml-2 rounded-full hover:bg-[#28282e] text-dfz-text-muted hover:text-dfz-text transition-colors"
+                title="Назад"
+              >
+                <ArrowLeft size={20} />
+              </button>
+            )}
+            <h2 className="text-base font-bold text-dfz-text">{viewTitleMap[currentView]}</h2>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-full text-dfz-text-muted hover:text-dfz-text hover:bg-dfz-surface transition-colors"
-          >
-            <X size={18} />
-          </button>
-        </div>
 
-        {/* Tab Navigation */}
-        <div className="flex border-b border-dfz-border bg-dfz-surface px-3 gap-1 overflow-x-auto">
           <button
-            onClick={() => setActiveTab('general')}
-            className={`px-3 py-2 text-xs font-semibold border-b-2 whitespace-nowrap transition-colors ${
-              activeTab === 'general'
-                ? 'border-dfz-accent text-dfz-accent'
-                : 'border-transparent text-dfz-text-muted hover:text-dfz-text'
-            }`}
+            onClick={handleSaveAll}
+            disabled={isSaving}
+            className="p-2 -mr-2 rounded-full hover:bg-[#8774e1]/15 text-[#8774e1] hover:text-[#7662d8] transition-colors disabled:opacity-50"
+            title="Сохранить"
           >
-            Информация
-          </button>
-          <button
-            onClick={() => setActiveTab('permissions')}
-            className={`px-3 py-2 text-xs font-semibold border-b-2 whitespace-nowrap transition-colors ${
-              activeTab === 'permissions'
-                ? 'border-dfz-accent text-dfz-accent'
-                : 'border-transparent text-dfz-text-muted hover:text-dfz-text'
-            }`}
-          >
-            Разрешения
-          </button>
-          <button
-            onClick={() => setActiveTab('admins')}
-            className={`px-3 py-2 text-xs font-semibold border-b-2 whitespace-nowrap transition-colors ${
-              activeTab === 'admins'
-                ? 'border-dfz-accent text-dfz-accent'
-                : 'border-transparent text-dfz-text-muted hover:text-dfz-text'
-            }`}
-          >
-            Администраторы ({adminsList.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('members')}
-            className={`px-3 py-2 text-xs font-semibold border-b-2 whitespace-nowrap transition-colors ${
-              activeTab === 'members'
-                ? 'border-dfz-accent text-dfz-accent'
-                : 'border-transparent text-dfz-text-muted hover:text-dfz-text'
-            }`}
-          >
-            Участники ({members.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('invites')}
-            className={`px-3 py-2 text-xs font-semibold border-b-2 whitespace-nowrap transition-colors ${
-              activeTab === 'invites'
-                ? 'border-dfz-accent text-dfz-accent'
-                : 'border-transparent text-dfz-text-muted hover:text-dfz-text'
-            }`}
-          >
-            Приглашения
+            {isSaving ? (
+              <span className="w-5 h-5 border-2 border-[#8774e1] border-t-transparent rounded-full block animate-spin" />
+            ) : (
+              <Check size={22} strokeWidth={2.5} />
+            )}
           </button>
         </div>
 
         {/* Status Alerts */}
         {statusMessage && (
-          <div className="mx-5 mt-3 p-2.5 rounded-dfz-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2">
+          <div className="mx-4 mt-3 p-2.5 rounded-dfz-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs flex items-center gap-2">
             <Check size={14} />
             <span>{statusMessage}</span>
           </div>
         )}
         {errorMessage && (
-          <div className="mx-5 mt-3 p-2.5 rounded-dfz-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2">
-            <ShieldAlert size={14} />
+          <div className="mx-4 mt-3 p-2.5 rounded-dfz-xl bg-[#ef5350]/10 border border-[#ef5350]/25 text-[#ef5350] text-xs flex items-center gap-2">
+            <AlertCircle size={14} />
             <span>{errorMessage}</span>
           </div>
         )}
 
-        {/* Tab Body */}
-        <div className="flex-1 overflow-y-auto p-5 text-xs text-dfz-text space-y-4">
-          {/* TAB 1: GENERAL */}
-          {activeTab === 'general' && (
-            <form onSubmit={handleSaveGeneral} className="space-y-4">
-              <div className="flex items-center gap-4">
-                <Avatar src={avatarUrl || chat.avatarUrl} name={title || chat.title} size="xl" />
-                <div className="flex-1 space-y-1">
-                  <label className="text-[11px] font-semibold text-dfz-text-muted">URL Аватара группы</label>
+        {/* Scrollable View Content */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* VIEW: MAIN ROOT SCREEN (Exact Telegram Web Layout) */}
+          {currentView === 'main' && (
+            <div className="space-y-4 animate-fade-in">
+              {/* Group Avatar & Basic Info */}
+              <div className="flex flex-col items-center pt-2">
+                <div
+                  onClick={handleAvatarSelect}
+                  className="relative w-24 h-24 rounded-full cursor-pointer group select-none shadow-lg ring-2 ring-transparent hover:ring-[#8774e1] transition-all"
+                >
+                  <Avatar
+                    src={avatarUrl || chat.avatarUrl}
+                    name={title || chat.title}
+                    size="xl"
+                    className="w-24 h-24 text-2xl"
+                  />
+                  <div className="absolute inset-0 bg-black/45 rounded-full flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Camera size={26} className="text-white drop-shadow" />
+                    <span className="text-[10px] text-white font-medium mt-0.5">Выбрать</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAvatarSelect}
+                  className="mt-2 text-xs text-[#8774e1] hover:underline font-semibold"
+                >
+                  Выбрать фото
+                </button>
+              </div>
+
+              {/* Title & Description Card */}
+              <div className="p-3.5 rounded-dfz-xl bg-[#212126] border border-[#292930] space-y-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-dfz-text-muted">Название группы</label>
                   <input
-                    type="url"
-                    value={avatarUrl}
-                    onChange={(e) => setAvatarUrl(e.target.value)}
-                    placeholder="https://... (прямая ссылка на картинку)"
-                    className="w-full h-8 px-2.5 bg-dfz-bg border border-dfz-border rounded-dfz-lg text-xs text-dfz-text focus:outline-none focus:border-dfz-accent font-mono"
+                    type="text"
+                    required
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="Название группы"
+                    className="w-full h-9 px-3 rounded-dfz-lg bg-[#18181c] border border-[#292930] text-sm text-dfz-text focus:outline-none focus:border-[#8774e1]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-dfz-text-muted">Описание (необязательно)</label>
+                  <textarea
+                    rows={2}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Добавьте описание или правила группы..."
+                    className="w-full px-3 py-2 rounded-dfz-lg bg-[#18181c] border border-[#292930] text-xs text-dfz-text placeholder:text-dfz-text-muted resize-none focus:outline-none focus:border-[#8774e1]"
                   />
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-dfz-text-muted">Название группы</label>
-                <input
-                  type="text"
-                  required
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="w-full h-9 px-3 bg-dfz-bg border border-dfz-border rounded-dfz-lg text-xs text-dfz-text focus:outline-none focus:border-dfz-accent"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-dfz-text-muted">Описание</label>
-                <textarea
-                  rows={3}
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Добавьте описание или правила группы..."
-                  className="w-full p-2.5 bg-dfz-bg border border-dfz-border rounded-dfz-lg text-xs text-dfz-text focus:outline-none focus:border-dfz-accent resize-none"
-                />
-              </div>
-
-              <div className="p-3 rounded-dfz-xl bg-dfz-surface-secondary border border-dfz-border space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {isPublic ? <Globe size={16} className="text-dfz-accent" /> : <Lock size={16} className="text-dfz-text-muted" />}
+              {/* Telegram Setting Items Card 1 */}
+              <div className="rounded-dfz-xl bg-[#212126] border border-[#292930] divide-y divide-[#292930] overflow-hidden">
+                {/* Group Type Row */}
+                <div
+                  onClick={() => setCurrentView('type')}
+                  className="p-3.5 flex items-center justify-between hover:bg-[#28282e] cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    {isPublic ? (
+                      <Globe size={18} className="text-[#8774e1]" />
+                    ) : (
+                      <Lock size={18} className="text-dfz-text-muted" />
+                    )}
                     <div>
-                      <div className="font-semibold text-xs text-dfz-text">Тип группы</div>
+                      <div className="text-xs font-semibold text-dfz-text">Тип группы</div>
                       <div className="text-[11px] text-dfz-text-muted">
-                        {isPublic ? 'Публичная (видна в поиске)' : 'Частная (вход только по ссылке)'}
+                        {isPublic ? 'Публичная' : 'Частная'}
                       </div>
                     </div>
                   </div>
-                  <input
-                    type="checkbox"
-                    checked={isPublic}
-                    onChange={(e) => setIsPublic(e.target.checked)}
-                    className="w-4 h-4 rounded text-dfz-accent bg-dfz-bg border-dfz-border"
-                  />
+                  <ChevronRight size={16} className="text-dfz-text-muted" />
                 </div>
 
-                <div className="border-t border-dfz-border/40 pt-2 flex items-center justify-between">
-                  <div>
-                    <div className="font-semibold text-xs text-dfz-text">Темы / Форум</div>
-                    <div className="text-[11px] text-dfz-text-muted">
-                      Разделение группы на ветки и разделы по темам
+                {/* History Visibility Row */}
+                <div
+                  onClick={() => setIsHistoryVisible(!isHistoryVisible)}
+                  className="p-3.5 flex items-center justify-between hover:bg-[#28282e] cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <Clock size={18} className="text-[#8774e1]" />
+                    <div>
+                      <div className="text-xs font-semibold text-dfz-text">
+                        История чата для новых участников
+                      </div>
+                      <div className="text-[11px] text-dfz-text-muted">
+                        {isHistoryVisible ? 'Видна' : 'Скрыта'}
+                      </div>
+                    </div>
+                  </div>
+                  <ChevronRight size={16} className="text-dfz-text-muted" />
+                </div>
+
+                {/* Forum / Topics Switch Row */}
+                <div className="p-3.5 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <MessageSquare size={18} className="text-[#8774e1]" />
+                    <div>
+                      <div className="text-xs font-semibold text-dfz-text">Темы</div>
+                      <div className="text-[11px] text-dfz-text-muted">
+                        Разделение чата на темы и ветки
+                      </div>
                     </div>
                   </div>
                   <input
                     type="checkbox"
                     checked={isForum}
                     onChange={(e) => setIsForum(e.target.checked)}
-                    className="w-4 h-4 rounded text-dfz-accent bg-dfz-bg border-dfz-border"
+                    className="w-4 h-4 rounded text-[#8774e1] bg-[#18181c] border-[#292930] focus:ring-0 cursor-pointer"
                   />
+                </div>
+
+                {/* Reactions Row */}
+                <div
+                  onClick={() => setCurrentView('reactions')}
+                  className="p-3.5 flex items-center justify-between hover:bg-[#28282e] cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <Smile size={18} className="text-[#8774e1]" />
+                    <div>
+                      <div className="text-xs font-semibold text-dfz-text">Реакции</div>
+                      <div className="text-[11px] text-dfz-text-muted">Все реакции</div>
+                    </div>
+                  </div>
+                  <ChevronRight size={16} className="text-dfz-text-muted" />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="px-4 py-2 bg-dfz-accent hover:bg-dfz-accent-hover text-white rounded-dfz-lg font-semibold text-xs shadow-md transition-colors disabled:opacity-50"
+              {/* Telegram Setting Items Card 2 */}
+              <div className="rounded-dfz-xl bg-[#212126] border border-[#292930] divide-y divide-[#292930] overflow-hidden">
+                {/* Permissions */}
+                <div
+                  onClick={() => setCurrentView('permissions')}
+                  className="p-3.5 flex items-center justify-between hover:bg-[#28282e] cursor-pointer transition-colors"
                 >
-                  {isSaving ? 'Сохранение...' : 'Сохранить изменения'}
-                </button>
+                  <div className="flex items-center gap-3">
+                    <Shield size={18} className="text-[#8774e1]" />
+                    <div>
+                      <div className="text-xs font-semibold text-dfz-text">Разрешения</div>
+                      <div className="text-[11px] text-dfz-text-muted">
+                        Что могут делать участники
+                      </div>
+                    </div>
+                  </div>
+                  <ChevronRight size={16} className="text-dfz-text-muted" />
+                </div>
+
+                {/* Invite Links */}
+                <div
+                  onClick={() => setCurrentView('invites')}
+                  className="p-3.5 flex items-center justify-between hover:bg-[#28282e] cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <Link2 size={18} className="text-[#8774e1]" />
+                    <div>
+                      <div className="text-xs font-semibold text-dfz-text">
+                        Пригласительные ссылки
+                      </div>
+                      <div className="text-[11px] text-dfz-text-muted">1 ссылка</div>
+                    </div>
+                  </div>
+                  <ChevronRight size={16} className="text-dfz-text-muted" />
+                </div>
+
+                {/* Administrators */}
+                <div
+                  onClick={() => setCurrentView('admins')}
+                  className="p-3.5 flex items-center justify-between hover:bg-[#28282e] cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <ShieldCheck size={18} className="text-[#8774e1]" />
+                    <div>
+                      <div className="text-xs font-semibold text-dfz-text">Администраторы</div>
+                      <div className="text-[11px] text-dfz-text-muted">{adminsList.length}</div>
+                    </div>
+                  </div>
+                  <ChevronRight size={16} className="text-dfz-text-muted" />
+                </div>
+
+                {/* Members */}
+                <div
+                  onClick={() => setCurrentView('members')}
+                  className="p-3.5 flex items-center justify-between hover:bg-[#28282e] cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <Users size={18} className="text-[#8774e1]" />
+                    <div>
+                      <div className="text-xs font-semibold text-dfz-text">Участники</div>
+                      <div className="text-[11px] text-dfz-text-muted">{members.length}</div>
+                    </div>
+                  </div>
+                  <ChevronRight size={16} className="text-dfz-text-muted" />
+                </div>
               </div>
-            </form>
+
+              {/* Danger Zone Card */}
+              <div className="rounded-dfz-xl bg-[#212126] border border-[#292930] overflow-hidden">
+                {isOwner ? (
+                  <button
+                    type="button"
+                    onClick={handleDeleteGroup}
+                    className="w-full p-3.5 flex items-center gap-3 hover:bg-[#ef5350]/10 text-[#ef5350] transition-colors text-left"
+                  >
+                    <Trash2 size={18} />
+                    <span className="text-xs font-semibold">Удалить группу</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleLeaveGroup}
+                    className="w-full p-3.5 flex items-center gap-3 hover:bg-[#ef5350]/10 text-[#ef5350] transition-colors text-left"
+                  >
+                    <LogOut size={18} />
+                    <span className="text-xs font-semibold">Покинуть группу</span>
+                  </button>
+                )}
+              </div>
+            </div>
           )}
 
-          {/* TAB 2: PERMISSIONS */}
-          {activeTab === 'permissions' && (
-            <div className="space-y-3">
-              <p className="text-[11px] text-dfz-text-muted">
-                Укажите, какие действия разрешены обычным участникам группы:
-              </p>
+          {/* VIEW: GROUP TYPE (Exact Telegram Subview) */}
+          {currentView === 'type' && (
+            <div className="space-y-4 animate-fade-in">
+              <div className="p-3.5 rounded-dfz-xl bg-[#212126] border border-[#292930] space-y-4">
+                {/* Radio: Private */}
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="groupType"
+                    checked={!isPublic}
+                    onChange={() => setIsPublic(false)}
+                    className="mt-0.5 w-4 h-4 text-[#8774e1] bg-[#18181c] border-[#292930] focus:ring-0"
+                  />
+                  <div className="space-y-0.5">
+                    <div className="text-xs font-semibold text-dfz-text">Частная группа</div>
+                    <p className="text-[11px] text-dfz-text-muted leading-tight">
+                      В частные группы можно вступить только по пригласительной ссылке.
+                    </p>
+                  </div>
+                </label>
 
-              <div className="space-y-2 p-3 bg-dfz-surface-secondary border border-dfz-border rounded-dfz-xl">
-                <label className="flex items-center justify-between p-2 rounded-dfz-lg hover:bg-dfz-surface cursor-pointer">
+                {/* Radio: Public */}
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="groupType"
+                    checked={isPublic}
+                    onChange={() => setIsPublic(true)}
+                    className="mt-0.5 w-4 h-4 text-[#8774e1] bg-[#18181c] border-[#292930] focus:ring-0"
+                  />
+                  <div className="space-y-0.5">
+                    <div className="text-xs font-semibold text-dfz-text">Публичная группа</div>
+                    <p className="text-[11px] text-dfz-text-muted leading-tight">
+                      Публичные группы можно найти через поиск. Вступить может любой пользователь.
+                    </p>
+                  </div>
+                </label>
+              </div>
+
+              {isPublic && (
+                <div className="p-3.5 rounded-dfz-xl bg-[#212126] border border-[#292930] space-y-2 animate-fade-in">
+                  <label className="text-[11px] font-semibold text-dfz-text-muted">
+                    Постоянная ссылка группы
+                  </label>
+                  <div className="flex items-center gap-1.5 px-3 py-2 rounded-dfz-lg bg-[#18181c] border border-[#292930]">
+                    <span className="text-xs text-dfz-text-muted font-mono">https://dfz.im/</span>
+                    <input
+                      type="text"
+                      value={publicHandle}
+                      onChange={(e) =>
+                        setPublicHandle(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))
+                      }
+                      placeholder="link_name"
+                      className="flex-1 bg-transparent text-xs text-dfz-text font-mono focus:outline-none"
+                    />
+                  </div>
+                  <p className="text-[10px] text-dfz-text-muted">
+                    По этой ссылке пользователи смогут открывать группу и вступать в нее.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* VIEW: PERMISSIONS (Exact Telegram Subview) */}
+          {currentView === 'permissions' && (
+            <div className="space-y-4 animate-fade-in">
+              <span className="text-[11px] font-semibold text-dfz-text-muted px-1 block">
+                Что могут делать участники этой группы?
+              </span>
+
+              <div className="rounded-dfz-xl bg-[#212126] border border-[#292930] divide-y divide-[#292930] overflow-hidden text-xs">
+                <label className="p-3 flex items-center justify-between hover:bg-[#28282e] cursor-pointer">
                   <span>Отправка текстовых сообщений</span>
                   <input
                     type="checkbox"
                     checked={permSendMessages}
                     onChange={(e) => setPermSendMessages(e.target.checked)}
-                    className="w-4 h-4 rounded text-dfz-accent bg-dfz-bg border-dfz-border"
+                    className="w-4 h-4 rounded text-[#8774e1] bg-[#18181c] border-[#292930] focus:ring-0"
                   />
                 </label>
 
-                <label className="flex items-center justify-between p-2 rounded-dfz-lg hover:bg-dfz-surface cursor-pointer">
-                  <span>Отправка медиа, стикеров и файлов</span>
+                <label className="p-3 flex items-center justify-between hover:bg-[#28282e] cursor-pointer">
+                  <span>Отправка медиафайлов</span>
                   <input
                     type="checkbox"
                     checked={permSendMedia}
                     onChange={(e) => setPermSendMedia(e.target.checked)}
-                    className="w-4 h-4 rounded text-dfz-accent bg-dfz-bg border-dfz-border"
+                    className="w-4 h-4 rounded text-[#8774e1] bg-[#18181c] border-[#292930] focus:ring-0"
                   />
                 </label>
 
-                <label className="flex items-center justify-between p-2 rounded-dfz-lg hover:bg-dfz-surface cursor-pointer">
-                  <span>Добавление новых участников</span>
+                <label className="p-3 flex items-center justify-between hover:bg-[#28282e] cursor-pointer">
+                  <span>Отправка стикеров и GIF</span>
                   <input
                     type="checkbox"
-                    checked={permAddUsers}
-                    onChange={(e) => setPermAddUsers(e.target.checked)}
-                    className="w-4 h-4 rounded text-dfz-accent bg-dfz-bg border-dfz-border"
+                    checked={permSendStickers}
+                    onChange={(e) => setPermSendStickers(e.target.checked)}
+                    className="w-4 h-4 rounded text-[#8774e1] bg-[#18181c] border-[#292930] focus:ring-0"
                   />
                 </label>
 
-                <label className="flex items-center justify-between p-2 rounded-dfz-lg hover:bg-dfz-surface cursor-pointer">
+                <label className="p-3 flex items-center justify-between hover:bg-[#28282e] cursor-pointer">
+                  <span>Создание опросов</span>
+                  <input
+                    type="checkbox"
+                    checked={permSendPolls}
+                    onChange={(e) => setPermSendPolls(e.target.checked)}
+                    className="w-4 h-4 rounded text-[#8774e1] bg-[#18181c] border-[#292930] focus:ring-0"
+                  />
+                </label>
+
+                <label className="p-3 flex items-center justify-between hover:bg-[#28282e] cursor-pointer">
+                  <span>Встраивание ссылок</span>
+                  <input
+                    type="checkbox"
+                    checked={permEmbedLinks}
+                    onChange={(e) => setPermEmbedLinks(e.target.checked)}
+                    className="w-4 h-4 rounded text-[#8774e1] bg-[#18181c] border-[#292930] focus:ring-0"
+                  />
+                </label>
+
+                <label className="p-3 flex items-center justify-between hover:bg-[#28282e] cursor-pointer">
+                  <span>Добавление участников</span>
+                  <input
+                    type="checkbox"
+                    checked={permAddMembers}
+                    onChange={(e) => setPermAddMembers(e.target.checked)}
+                    className="w-4 h-4 rounded text-[#8774e1] bg-[#18181c] border-[#292930] focus:ring-0"
+                  />
+                </label>
+
+                <label className="p-3 flex items-center justify-between hover:bg-[#28282e] cursor-pointer">
                   <span>Закрепление сообщений</span>
                   <input
                     type="checkbox"
                     checked={permPinMessages}
                     onChange={(e) => setPermPinMessages(e.target.checked)}
-                    className="w-4 h-4 rounded text-dfz-accent bg-dfz-bg border-dfz-border"
+                    className="w-4 h-4 rounded text-[#8774e1] bg-[#18181c] border-[#292930] focus:ring-0"
                   />
                 </label>
 
-                <label className="flex items-center justify-between p-2 rounded-dfz-lg hover:bg-dfz-surface cursor-pointer">
-                  <span>Изменение информации о группе</span>
+                <label className="p-3 flex items-center justify-between hover:bg-[#28282e] cursor-pointer">
+                  <span>Изменение профиля группы</span>
                   <input
                     type="checkbox"
                     checked={permChangeInfo}
                     onChange={(e) => setPermChangeInfo(e.target.checked)}
-                    className="w-4 h-4 rounded text-dfz-accent bg-dfz-bg border-dfz-border"
+                    className="w-4 h-4 rounded text-[#8774e1] bg-[#18181c] border-[#292930] focus:ring-0"
+                  />
+                </label>
+
+                <label className="p-3 flex items-center justify-between hover:bg-[#28282e] cursor-pointer">
+                  <div className="space-y-0.5">
+                    <div>Запрет копирования и пересылки</div>
+                    <div className="text-[10px] text-dfz-text-muted">
+                      Участники не смогут скопировать или переслать сообщения
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={permProtectedContent}
+                    onChange={(e) => setPermProtectedContent(e.target.checked)}
+                    className="w-4 h-4 rounded text-[#8774e1] bg-[#18181c] border-[#292930] focus:ring-0"
                   />
                 </label>
               </div>
 
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const res = await apiRequest(`/api/chats/${chat.id}/policy`, { method:'PUT', body:JSON.stringify({ sendMessages:permSendMessages, sendMedia:permSendMedia, sendStickers:permSendMedia, addMembers:permAddUsers, pinMessages:permPinMessages, changeInfo:permChangeInfo }) });
-                    if(!res.success) { setErrorMessage(res.error?.message || 'Не удалось сохранить разрешения'); return; }
-                    setStatusMessage('Разрешения участников обновлены');
-                    setTimeout(() => setStatusMessage(null), 3000);
-                  }}
-                  className="px-4 py-2 bg-dfz-accent hover:bg-dfz-accent-hover text-white rounded-dfz-lg font-semibold text-xs shadow-md transition-colors"
-                >
-                  Применить разрешения
-                </button>
+              {/* Slow Mode Section */}
+              <div className="p-3.5 rounded-dfz-xl bg-[#212126] border border-[#292930] space-y-2.5">
+                <div>
+                  <div className="text-xs font-semibold text-dfz-text">Медленный режим</div>
+                  <p className="text-[11px] text-dfz-text-muted">
+                    Участники смогут отправлять сообщения только через заданный интервал времени.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-7 gap-1 pt-1">
+                  {slowModeOptions.map((opt) => (
+                    <button
+                      key={opt.val}
+                      type="button"
+                      onClick={() => setSlowModeSeconds(opt.val)}
+                      className={`py-1.5 rounded-dfz-md text-[11px] font-semibold transition-all ${
+                        slowModeSeconds === opt.val
+                          ? 'bg-[#8774e1] text-white shadow-sm'
+                          : 'bg-[#18181c] text-dfz-text-muted hover:text-dfz-text border border-[#292930]'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           )}
 
-          {/* TAB 3: ADMINS */}
-          {activeTab === 'admins' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] text-dfz-text-muted">
-                  Список администраторов с правами управления группой
-                </span>
-              </div>
+          {/* VIEW: ADMINS (Exact Telegram Subview) */}
+          {currentView === 'admins' && (
+            <div className="space-y-4 animate-fade-in">
+              <span className="text-[11px] font-semibold text-dfz-text-muted px-1 block">
+                Администраторы с правами управления группой
+              </span>
 
-              <div className="space-y-1.5">
+              <div className="rounded-dfz-xl bg-[#212126] border border-[#292930] divide-y divide-[#292930] overflow-hidden">
                 {adminsList.map((m) => {
                   const isCurrent = m.userId === user?.id;
                   const isOwnerMember = m.role === MemberRole.OWNER;
                   return (
                     <div
                       key={m.userId}
-                      className="flex items-center justify-between p-2.5 rounded-dfz-xl bg-dfz-surface-secondary border border-dfz-border"
+                      className="p-3 flex items-center justify-between hover:bg-[#28282e] transition-colors"
                     >
                       <div className="flex items-center gap-3">
                         <Avatar
@@ -495,13 +836,12 @@ export const GroupManageModal: React.FC<GroupManageModalProps> = ({
                         <div>
                           <div className="font-semibold text-xs text-dfz-text flex items-center gap-1.5">
                             <span>{m.displayName || m.username}</span>
-                            {isOwnerMember && (
-                              <span className="px-1.5 py-0.2 rounded-full bg-amber-500/20 text-[10px] font-bold text-amber-400">
+                            {isOwnerMember ? (
+                              <span className="px-1.5 py-0.2 rounded-full bg-[#f5c542]/20 text-[10px] font-bold text-[#f5c542]">
                                 Владелец
                               </span>
-                            )}
-                            {!isOwnerMember && (
-                              <span className="px-1.5 py-0.2 rounded-full bg-cyan-500/20 text-[10px] font-semibold text-cyan-400">
+                            ) : (
+                              <span className="px-1.5 py-0.2 rounded-full bg-[#8774e1]/20 text-[10px] font-semibold text-[#8774e1]">
                                 {m.customTitle || 'Админ'}
                               </span>
                             )}
@@ -512,8 +852,9 @@ export const GroupManageModal: React.FC<GroupManageModalProps> = ({
 
                       {isOwner && !isOwnerMember && (
                         <button
+                          type="button"
                           onClick={() => handleDemoteAdmin(m.userId)}
-                          className="px-2.5 py-1 text-[11px] rounded-dfz-md text-rose-400 hover:bg-rose-500/10 border border-rose-500/20 transition-colors"
+                          className="px-2.5 py-1 text-[11px] rounded-dfz-md text-[#ef5350] hover:bg-[#ef5350]/10 border border-[#ef5350]/20 transition-colors"
                         >
                           Снять права
                         </button>
@@ -523,41 +864,46 @@ export const GroupManageModal: React.FC<GroupManageModalProps> = ({
                 })}
               </div>
 
-              {/* Add admin modal prompt if owner */}
               {isOwner && (
-                <div className="pt-2 border-t border-dfz-border space-y-2">
-                  <div className="font-semibold text-xs text-dfz-text">
-                    Назначить нового администратора
-                  </div>
-                  <div className="text-[11px] text-dfz-text-muted">
-                    Выберите участника из списка во вкладке «Участники» для наделения правами.
-                  </div>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setCurrentView('members')}
+                  className="w-full py-2.5 px-3 rounded-dfz-xl bg-[#212126] hover:bg-[#28282e] border border-[#292930] text-xs font-semibold text-[#8774e1] flex items-center justify-center gap-2 transition-colors"
+                >
+                  <UserPlus size={15} />
+                  <span>Добавить администратора</span>
+                </button>
               )}
             </div>
           )}
 
-          {/* TAB 4: MEMBERS */}
-          {activeTab === 'members' && (
-            <div className="space-y-3">
-              <input
-                type="text"
-                value={memberSearch}
-                onChange={(e) => setMemberSearch(e.target.value)}
-                placeholder="Поиск по участникам..."
-                className="w-full h-8 px-3 bg-dfz-bg border border-dfz-border rounded-dfz-lg text-xs text-dfz-text focus:outline-none focus:border-dfz-accent"
-              />
+          {/* VIEW: MEMBERS (Exact Telegram Subview) */}
+          {currentView === 'members' && (
+            <div className="space-y-3 animate-fade-in">
+              <div className="relative">
+                <Search
+                  size={15}
+                  className="absolute left-3 top-2.5 text-dfz-text-muted pointer-events-none"
+                />
+                <input
+                  type="text"
+                  value={memberSearch}
+                  onChange={(e) => setMemberSearch(e.target.value)}
+                  placeholder="Поиск по участникам..."
+                  className="w-full h-9 pl-9 pr-3 rounded-dfz-xl bg-[#212126] border border-[#292930] text-xs text-dfz-text focus:outline-none focus:border-[#8774e1]"
+                />
+              </div>
 
-              <div className="space-y-1.5 max-h-60 overflow-y-auto">
+              <div className="rounded-dfz-xl bg-[#212126] border border-[#292930] divide-y divide-[#292930] overflow-hidden max-h-72 overflow-y-auto">
                 {filteredMembers.map((m) => {
                   const isCurrent = m.userId === user?.id;
                   const isMemberAdmin = m.role === MemberRole.ADMIN || m.role === MemberRole.OWNER;
                   return (
                     <div
                       key={m.userId}
-                      className="flex items-center justify-between p-2 rounded-dfz-xl hover:bg-dfz-surface-secondary border border-transparent hover:border-dfz-border transition-colors"
+                      className="p-3 flex items-center justify-between hover:bg-[#28282e] transition-colors"
                     >
-                      <div className="flex items-center gap-2.5">
+                      <div className="flex items-center gap-3">
                         <Avatar
                           src={m.avatarUrl}
                           name={m.displayName || m.username}
@@ -574,20 +920,22 @@ export const GroupManageModal: React.FC<GroupManageModalProps> = ({
                       <div className="flex items-center gap-1.5">
                         {isOwner && !isMemberAdmin && (
                           <button
+                            type="button"
                             onClick={() => setSelectedMemberForAdmin(m)}
-                            className="p-1.5 text-xs text-cyan-400 hover:bg-cyan-500/10 rounded-dfz-md transition-colors"
+                            className="p-1.5 text-xs text-[#8774e1] hover:bg-[#8774e1]/10 rounded-dfz-md transition-colors"
                             title="Сделать администратором"
                           >
-                            <Shield size={14} />
+                            <Shield size={15} />
                           </button>
                         )}
                         {isOwner && !isCurrent && m.role !== MemberRole.OWNER && (
                           <button
+                            type="button"
                             onClick={() => handleRemoveMember(m.userId)}
-                            className="p-1.5 text-xs text-rose-400 hover:bg-rose-500/10 rounded-dfz-md transition-colors"
+                            className="p-1.5 text-xs text-[#ef5350] hover:bg-[#ef5350]/10 rounded-dfz-md transition-colors"
                             title="Исключить из группы"
                           >
-                            <UserX size={14} />
+                            <UserX size={15} />
                           </button>
                         )}
                       </div>
@@ -596,18 +944,19 @@ export const GroupManageModal: React.FC<GroupManageModalProps> = ({
                 })}
               </div>
 
-              {/* Sub-dialog: Promote selected member to admin */}
+              {/* Subdialog to promote member to admin */}
               {selectedMemberForAdmin && (
-                <div className="p-3 bg-dfz-bg border border-dfz-accent/40 rounded-dfz-xl space-y-2 animate-fade-in">
-                  <div className="font-semibold text-xs text-dfz-accent">
-                    Назначить {selectedMemberForAdmin.user?.profile?.displayName || selectedMemberForAdmin.user?.username} админом
+                <div className="p-3.5 rounded-dfz-xl bg-[#212126] border border-[#8774e1]/40 space-y-2.5 animate-scale-in">
+                  <div className="font-semibold text-xs text-[#8774e1]">
+                    Назначить {selectedMemberForAdmin.displayName || selectedMemberForAdmin.username}{' '}
+                    администратором
                   </div>
                   <input
                     type="text"
-                    value={adminTitle}
-                    onChange={(e) => setAdminTitle(e.target.value)}
+                    value={adminCustomTitle}
+                    onChange={(e) => setAdminCustomTitle(e.target.value)}
                     placeholder="Должность / титул (например: Модератор)"
-                    className="w-full h-8 px-2.5 bg-dfz-surface border border-dfz-border rounded-dfz-lg text-xs text-dfz-text focus:outline-none"
+                    className="w-full h-8 px-2.5 rounded-dfz-lg bg-[#18181c] border border-[#292930] text-xs text-dfz-text focus:outline-none focus:border-[#8774e1]"
                   />
                   <div className="flex justify-end gap-2 pt-1">
                     <button
@@ -620,7 +969,7 @@ export const GroupManageModal: React.FC<GroupManageModalProps> = ({
                     <button
                       type="button"
                       onClick={() => handlePromoteToAdmin(selectedMemberForAdmin)}
-                      className="px-3 py-1 text-xs font-semibold bg-dfz-accent hover:bg-dfz-accent-hover text-white rounded-dfz-md"
+                      className="px-3 py-1 text-xs font-semibold bg-[#8774e1] hover:bg-[#7662d8] text-white rounded-dfz-md"
                     >
                       Подтвердить
                     </button>
@@ -630,22 +979,21 @@ export const GroupManageModal: React.FC<GroupManageModalProps> = ({
             </div>
           )}
 
-          {/* TAB 5: INVITES */}
-          {activeTab === 'invites' && (
-            <div className="space-y-4">
-              <InviteManager chatId={chat.id} />
-              <div className="space-y-1">
+          {/* VIEW: INVITE LINKS (Exact Telegram Subview) */}
+          {currentView === 'invites' && (
+            <div className="space-y-4 animate-fade-in">
+              <div className="p-3.5 rounded-dfz-xl bg-[#212126] border border-[#292930] space-y-2">
                 <span className="text-[11px] font-semibold text-dfz-text-muted">
-                  Пригласительная ссылка группы
+                  Основная ссылка
                 </span>
-                <div className="flex items-center gap-2 p-2 bg-dfz-bg border border-dfz-border rounded-dfz-xl">
-                  <span className="flex-1 font-mono text-xs text-dfz-accent truncate">
+                <div className="flex items-center gap-2 p-2 bg-[#18181c] border border-[#292930] rounded-dfz-lg">
+                  <span className="flex-1 font-mono text-xs text-[#8774e1] truncate">
                     {window.location.origin}/join/{inviteCode}
                   </span>
                   <button
                     onClick={handleCopyLink}
-                    className="p-1.5 rounded-dfz-lg hover:bg-dfz-surface text-dfz-text-muted hover:text-dfz-text transition-colors"
-                    title="Копировать ссылку"
+                    className="p-1.5 rounded-dfz-md hover:bg-[#28282e] text-dfz-text-muted hover:text-dfz-text transition-colors"
+                    title="Копировать"
                   >
                     {copied ? <Check size={16} className="text-emerald-400" /> : <Copy size={16} />}
                   </button>
@@ -653,47 +1001,44 @@ export const GroupManageModal: React.FC<GroupManageModalProps> = ({
               </div>
 
               {isOwner && (
-                <div className="pt-2">
-                  <button
-                    type="button"
-                    onClick={handleRegenerateInvite}
-                    className="w-full py-2 px-3 flex items-center justify-center gap-2 rounded-dfz-xl border border-dfz-border hover:bg-dfz-surface-secondary text-dfz-text transition-colors"
-                  >
-                    <RefreshCw size={14} />
-                    <span>Аннулировать и создать новую ссылку</span>
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleRegenerateInvite}
+                  className="w-full py-2.5 px-3 rounded-dfz-xl bg-[#212126] hover:bg-[#28282e] border border-[#292930] text-xs font-semibold text-dfz-text flex items-center justify-center gap-2 transition-colors"
+                >
+                  <RefreshCw size={14} />
+                  <span>Аннулировать и создать новую ссылку</span>
+                </button>
               )}
+            </div>
+          )}
 
-              {/* Danger Zone */}
-              <div className="pt-6 border-t border-dfz-border/80 space-y-2">
-                <div className="font-semibold text-xs text-rose-400">Опасная зона</div>
-                {isOwner ? (
-                  <button
-                    type="button"
-                    onClick={handleDeleteGroup}
-                    className="w-full py-2.5 px-4 rounded-dfz-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 font-semibold text-xs flex items-center justify-center gap-2 transition-colors"
-                  >
-                    <Trash2 size={15} />
-                    <span>Удалить группу навсегда</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      if (confirm('Покинуть эту группу?')) {
-                        await apiRequest(`/api/chats/${chat.id}/members/${user?.id}`, { method: 'DELETE' });
-                        onClose();
-                        await fetchChats();
-                        useChatStore.setState({ activeChatId: null, activeChat: null });
-                      }
-                    }}
-                    className="w-full py-2.5 px-4 rounded-dfz-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 font-semibold text-xs flex items-center justify-center gap-2 transition-colors"
-                  >
-                    <LogOut size={15} />
-                    <span>Покинуть группу</span>
-                  </button>
-                )}
+          {/* VIEW: REACTIONS (Exact Telegram Subview) */}
+          {currentView === 'reactions' && (
+            <div className="space-y-4 animate-fade-in">
+              <div className="p-3.5 rounded-dfz-xl bg-[#212126] border border-[#292930] space-y-3">
+                <label className="flex items-center justify-between cursor-pointer">
+                  <span className="text-xs font-semibold text-dfz-text">Все реакции</span>
+                  <input
+                    type="radio"
+                    name="reactions"
+                    checked={true}
+                    readOnly
+                    className="w-4 h-4 text-[#8774e1] bg-[#18181c] border-[#292930] focus:ring-0"
+                  />
+                </label>
+                <div className="flex flex-wrap gap-2 pt-2 border-t border-[#292930]">
+                  {['👍', '👎', '❤️', '🔥', '🥰', '👏', '😁', '🤔', '🤯', '😱', '🎉', '🤩', '🙏', '🕊'].map(
+                    (emoji) => (
+                      <span
+                        key={emoji}
+                        className="w-8 h-8 rounded-dfz-lg bg-[#18181c] flex items-center justify-center text-base"
+                      >
+                        {emoji}
+                      </span>
+                    )
+                  )}
+                </div>
               </div>
             </div>
           )}

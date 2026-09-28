@@ -34,7 +34,7 @@ export const ForwardModal: React.FC = () => {
       case ChatType.GROUP:
         return <Users size={14} className="text-purple-400" />;
       case ChatType.CHANNEL:
-        return <Radio size={14} className="text-cyan-400" />;
+        return <Radio size={14} className="text-[#8774e1]" />;
       default:
         return null;
     }

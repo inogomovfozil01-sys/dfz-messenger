@@ -75,7 +75,7 @@ export const UserMenuPopover: React.FC<UserMenuPopoverProps> = ({
               </h4>
               {isPremium && (
                 <span
-                  className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-violet-500 to-cyan-500 text-white shadow-sm flex items-center gap-0.5"
+                  className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-[#8774e1] to-[#7662d8] text-white shadow-sm flex items-center gap-0.5"
                   title="DFZ Premium"
                 >
                   ◆
@@ -148,10 +148,10 @@ export const UserMenuPopover: React.FC<UserMenuPopoverProps> = ({
           }}
           className="w-full flex items-center gap-3 px-3 py-2 rounded-dfz-xl hover:bg-dfz-surface-hover text-dfz-text transition-colors"
         >
-          <Sparkles size={16} className="text-cyan-400" />
+          <Sparkles size={16} className="text-[#8774e1]" />
           <div className="flex items-center justify-between flex-1">
             <span>DFZ Premium</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-cyan-500/10 text-cyan-400 font-bold">
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#8774e1]/15 text-[#8774e1] font-bold">
               ◆
             </span>
           </div>

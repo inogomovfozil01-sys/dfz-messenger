@@ -185,7 +185,7 @@ export const AdminQuickActionsModal: React.FC<AdminQuickActionsModalProps> = ({
             onClick={() => setActiveTab('premium')}
             className={`px-3 py-1.5 rounded-dfz-lg font-bold transition-colors ${
               activeTab === 'premium'
-                ? 'bg-cyan-500/20 text-cyan-400'
+                ? 'bg-[#8774e1]/20 text-[#8774e1]'
                 : 'text-dfz-text-muted hover:text-dfz-text'
             }`}
           >
@@ -268,7 +268,7 @@ export const AdminQuickActionsModal: React.FC<AdminQuickActionsModalProps> = ({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-2.5 rounded-dfz-xl bg-gradient-to-r from-cyan-500 to-violet-600 text-white font-bold"
+              className="w-full py-2.5 rounded-dfz-xl bg-[#8774e1] hover:bg-[#7662d8] text-white font-bold transition-colors"
             >
               {isSubmitting ? 'Выдача...' : 'Выдать DFZ Premium'}
             </button>

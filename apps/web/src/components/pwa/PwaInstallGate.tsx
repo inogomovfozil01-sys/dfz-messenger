@@ -55,22 +55,22 @@ export const PwaInstallGate: React.FC<PwaInstallGateProps> = ({
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-[#0e141b] text-dfz-text">
-      <div className="w-full max-w-md bg-[#151d26] border border-[#26323e] rounded-dfz-2xl p-6 sm:p-8 shadow-2xl space-y-6 text-center animate-scale-in relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-[#0e0e10] text-dfz-text">
+      <div className="w-full max-w-md bg-[#18181c] border border-[#292930] rounded-dfz-2xl p-6 sm:p-8 shadow-2xl space-y-6 text-center animate-scale-in relative overflow-hidden">
         {/* Subtle Top Glow */}
-        <div className="absolute -top-16 left-1/2 -translate-x-1/2 w-48 h-48 bg-dfz-accent/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-16 left-1/2 -translate-x-1/2 w-48 h-48 bg-[#8774e1]/15 rounded-full blur-3xl pointer-events-none" />
 
         {/* App Emblem & Brand Header */}
         <div className="space-y-3 relative">
           <div className="relative w-16 h-16 mx-auto">
-            <BrandMark className="w-16 h-16 shadow-lg shadow-dfz-accent/20 rounded-2xl" />
-            <div className="absolute -bottom-1 -right-1 p-1 bg-[#151d26] rounded-full border border-[#26323e]">
-              <ShieldCheck size={14} className="text-cyan-400" />
+            <BrandMark className="w-16 h-16 shadow-lg shadow-[#8774e1]/20 rounded-2xl" />
+            <div className="absolute -bottom-1 -right-1 p-1 bg-[#18181c] rounded-full border border-[#292930]">
+              <ShieldCheck size={14} className="text-[#8774e1]" />
             </div>
           </div>
 
           <div>
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-dfz-accent/10 border border-dfz-accent/25 text-dfz-accent text-[11px] font-semibold mb-2">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#8774e1]/10 border border-[#8774e1]/25 text-[#8774e1] text-[11px] font-semibold mb-2">
               <Smartphone size={12} />
               <span>Официальный PWA Клиент</span>
             </div>
@@ -83,8 +83,8 @@ export const PwaInstallGate: React.FC<PwaInstallGateProps> = ({
 
         {/* Telegram-style Advantages Grid */}
         <div className="grid grid-cols-2 gap-2 text-left text-xs">
-          <div className="p-3 rounded-dfz-xl bg-[#0e141b] border border-[#26323e] space-y-1">
-            <div className="flex items-center gap-1.5 text-cyan-400 font-semibold text-[11px]">
+          <div className="p-3 rounded-dfz-xl bg-[#212126] border border-[#292930] space-y-1">
+            <div className="flex items-center gap-1.5 text-[#8774e1] font-semibold text-[11px]">
               <Zap size={13} />
               <span>120 FPS Скорость</span>
             </div>
@@ -93,7 +93,7 @@ export const PwaInstallGate: React.FC<PwaInstallGateProps> = ({
             </p>
           </div>
 
-          <div className="p-3 rounded-dfz-xl bg-[#0e141b] border border-[#26323e] space-y-1">
+          <div className="p-3 rounded-dfz-xl bg-[#212126] border border-[#292930] space-y-1">
             <div className="flex items-center gap-1.5 text-purple-400 font-semibold text-[11px]">
               <Bell size={13} />
               <span>Push-уведомления</span>
@@ -103,7 +103,7 @@ export const PwaInstallGate: React.FC<PwaInstallGateProps> = ({
             </p>
           </div>
 
-          <div className="p-3 rounded-dfz-xl bg-[#0e141b] border border-[#26323e] space-y-1">
+          <div className="p-3 rounded-dfz-xl bg-[#212126] border border-[#292930] space-y-1">
             <div className="flex items-center gap-1.5 text-emerald-400 font-semibold text-[11px]">
               <ShieldCheck size={13} />
               <span>Шифрование сессий</span>
@@ -113,8 +113,8 @@ export const PwaInstallGate: React.FC<PwaInstallGateProps> = ({
             </p>
           </div>
 
-          <div className="p-3 rounded-dfz-xl bg-[#0e141b] border border-[#26323e] space-y-1">
-            <div className="flex items-center gap-1.5 text-amber-400 font-semibold text-[11px]">
+          <div className="p-3 rounded-dfz-xl bg-[#212126] border border-[#292930] space-y-1">
+            <div className="flex items-center gap-1.5 text-[#f5c542] font-semibold text-[11px]">
               <Download size={13} />
               <span>Оффлайн-кэш</span>
             </div>
@@ -128,7 +128,7 @@ export const PwaInstallGate: React.FC<PwaInstallGateProps> = ({
         <div className="space-y-3 pt-1">
           <button
             onClick={handleInstallClick}
-            className="w-full h-11 flex items-center justify-center gap-2 bg-dfz-accent hover:bg-dfz-accent-hover text-white text-xs font-bold rounded-dfz-xl transition-all shadow-md shadow-dfz-accent/20"
+            className="w-full h-11 flex items-center justify-center gap-2 bg-[#8774e1] hover:bg-[#7662d8] text-white text-xs font-bold rounded-dfz-xl transition-all shadow-md shadow-[#8774e1]/20"
           >
             <Download size={15} />
             <span>Установить PWA на устройство</span>
@@ -136,7 +136,7 @@ export const PwaInstallGate: React.FC<PwaInstallGateProps> = ({
 
           {/* Manual platform guide if automatic prompt is not available */}
           {(showManualSteps || isIos) && (
-            <div className="p-3.5 rounded-dfz-xl bg-[#0e141b] border border-[#26323e] text-left text-xs space-y-2 text-dfz-text-muted">
+            <div className="p-3.5 rounded-dfz-xl bg-[#212126] border border-[#292930] text-left text-xs space-y-2 text-dfz-text-muted">
               <span className="font-semibold text-dfz-text text-[11px] block">
                 {isIos ? 'Инструкция для Apple iOS (Safari):' : 'Как установить приложение вручную:'}
               </span>

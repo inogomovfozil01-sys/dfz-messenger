@@ -401,7 +401,7 @@ export const ChannelManageModal: React.FC<ChannelManageModalProps> = ({
                               </span>
                             )}
                             {!isOwnerMember && (
-                              <span className="px-1.5 py-0.2 rounded-full bg-cyan-500/20 text-[10px] font-semibold text-cyan-400">
+                              <span className="px-1.5 py-0.2 rounded-full bg-[#8774e1]/20 text-[10px] font-semibold text-[#8774e1]">
                                 {m.customTitle || 'Администратор'}
                               </span>
                             )}
@@ -463,7 +463,7 @@ export const ChannelManageModal: React.FC<ChannelManageModalProps> = ({
                         {isOwner && !isMemberAdmin && (
                           <button
                             onClick={() => setSelectedSubForAdmin(m)}
-                            className="p-1.5 text-xs text-cyan-400 hover:bg-cyan-500/10 rounded-dfz-md transition-colors"
+                            className="p-1.5 text-xs text-[#8774e1] hover:bg-[#8774e1]/10 rounded-dfz-md transition-colors"
                             title="Сделать администратором"
                           >
                             <Shield size={14} />

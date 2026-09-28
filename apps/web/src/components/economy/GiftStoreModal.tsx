@@ -134,7 +134,7 @@ export const GiftStoreModal: React.FC = () => {
     >
       <div className="space-y-4">
         {/* Strict Telegram Top Header Bar */}
-        <div className="flex items-center justify-between p-3.5 rounded-dfz-xl bg-[#151d26] border border-[#26323e] shadow-sm">
+        <div className="flex items-center justify-between p-3.5 rounded-dfz-xl bg-[#212126] border border-[#292930] shadow-sm">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 font-bold">
               ★
@@ -179,7 +179,7 @@ export const GiftStoreModal: React.FC = () => {
               className={`px-3 py-1.5 rounded-dfz-lg whitespace-nowrap transition-colors border ${
                 activeCategory === cat.id
                   ? 'bg-dfz-accent/15 border-dfz-accent/40 text-dfz-accent font-bold'
-                  : 'bg-[#151d26] border-[#26323e] text-dfz-text-muted hover:text-dfz-text hover:bg-[#1a2430]'
+                  : 'bg-[#212126] border-[#292930] text-dfz-text-muted hover:text-dfz-text hover:bg-[#28282e]'
               }`}
             >
               {cat.label}
@@ -196,7 +196,7 @@ export const GiftStoreModal: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Поиск по названию подарка..."
-              className="w-full h-8 pl-8 pr-3 rounded-dfz-lg bg-[#0e141b] border border-[#26323e] text-xs text-dfz-text placeholder:text-dfz-text-muted focus:outline-none focus:border-dfz-accent"
+              className="w-full h-8 pl-8 pr-3 rounded-dfz-lg bg-[#18181c] border border-[#292930] text-xs text-dfz-text placeholder:text-dfz-text-muted focus:outline-none focus:border-dfz-accent"
             />
           </div>
 
@@ -204,7 +204,7 @@ export const GiftStoreModal: React.FC = () => {
             onClick={() => {
               setSortOrder((prev) => (prev === 'default' ? 'asc' : prev === 'asc' ? 'desc' : 'default'));
             }}
-            className="h-8 px-2.5 rounded-dfz-lg bg-[#151d26] border border-[#26323e] text-xs text-dfz-text-muted hover:text-dfz-text flex items-center gap-1 transition-colors"
+            className="h-8 px-2.5 rounded-dfz-lg bg-[#212126] border border-[#292930] text-xs text-dfz-text-muted hover:text-dfz-text flex items-center gap-1 transition-colors"
             title="Сортировка по цене"
           >
             <ArrowUpDown size={13} />
@@ -221,7 +221,7 @@ export const GiftStoreModal: React.FC = () => {
             <span>Загрузка каталога подарков...</span>
           </div>
         ) : filteredCatalog.length === 0 ? (
-          <div className="p-12 text-center text-xs text-dfz-text-muted bg-[#151d26] rounded-dfz-xl border border-[#26323e]">
+          <div className="p-12 text-center text-xs text-dfz-text-muted bg-[#212126] rounded-dfz-xl border border-[#292930]">
             Подарки не найдены по запросу "{searchQuery}".
           </div>
         ) : (
@@ -230,7 +230,7 @@ export const GiftStoreModal: React.FC = () => {
               <div
                 key={gift.id}
                 onClick={() => setSelectedGift(gift)}
-                className="p-3 rounded-dfz-xl bg-[#151d26] hover:bg-[#1a2430] border border-[#26323e] hover:border-dfz-accent/40 cursor-pointer transition-all duration-200 flex flex-col items-center text-center space-y-1.5 group relative"
+                className="p-3 rounded-dfz-xl bg-[#212126] hover:bg-[#28282e] border border-[#292930] hover:border-[#8774e1]/40 cursor-pointer transition-all duration-200 flex flex-col items-center text-center space-y-1.5 group relative"
               >
                 {/* Rarity & NFT Badges */}
                 <div className="w-full flex items-center justify-between text-[9px]">
@@ -238,7 +238,7 @@ export const GiftStoreModal: React.FC = () => {
                     {gift.rarity}
                   </span>
                   {gift.isCollectibleEligible && (
-                    <span className="font-mono font-bold px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                    <span className="font-mono font-bold px-1.5 py-0.5 rounded bg-[#8774e1]/15 text-[#8774e1] border border-[#8774e1]/30">
                       NFT
                     </span>
                   )}
@@ -263,7 +263,7 @@ export const GiftStoreModal: React.FC = () => {
                 <div className="w-full pt-1">
                   <button
                     type="button"
-                    className="w-full py-1.5 px-2 rounded-dfz-lg bg-[#0e141b] group-hover:bg-amber-500/15 border border-[#26323e] group-hover:border-amber-500/30 text-amber-400 text-xs font-bold font-mono transition-colors flex items-center justify-center gap-1"
+                    className="w-full py-1.5 px-2 rounded-dfz-lg bg-[#18181c] group-hover:bg-amber-500/15 border border-[#292930] group-hover:border-amber-500/30 text-amber-400 text-xs font-bold font-mono transition-colors flex items-center justify-center gap-1"
                   >
                     <span>★</span>
                     <span>{gift.priceStars.toLocaleString()}</span>
@@ -276,13 +276,13 @@ export const GiftStoreModal: React.FC = () => {
 
         {/* Telegram-grade Send Gift Sheet */}
         {selectedGift && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
-            <div className="w-full max-w-sm rounded-dfz-2xl bg-[#151d26] border border-[#26323e] p-6 space-y-4 shadow-2xl text-xs relative">
-              <div className="flex items-center justify-between border-b border-[#26323e] pb-3">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150">
+            <div className="w-full max-w-sm rounded-dfz-2xl bg-[#18181c] border border-[#292930] p-6 space-y-4 shadow-2xl text-xs relative">
+              <div className="flex items-center justify-between border-b border-[#292930] pb-3">
                 <span className="font-bold text-dfz-text text-sm">Отправить подарок</span>
                 <button
                   onClick={() => setSelectedGift(null)}
-                  className="p-1 rounded-dfz-md hover:bg-[#1a2430] text-dfz-text-muted hover:text-dfz-text"
+                  className="p-1 rounded-dfz-md hover:bg-[#28282e] text-dfz-text-muted hover:text-dfz-text"
                 >
                   <X size={16} />
                 </button>
@@ -297,8 +297,8 @@ export const GiftStoreModal: React.FC = () => {
               ) : (
                 <>
                   {/* Selected Gift Highlight Card */}
-                  <div className="flex items-center gap-3.5 p-3.5 rounded-dfz-xl bg-[#0e141b] border border-[#26323e]">
-                    <div className="p-2 rounded-dfz-lg bg-[#151d26] border border-[#26323e]">
+                  <div className="flex items-center gap-3.5 p-3.5 rounded-dfz-xl bg-[#212126] border border-[#292930]">
+                    <div className="p-2 rounded-dfz-lg bg-[#18181c] border border-[#292930]">
                       <GiftArtwork
                         artworkKey={selectedGift.artwork}
                         name={selectedGift.name}
@@ -317,7 +317,7 @@ export const GiftStoreModal: React.FC = () => {
                       <div className="text-amber-400 font-bold font-mono text-xs flex items-center gap-1">
                         <span>★ {selectedGift.priceStars.toLocaleString()} Stars</span>
                         {selectedGift.isCollectibleEligible && (
-                          <span className="text-[10px] text-cyan-400 font-normal">• NFT-тираж</span>
+                          <span className="text-[10px] text-[#8774e1] font-normal">• NFT-тираж</span>
                         )}
                       </div>
                     </div>
@@ -331,7 +331,7 @@ export const GiftStoreModal: React.FC = () => {
                         value={recipientUsername}
                         onChange={(e) => setRecipientUsername(e.target.value)}
                         placeholder="@alex_dev или admin"
-                        className="w-full px-3 py-2 rounded-dfz-lg bg-[#0e141b] border border-[#26323e] text-dfz-text text-xs focus:outline-none focus:border-dfz-accent"
+                        className="w-full px-3 py-2 rounded-dfz-lg bg-[#212126] border border-[#292930] text-dfz-text text-xs focus:outline-none focus:border-[#8774e1]"
                         required
                       />
                     </div>
@@ -347,7 +347,7 @@ export const GiftStoreModal: React.FC = () => {
                         onChange={(e) => setGiftMessage(e.target.value)}
                         placeholder="С праздником! Пусть удача всегда будет рядом 🎁"
                         maxLength={200}
-                        className="w-full px-3 py-2 rounded-dfz-lg bg-[#0e141b] border border-[#26323e] text-dfz-text text-xs resize-none focus:outline-none focus:border-dfz-accent"
+                        className="w-full px-3 py-2 rounded-dfz-lg bg-[#212126] border border-[#292930] text-dfz-text text-xs resize-none focus:outline-none focus:border-[#8774e1]"
                       />
                     </div>
 
@@ -356,7 +356,7 @@ export const GiftStoreModal: React.FC = () => {
                         type="checkbox"
                         checked={isAnonymous}
                         onChange={(e) => setIsAnonymous(e.target.checked)}
-                        className="rounded border-[#26323e] text-dfz-accent focus:ring-0 bg-[#0e141b]"
+                        className="rounded border-[#292930] text-[#8774e1] focus:ring-0 bg-[#212126]"
                       />
                       <span className="text-dfz-text-muted text-[11px]">Отправить анонимно (скрыть имя в карточке)</span>
                     </label>
@@ -372,7 +372,7 @@ export const GiftStoreModal: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setSelectedGift(null)}
-                        className="flex-1 py-2 rounded-dfz-lg bg-[#0e141b] hover:bg-[#1a2430] border border-[#26323e] text-dfz-text font-semibold transition-colors"
+                        className="flex-1 py-2 rounded-dfz-lg bg-[#212126] hover:bg-[#28282e] border border-[#292930] text-dfz-text font-semibold transition-colors"
                       >
                         Отмена
                       </button>
