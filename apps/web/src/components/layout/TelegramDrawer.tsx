@@ -271,7 +271,7 @@ export const TelegramDrawer: React.FC<TelegramDrawerProps> = ({
             className="w-full flex items-center gap-3.5 px-3 py-2.5 rounded-dfz-xl hover:bg-dfz-surface-hover transition-colors text-left text-amber-400"
           >
             <Star size={18} className="fill-amber-400" />
-            <span className="flex-1 font-semibold text-dfz-text">DFZ Stars</span>
+            <span className="flex-1 font-semibold text-dfz-text">Telegram Stars</span>
             <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-[10px] font-mono font-bold text-amber-400">
               {isUnlimitedStars ? '∞' : starBalance.toLocaleString()}
             </span>
@@ -285,7 +285,7 @@ export const TelegramDrawer: React.FC<TelegramDrawerProps> = ({
             className="w-full flex items-center gap-3.5 px-3 py-2.5 rounded-dfz-xl hover:bg-dfz-surface-hover transition-colors text-left"
           >
             <Sparkles size={18} className="text-[#8774e1]" />
-            <span className="flex-1">DFZ Premium</span>
+            <span className="flex-1">Telegram Premium</span>
             {isPremium && (
               <span className="px-1.5 py-0.5 rounded-full bg-[#8774e1]/20 text-[10px] font-bold text-[#8774e1]">
                 Активен
@@ -301,7 +301,7 @@ export const TelegramDrawer: React.FC<TelegramDrawerProps> = ({
             className="w-full flex items-center gap-3.5 px-3 py-2.5 rounded-dfz-xl hover:bg-dfz-surface-hover transition-colors text-left"
           >
             <Gift size={18} className="text-purple-400" />
-            <span className="flex-1">100 Подарков</span>
+            <span className="flex-1">Подарки</span>
           </button>
 
           {!isStandalone && (
@@ -313,7 +313,7 @@ export const TelegramDrawer: React.FC<TelegramDrawerProps> = ({
               className="w-full flex items-center gap-3.5 px-3 py-2.5 rounded-dfz-xl hover:bg-dfz-surface-hover text-emerald-400 transition-colors text-left"
             >
               <Download size={18} />
-              <span className="flex-1 font-semibold">Установить PWA</span>
+              <span className="flex-1 font-semibold">Установить приложение</span>
             </button>
           )}
 
@@ -355,7 +355,7 @@ export const TelegramDrawer: React.FC<TelegramDrawerProps> = ({
             <LogOut size={16} />
             <span>Выйти</span>
           </button>
-          <span className="text-[11px] text-dfz-text-muted/60 font-mono">DFZ Messenger</span>
+          <span className="text-[11px] text-dfz-text-muted/60 font-mono">Telegram Web</span>
         </div>
       </div>
     </div>

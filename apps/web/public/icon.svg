@@ -1,1 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><title>DFZ Messenger</title><rect width="512" height="512" rx="128" fill="#6d5bd0"/><path fill="#fff" fill-rule="evenodd" d="M144 120h104c76 0 128 53 128 124s-52 124-128 124h-38l-66 48V120Zm56 56v136h48c44 0 72-28 72-68s-28-68-72-68h-48Z"/><path fill="#fff" d="m264 195-45 60h32l-17 39 53-64h-34l11-35Z"/></svg>
+<svg width="240" height="240" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="120" cy="120" r="120" fill="url(#tg_icon_grad)" />
+  <path d="M54 117.5L174 71.5C179.5 69.5 184.5 73 182.5 78.5L162 175C160.5 181.5 156.5 183 151 180L120 157L105 171.5C103.5 173 102 174.5 99 174.5L101 144.5L156 94.5C158.5 92.5 155.5 91 152 93.5L84 136.5L55 127.5C48.5 125.5 48.5 121 55.5 118L54 117.5Z" fill="white" />
+  <defs>
+    <linearGradient id="tg_icon_grad" x1="120" y1="0" x2="120" y2="240" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2AABEE" />
+      <stop offset="1" stop-color="#229ED9" />
+    </linearGradient>
+  </defs>
+</svg>

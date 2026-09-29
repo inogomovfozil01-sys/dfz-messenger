@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import { Chat, Message, ChatType, ReceiptStatus, MessageType } from '@dfz/types';
 import { apiRequest } from '../lib/api';
 import { socketService } from '../lib/socket';
+import { sounds } from '../lib/sounds';
 
 export type FolderFilter = 'all' | 'personal' | 'groups' | 'channels' | 'unread' | 'archive';
 
@@ -236,6 +237,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
       },
       replyTo: null,
     }));
+
+    sounds.playSentMessage();
 
     const res = await apiRequest<Message>('/api/messages', {
       method: 'POST',
@@ -566,6 +569,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
   onMessageReceived: (message: Message) => {
     const { activeChatId } = get();
     const chatId = message.chatId;
+
+    if (message.senderId !== useAuthStore.getState().user?.id) {
+      sounds.playIncomingMessage();
+    }
 
     set((state) => {
       const currentMsgs = state.messages[chatId] || [];

@@ -5,6 +5,7 @@ import {
   Menu,
   Search,
   X,
+  ArrowLeft,
   Edit2,
   Pin,
   BellOff,
@@ -123,6 +124,11 @@ export const ChatList: React.FC<ChatListProps> = ({
     const date = new Date(dateStr);
     if (isToday(date)) return format(date, 'HH:mm', { locale: ru });
     if (isYesterday(date)) return 'Вчера';
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays < 7 && diffDays >= 1) {
+      return format(date, 'EEEEEE', { locale: ru });
+    }
     return format(date, 'd MMM', { locale: ru });
   };
 
@@ -201,7 +207,18 @@ export const ChatList: React.FC<ChatListProps> = ({
 
           {/* Telegram Rounded Search Input */}
           <div className="relative flex-1 flex items-center">
-            <Search size={16} className="absolute left-3.5 text-[var(--text-tertiary)] pointer-events-none" />
+            {searchQuery ? (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute left-3 p-1 rounded-full text-[var(--accent-primary)] hover:text-[var(--accent-hover)] transition-colors z-10"
+                title="Назад"
+              >
+                <ArrowLeft size={16} />
+              </button>
+            ) : (
+              <Search size={16} className="absolute left-3.5 text-[var(--text-tertiary)] pointer-events-none" />
+            )}
             <input
               type="text"
               data-global-search
@@ -254,12 +271,15 @@ export const ChatList: React.FC<ChatListProps> = ({
         </div>
       </div>
 
-      {searchQuery.trim() && <GlobalSearch query={searchQuery} />}
-      {/* 24-hour Stories Strip */}
-      <StoriesStrip />
+      {searchQuery.trim() ? (
+        <GlobalSearch query={searchQuery} />
+      ) : (
+        <>
+          {/* 24-hour Stories Strip */}
+          <StoriesStrip />
 
-      {/* Telegram Chat List Body */}
-      <div className="flex-1 overflow-y-auto">
+          {/* Telegram Chat List Body */}
+          <div className="flex-1 overflow-y-auto">
         {isLoadingChats && chats.length === 0 ? (
           <div className="p-3 space-y-3">
             {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -412,65 +432,69 @@ export const ChatList: React.FC<ChatListProps> = ({
           })
         )}
       </div>
+    </>
+  )}
 
       {/* Telegram Floating Action Button (FAB) (✏️ Pencil Button) */}
-      <div className="absolute bottom-5 right-5 z-20">
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setIsFabOpen(!isFabOpen)}
-            className="w-13 h-13 p-3.5 rounded-full bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white shadow-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95"
-            title="Создать чат"
-          >
-            <Edit2 size={22} />
-          </button>
+      {!searchQuery.trim() && (
+        <div className="absolute bottom-5 right-5 z-20">
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsFabOpen(!isFabOpen)}
+              className="w-13 h-13 p-3.5 rounded-full bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white shadow-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+              title="Создать чат"
+            >
+              <Edit2 size={22} />
+            </button>
 
-          {/* Telegram FAB Popup Menu */}
-          {isFabOpen && (
-            <>
-              <div
-                onClick={() => setIsFabOpen(false)}
-                className="fixed inset-0 z-30"
-              />
-              <div className="absolute right-0 bottom-16 w-52 bg-dfz-surface border border-dfz-border rounded-dfz-xl shadow-2xl py-1.5 z-40 animate-scale-in text-xs font-semibold text-dfz-text">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsFabOpen(false);
-                    onNewChat();
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-dfz-surface-hover text-left transition-colors"
-                >
-                  <MessageSquare size={17} className="text-[var(--accent-primary)]" />
-                  <span>Новый диалог</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsFabOpen(false);
-                    onNewGroup();
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-dfz-surface-hover text-left transition-colors"
-                >
-                  <Users size={17} className="text-[var(--accent-primary)]" />
-                  <span>Создать группу</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsFabOpen(false);
-                    onNewChannel();
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-dfz-surface-hover text-left transition-colors"
-                >
-                  <Radio size={17} className="text-[var(--accent-primary)]" />
-                  <span>Создать канал</span>
-                </button>
-              </div>
-            </>
-          )}
+            {/* Telegram FAB Popup Menu */}
+            {isFabOpen && (
+              <>
+                <div
+                  onClick={() => setIsFabOpen(false)}
+                  className="fixed inset-0 z-30"
+                />
+                <div className="absolute right-0 bottom-16 w-52 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl shadow-2xl py-1.5 z-40 animate-scale-in text-xs font-semibold text-[var(--text-primary)]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsFabOpen(false);
+                      onNewChat();
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--bg-surface-hover)] text-left transition-colors"
+                  >
+                    <MessageSquare size={17} className="text-[var(--accent-primary)]" />
+                    <span>Новый диалог</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsFabOpen(false);
+                      onNewGroup();
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--bg-surface-hover)] text-left transition-colors"
+                  >
+                    <Users size={17} className="text-[var(--accent-primary)]" />
+                    <span>Создать группу</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsFabOpen(false);
+                      onNewChannel();
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--bg-surface-hover)] text-left transition-colors"
+                  >
+                    <Radio size={17} className="text-[var(--accent-primary)]" />
+                    <span>Создать канал</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Context Menu */}
       {contextMenu && (

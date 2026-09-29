@@ -52,8 +52,8 @@ export default function LoginPage() {
           <div className="relative w-16 h-16 mx-auto mb-2">
             <BrandMark className="w-16 h-16 shadow-lg shadow-[var(--accent-primary)]/20 rounded-2xl mx-auto" />
           </div>
-          <h1 className="text-xl font-bold tracking-tight text-[var(--text-primary)]">Вход в DFZ Messenger</h1>
-          <p className="text-xs text-[var(--text-secondary)]">Введите ваши данные для входа в аккаунт</p>
+          <h1 className="text-xl font-bold tracking-tight text-[var(--text-primary)]">Вход в Telegram Web</h1>
+          <p className="text-xs text-[var(--text-secondary)]">Войдите в аккаунт Telegram</p>
         </div>
 
         {/* Error Alert */}

@@ -91,6 +91,16 @@ export default function MessengerPage() {
     return () => { cancelled = true; };
   }, [user?.id]);
 
+  // Dynamic Telegram Tab Title: (N) Telegram Web
+  useEffect(() => {
+    const totalUnread = chats.reduce((sum, c) => sum + (c.isMuted ? 0 : (c.unreadCount || 0)), 0);
+    if (totalUnread > 0) {
+      document.title = `(${totalUnread}) Telegram Web`;
+    } else {
+      document.title = 'Telegram Web';
+    }
+  }, [chats]);
+
   // Check Auth on Mount
   useEffect(() => {
     checkAuth().then((isAuth) => {
@@ -147,10 +157,10 @@ export default function MessengerPage() {
 
   if (isLoading) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-dfz-bg text-white select-none">
-        <BrandMark className="w-16 h-16 mb-4 animate-pulse" />
-        <h2 className="text-base font-bold tracking-tight">DFZ Messenger</h2>
-        <p className="text-xs text-[var(--text-secondary)] mt-1 font-medium">Загружаем ваши чаты…</p>
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[var(--bg-main)] text-white select-none">
+        <BrandMark size={72} className="mb-4 animate-pulse drop-shadow-lg" />
+        <h2 className="text-base font-bold tracking-tight">Telegram</h2>
+        <p className="text-xs text-[var(--text-secondary)] mt-1 font-medium">Подключение…</p>
       </div>
     );
   }

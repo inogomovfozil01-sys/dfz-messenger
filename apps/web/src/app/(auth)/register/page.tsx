@@ -118,8 +118,8 @@ export default function RegisterPage() {
           <div className="relative w-16 h-16 mx-auto mb-2">
             <BrandMark className="w-16 h-16 shadow-lg shadow-[var(--accent-primary)]/20 rounded-2xl mx-auto" />
           </div>
-          <h1 className="text-xl font-bold tracking-tight text-[var(--text-primary)]">Регистрация в DFZ</h1>
-          <p className="text-xs text-[var(--text-secondary)]">Создайте аккаунт для свободного общения</p>
+          <h1 className="text-xl font-bold tracking-tight text-[var(--text-primary)]">Регистрация в Telegram Web</h1>
+          <p className="text-xs text-[var(--text-secondary)]">Создайте аккаунт Telegram</p>
         </div>
 
         {/* Error Alert */}

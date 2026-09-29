@@ -1,11 +1,11 @@
 {
-  "name": "DFZ Messenger",
-  "short_name": "DFZ",
-  "description": "Next-Generation Realtime Messenger",
+  "name": "Telegram Web",
+  "short_name": "Telegram",
+  "description": "Telegram Web application",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0e141b",
-  "theme_color": "#151d26",
+  "background_color": "#0e1621",
+  "theme_color": "#17212b",
   "orientation": "portrait",
   "icons": [
     {

@@ -3,13 +3,13 @@ import './globals.css';
 import { AppUpdates } from '../components/layout/AppUpdates';
 
 export const metadata: Metadata = {
-  title: 'DFZ Messenger',
-  description: 'Next-Generation Realtime Messenger',
+  title: 'Telegram Web',
+  description: 'Telegram Web is a cloud-based mobile and desktop messaging app with a focus on security and speed.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'DFZ Messenger',
+    title: 'Telegram',
   },
 };
 
