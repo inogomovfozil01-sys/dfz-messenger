@@ -15,13 +15,6 @@ export const StoriesStrip: React.FC = () => {
   const ownFeedItem = feed.find((f) => f.user.id === user?.id);
   const otherFeedItems = feed.filter((f) => f.user.id !== user?.id);
 
-  if (!isLoadingFeed && feed.length === 0) return (
-    <button onClick={openCreator} className="mx-4 my-3 p-3 flex items-center gap-3 text-left rounded-xl border border-dfz-border hover:bg-dfz-surface-hover transition-colors" aria-label="Добавить историю">
-      <span className="w-9 h-9 grid place-items-center rounded-full border border-dashed border-dfz-accent text-dfz-accent"><Plus size={18}/></span>
-      <span><span className="block text-xs font-semibold text-dfz-text">Истории</span><span className="block text-[11px] text-dfz-text-muted mt-0.5">Поделиться моментом</span></span>
-    </button>
-  );
-
   return (
     <div className="w-full py-2.5 px-3 border-b border-dfz-border/60 bg-dfz-surface select-none">
       <div className="flex items-center gap-3 overflow-x-auto no-scrollbar scroll-smooth">

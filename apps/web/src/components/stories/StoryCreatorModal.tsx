@@ -28,6 +28,20 @@ export const StoryCreatorModal: React.FC = () => {
 
   if (!isCreatorOpen) return null;
 
+  const handleClose = () => {
+    if (previewUrl && previewUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    setCaption('');
+    setTextContent('');
+    setErrorMsg(null);
+    setIsSubmitting(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    closeCreator();
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -35,6 +49,10 @@ export const StoryCreatorModal: React.FC = () => {
     if (file.size > 50 * 1024 * 1024) {
       setErrorMsg('Файл слишком велик (макс. 50 МБ)');
       return;
+    }
+
+    if (previewUrl && previewUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(previewUrl);
     }
 
     setSelectedFile(file);
@@ -114,7 +132,7 @@ export const StoryCreatorModal: React.FC = () => {
       }
 
       await fetchFeed();
-      closeCreator();
+      handleClose();
     } catch (err: any) {
       setErrorMsg(err.message || 'Ошибка публикации истории');
     } finally {
@@ -133,7 +151,7 @@ export const StoryCreatorModal: React.FC = () => {
           </div>
           <button
             type="button"
-            onClick={closeCreator}
+            onClick={handleClose}
             className="p-1 rounded-full text-dfz-text-muted hover:text-dfz-text hover:bg-dfz-surface-hover"
           >
             <X size={18} />
@@ -305,7 +323,7 @@ export const StoryCreatorModal: React.FC = () => {
         <div className="p-4 border-t border-dfz-border bg-dfz-bg flex items-center justify-end gap-2">
           <button
             type="button"
-            onClick={closeCreator}
+            onClick={handleClose}
             disabled={isSubmitting}
             className="px-4 py-2 rounded-dfz-lg text-xs font-semibold text-dfz-text-muted hover:bg-dfz-surface transition-colors"
           >

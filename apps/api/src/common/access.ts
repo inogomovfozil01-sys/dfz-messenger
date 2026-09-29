@@ -21,7 +21,14 @@ export async function maySee(viewer: string, owner: string, visibility: string =
   if (await isBlocked(viewer, owner)) return false;
   if (visibility === 'NOBODY') return false;
   if (visibility === 'EVERYONE') return true;
-  return !!await prisma.contact.findUnique({ where: { userId_contactUserId: { userId: owner, contactUserId: viewer } } });
+  return !!await prisma.contact.findFirst({
+    where: {
+      OR: [
+        { userId: owner, contactUserId: viewer },
+        { userId: viewer, contactUserId: owner },
+      ],
+    },
+  });
 }
 
 export async function requireCommunication(sender: string, recipient: string, kind: 'messageVisibility' | 'callVisibility' | 'groupAddVisibility') {

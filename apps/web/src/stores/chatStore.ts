@@ -186,14 +186,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
     );
 
     if (res.success && res.data) {
-      set((state) => ({
-        messages: {
-          ...state.messages,
-          [chatId]: [...res.data!.items, ...(state.messages[chatId] || [])],
-        },
-        hasMore: { ...state.hasMore, [chatId]: res.data!.hasMore },
-        nextCursor: { ...state.nextCursor, [chatId]: res.data!.nextCursor },
-      }));
+      set((state) => {
+        const existingMessages = state.messages[chatId] || [];
+        const newItems = res.data!.items || [];
+        const existingIds = new Set(existingMessages.map((m) => m.id));
+        const filteredNew = newItems.filter((m) => !existingIds.has(m.id));
+
+        return {
+          messages: {
+            ...state.messages,
+            [chatId]: [...filteredNew, ...existingMessages],
+          },
+          hasMore: { ...state.hasMore, [chatId]: res.data!.hasMore },
+          nextCursor: { ...state.nextCursor, [chatId]: res.data!.nextCursor },
+        };
+      });
     }
   },
 
@@ -419,6 +426,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (res.success) {
       set((state) => ({
         messages: { ...state.messages, [chatId]: [] },
+        hasMore: { ...state.hasMore, [chatId]: false },
+        nextCursor: { ...state.nextCursor, [chatId]: null },
       }));
     }
   },

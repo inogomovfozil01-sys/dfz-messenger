@@ -1,14 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Eye, Trash2, Send, Heart, Flame, Laugh, Volume2, VolumeX, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Eye, Trash2, Send, Volume2, VolumeX, ChevronLeft, ChevronRight, Pause } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { useStoriesStore } from '../../stores/storiesStore';
 import { useAuthStore } from '../../stores/authStore';
-import { useChatStore } from '../../stores/chatStore';
 import { Avatar } from '../ui/Avatar';
-import { apiRequest } from '../../lib/api';
-
-const STORY_DURATION = 5000; // 5 seconds per story
+import { apiRequest, resolveMediaUrl } from '../../lib/api';
 
 export const StoryViewerModal: React.FC = () => {
   const { user } = useAuthStore();
@@ -22,6 +19,7 @@ export const StoryViewerModal: React.FC = () => {
     reactToStory,
     deleteStory,
     openAnalytics,
+    recordView,
   } = useStoriesStore();
 
   const [progress, setProgress] = useState(0);
@@ -32,41 +30,65 @@ export const StoryViewerModal: React.FC = () => {
   const [isMuted, setIsMuted] = useState(true);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const timerRef = useRef<any>(null);
-  const startTimeRef = useRef<number>(Date.now());
-  const pausedAtRef = useRef<number>(0);
+  const durationRef = useRef<number>(5000);
+  const elapsedRef = useRef<number>(0);
+  const lastTimeRef = useRef<number>(Date.now());
+  const isPausedRef = useRef<boolean>(false);
+  const pointerDownTimerRef = useRef<any>(null);
+  const isLongPressRef = useRef<boolean>(false);
 
   const currentStory = activeFeedItem?.stories[activeStoryIndex];
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPERADMIN';
   const isOwnStory = currentStory?.authorId === user?.id;
+  const canDelete = isOwnStory || isAdmin;
 
   // Reset progress and timer on story index or feed item change
   useEffect(() => {
     if (!isViewerOpen || !currentStory) return;
 
     setProgress(0);
+    elapsedRef.current = 0;
+    lastTimeRef.current = Date.now();
+    isPausedRef.current = false;
     setIsPaused(false);
-    startTimeRef.current = Date.now();
-    pausedAtRef.current = 0;
 
-    if (timerRef.current) clearInterval(timerRef.current);
+    if (currentStory.mediaType === 'VIDEO') {
+      durationRef.current = 10000; // Initial fallback until metadata loads
+    } else {
+      durationRef.current = 5000;
+    }
 
-    timerRef.current = setInterval(() => {
-      if (isPaused) return;
+    if (!currentStory.hasViewed) {
+      recordView(currentStory.id);
+    }
 
-      const elapsed = Date.now() - startTimeRef.current;
-      const pct = Math.min((elapsed / STORY_DURATION) * 100, 100);
+    const interval = setInterval(() => {
+      if (isPausedRef.current) {
+        lastTimeRef.current = Date.now();
+        return;
+      }
+
+      const now = Date.now();
+      const delta = now - lastTimeRef.current;
+      lastTimeRef.current = now;
+
+      elapsedRef.current += delta;
+      const pct = Math.min((elapsedRef.current / durationRef.current) * 100, 100);
       setProgress(pct);
 
       if (pct >= 100) {
-        clearInterval(timerRef.current);
+        clearInterval(interval);
         nextStory();
       }
-    }, 50);
+    }, 35);
 
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      clearInterval(interval);
+      if (pointerDownTimerRef.current) {
+        clearTimeout(pointerDownTimerRef.current);
+      }
     };
-  }, [isViewerOpen, activeFeedItem?.user.id, activeStoryIndex, isPaused]);
+  }, [isViewerOpen, activeFeedItem?.user.id, activeStoryIndex, currentStory?.id]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -75,7 +97,16 @@ export const StoryViewerModal: React.FC = () => {
       if (e.key === 'Escape') closeViewer();
       if (e.key === 'ArrowRight') nextStory();
       if (e.key === 'ArrowLeft') prevStory();
-      if (e.key === ' ') setIsPaused((p) => !p);
+      if (e.key === ' ') {
+        isPausedRef.current = !isPausedRef.current;
+        setIsPaused(isPausedRef.current);
+        if (isPausedRef.current) {
+          videoRef.current?.pause();
+        } else {
+          lastTimeRef.current = Date.now();
+          videoRef.current?.play().catch(() => {});
+        }
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -83,15 +114,68 @@ export const StoryViewerModal: React.FC = () => {
   }, [isViewerOpen]);
 
   const handlePointerDown = () => {
-    setIsPaused(true);
-    pausedAtRef.current = Date.now() - startTimeRef.current;
-    if (videoRef.current) videoRef.current.pause();
+    if (pointerDownTimerRef.current) clearTimeout(pointerDownTimerRef.current);
+    isLongPressRef.current = false;
+
+    // Treat as long-press/pause after 160ms of holding
+    pointerDownTimerRef.current = setTimeout(() => {
+      isLongPressRef.current = true;
+      isPausedRef.current = true;
+      setIsPaused(true);
+      if (videoRef.current) {
+        videoRef.current.pause();
+      }
+    }, 160);
   };
 
   const handlePointerUp = () => {
-    setIsPaused(false);
-    startTimeRef.current = Date.now() - pausedAtRef.current;
-    if (videoRef.current) videoRef.current.play();
+    if (pointerDownTimerRef.current) {
+      clearTimeout(pointerDownTimerRef.current);
+      pointerDownTimerRef.current = null;
+    }
+
+    if (isLongPressRef.current) {
+      isPausedRef.current = false;
+      setIsPaused(false);
+      lastTimeRef.current = Date.now();
+      if (videoRef.current) {
+        videoRef.current.play().catch(() => {});
+      }
+      setTimeout(() => {
+        isLongPressRef.current = false;
+      }, 80);
+    }
+  };
+
+  const handleLeftTap = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isLongPressRef.current) return;
+    prevStory();
+  };
+
+  const handleRightTap = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isLongPressRef.current) return;
+    nextStory();
+  };
+
+  const handleVideoLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const video = e.currentTarget;
+    if (video.duration && !isNaN(video.duration) && isFinite(video.duration)) {
+      const durMs = Math.max(3000, Math.min(60000, Math.round(video.duration * 1000)));
+      durationRef.current = durMs;
+    }
+  };
+
+  const toggleMute = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsMuted((prev) => {
+      const next = !prev;
+      if (videoRef.current) {
+        videoRef.current.muted = next;
+      }
+      return next;
+    });
   };
 
   const handleSendReply = async (e: React.FormEvent) => {
@@ -144,6 +228,7 @@ export const StoryViewerModal: React.FC = () => {
         type="button"
         onClick={prevStory}
         className="hidden md:flex absolute left-8 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white items-center justify-center transition-transform active:scale-90 z-20"
+        aria-label="Предыдущая история"
       >
         <ChevronLeft size={28} />
       </button>
@@ -152,6 +237,7 @@ export const StoryViewerModal: React.FC = () => {
         type="button"
         onClick={nextStory}
         className="hidden md:flex absolute right-8 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white items-center justify-center transition-transform active:scale-90 z-20"
+        aria-label="Следующая история"
       >
         <ChevronRight size={28} />
       </button>
@@ -161,6 +247,7 @@ export const StoryViewerModal: React.FC = () => {
         className="relative w-full h-full md:h-[90vh] md:max-w-md md:rounded-dfz-2xl bg-black overflow-hidden flex flex-col justify-between shadow-2xl"
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
       >
         {/* Top Overlay: Progress Segments & Header */}
         <div className="relative z-30 p-3 pt-4 bg-gradient-to-b from-black/80 via-black/40 to-transparent">
@@ -201,19 +288,28 @@ export const StoryViewerModal: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2" onPointerDown={(e) => e.stopPropagation()}>
+              {/* Paused Indicator */}
+              {isPaused && (
+                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/50 text-white/80 text-[10px] font-medium backdrop-blur-sm animate-pulse">
+                  <Pause size={10} />
+                  Пауза
+                </span>
+              )}
+
               {/* If video: Mute toggle */}
               {currentStory.mediaType === 'VIDEO' && (
                 <button
                   type="button"
-                  onClick={() => setIsMuted(!isMuted)}
-                  className="p-1.5 rounded-full bg-black/40 text-white/90 hover:text-white"
+                  onClick={toggleMute}
+                  className="p-1.5 rounded-full bg-black/40 text-white/90 hover:text-white transition-colors"
+                  title={isMuted ? 'Включить звук' : 'Выключить звук'}
                 >
                   {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
                 </button>
               )}
 
-              {/* If own story: delete button */}
-              {isOwnStory && (
+              {/* Delete button (Author or Admin) */}
+              {canDelete && (
                 <button
                   type="button"
                   onClick={() => {
@@ -221,7 +317,7 @@ export const StoryViewerModal: React.FC = () => {
                       deleteStory(currentStory.id);
                     }
                   }}
-                  className="p-1.5 rounded-full bg-black/40 text-dfz-danger/90 hover:text-dfz-danger"
+                  className="p-1.5 rounded-full bg-black/40 text-dfz-danger/90 hover:text-dfz-danger transition-colors"
                   title="Удалить историю"
                 >
                   <Trash2 size={16} />
@@ -233,6 +329,7 @@ export const StoryViewerModal: React.FC = () => {
                 type="button"
                 onClick={closeViewer}
                 className="p-1.5 rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors"
+                aria-label="Закрыть"
               >
                 <X size={18} />
               </button>
@@ -242,28 +339,24 @@ export const StoryViewerModal: React.FC = () => {
 
         {/* Middle Media Area & Tap Navigation Zones */}
         <div className="absolute inset-0 z-10 flex items-center justify-center">
-          {/* Left tap zone: 25% */}
+          {/* Left tap zone: 30% */}
           <div
-            className="absolute left-0 top-0 bottom-0 w-1/4 z-20 cursor-pointer"
-            onClick={(e) => {
-              e.stopPropagation();
-              prevStory();
-            }}
+            className="absolute left-0 top-0 bottom-0 w-[30%] z-20 cursor-pointer"
+            onClick={handleLeftTap}
+            title="Предыдущая"
           />
 
-          {/* Right tap zone: 75% */}
+          {/* Right tap zone: 70% */}
           <div
-            className="absolute right-0 top-0 bottom-0 w-3/4 z-20 cursor-pointer"
-            onClick={(e) => {
-              e.stopPropagation();
-              nextStory();
-            }}
+            className="absolute right-0 top-0 bottom-0 w-[70%] z-20 cursor-pointer"
+            onClick={handleRightTap}
+            title="Следующая"
           />
 
           {/* Media Content */}
           {currentStory.mediaType === 'IMAGE' && (
             <img
-              src={currentStory.mediaUrl}
+              src={resolveMediaUrl(currentStory.mediaUrl)}
               alt="Story"
               className="w-full h-full object-cover md:object-contain select-none pointer-events-none"
             />
@@ -272,11 +365,12 @@ export const StoryViewerModal: React.FC = () => {
           {currentStory.mediaType === 'VIDEO' && (
             <video
               ref={videoRef}
-              src={currentStory.mediaUrl}
+              src={resolveMediaUrl(currentStory.mediaUrl)}
               autoPlay
               playsInline
               loop
               muted={isMuted}
+              onLoadedMetadata={handleVideoLoadedMetadata}
               className="w-full h-full object-cover md:object-contain pointer-events-none"
             />
           )}
@@ -310,8 +404,8 @@ export const StoryViewerModal: React.FC = () => {
             </div>
           )}
 
-          {/* Own story controls: Views button */}
-          {isOwnStory ? (
+          {/* Own story or Admin controls: Views button */}
+          {canDelete ? (
             <div className="flex items-center justify-between">
               <button
                 type="button"

@@ -1,4 +1,5 @@
 import React from 'react';
+import { resolveMediaUrl } from '../../lib/api';
 
 interface AvatarProps {
   src?: string | null;
@@ -56,14 +57,6 @@ export const Avatar: React.FC<AvatarProps> = ({
     }
     const index = Math.abs(hash) % colors.length;
     return colors[index];
-  };
-
-  const resolveMediaUrl = (url?: string | null) => {
-    if (!url) return '';
-    if (url.startsWith('/api/') && process.env.NEXT_PUBLIC_API_URL) {
-      return `${process.env.NEXT_PUBLIC_API_URL}${url}`;
-    }
-    return url;
   };
 
   const resolvedSrc = resolveMediaUrl(src);

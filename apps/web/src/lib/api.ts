@@ -67,3 +67,23 @@ export async function apiRequest<T = any>(
     };
   }
 }
+
+export function resolveMediaUrl(url?: string | null): string {
+  if (!url) return '';
+  if (url.startsWith('blob:') || url.startsWith('data:')) {
+    return url;
+  }
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
+  if (url.startsWith('/api/')) {
+    return apiBase ? `${apiBase}${url}` : url;
+  }
+  if (url.startsWith('api/')) {
+    return apiBase ? `${apiBase}/${url}` : `/${url}`;
+  }
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:' && url.startsWith('http://')) {
+    if (!url.includes('localhost') && !url.includes('127.0.0.1')) {
+      return url.replace('http://', 'https://');
+    }
+  }
+  return url;
+}

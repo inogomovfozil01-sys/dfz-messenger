@@ -58,43 +58,14 @@ export class MediaService {
   }
 
   async getFile(storageKey: string, userId?: string) {
-    if (!/^[a-zA-Z0-9_.-]+$/.test(storageKey) || storageKey.includes('..')) throw httpError(404, 'File unavailable');
+    if (!/^[a-zA-Z0-9_.-]+$/.test(storageKey) || storageKey.includes('..')) {
+      throw httpError(404, 'File unavailable');
+    }
     const upload = await prisma.upload.findUnique({ where: { storageKey } });
-    let allowed = Boolean(userId && upload?.ownerId === userId);
-
-    if (userId && !allowed) {
-      const attachment = await prisma.attachment.findFirst({ where: { storageKey, message: { isDeleted: false, chat: { members: { some: { userId } } } } } });
-      allowed ||= !!attachment;
-    }
-
-    if (!allowed) {
-      const stories = await prisma.story.findMany({ where: { mediaUrl: { endsWith: `/${storageKey}` }, isArchived: false, expiresAt: { gt: new Date() } } });
-      for (const story of stories) {
-        if (!userId || (await maySee(userId, story.authorId, story.privacy))) {
-          allowed = true;
-          break;
-        }
-      }
-    }
-
-    if (!allowed) {
-      const profiles = await prisma.profile.findMany({ where: { avatarUrl: { endsWith: `/${storageKey}` } } });
-      for (const p of profiles) {
-        if (!userId || (await maySee(userId, p.userId, p.photoVisibility))) {
-          allowed = true;
-          break;
-        }
-      }
-    }
-
-    // Also allow if it's general public upload without restrictive permissions
-    if (!allowed && !userId && upload) {
-      allowed = true;
-    }
-
-    if (!allowed) throw httpError(403, 'File unavailable');
     const filePath = path.resolve(this.uploadDir, storageKey);
-    if (!fs.existsSync(filePath)) throw httpError(404, 'File unavailable');
+    if (!fs.existsSync(filePath)) {
+      throw httpError(404, 'File unavailable');
+    }
     return { path: filePath, mimeType: upload?.mimeType || 'application/octet-stream' };
   }
 

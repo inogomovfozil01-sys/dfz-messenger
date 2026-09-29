@@ -6,7 +6,15 @@ import { maySee, httpError } from '../common/access';
 export class StoriesService {
   async requireAccess(userId: string, storyId: string) {
     const story = await prisma.story.findUnique({ where: { id: storyId } });
-    if (!story || (story.authorId !== userId && (story.isArchived || story.expiresAt <= new Date() || !await maySee(userId, story.authorId, story.privacy)))) {
+    if (!story) {
+      throw httpError(404, 'Story unavailable');
+    }
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+    const isAdmin = user && ['ADMIN', 'SUPERADMIN'].includes(user.role);
+    if (story.authorId === userId || isAdmin) {
+      return story;
+    }
+    if (story.isArchived || story.expiresAt <= new Date() || !(await maySee(userId, story.authorId, story.privacy))) {
       throw httpError(403, 'Story unavailable');
     }
     return story;
@@ -71,12 +79,23 @@ export class StoriesService {
   async getFeed(currentUserId: string): Promise<StoryFeedItem[]> {
     const now = new Date();
 
-    // 1. Fetch user contacts
+    // 1. Fetch user contacts (bi-directional)
     const contacts = await prisma.contact.findMany({
-      where: { contactUserId: currentUserId },
-      select: { userId: true },
+      where: {
+        OR: [
+          { userId: currentUserId },
+          { contactUserId: currentUserId },
+        ],
+      },
+      select: { userId: true, contactUserId: true },
     });
-    const contactIds = contacts.map((c) => c.userId);
+    const contactIds = Array.from(
+      new Set(
+        contacts
+          .flatMap((c) => [c.userId, c.contactUserId])
+          .filter((id) => id !== currentUserId)
+      )
+    );
     const blocks = await prisma.block.findMany({ where: { OR: [{ blockerId: currentUserId }, { blockedId: currentUserId }] } });
     const excluded = blocks.map(b => b.blockerId === currentUserId ? b.blockedId : b.blockerId);
 
@@ -85,7 +104,7 @@ export class StoriesService {
       where: {
         expiresAt: { gt: now },
         isArchived: false,
-        authorId: { notIn: excluded },
+        ...(excluded.length > 0 ? { authorId: { notIn: excluded } } : {}),
         OR: [
           { authorId: currentUserId },
           { authorId: { in: contactIds }, privacy: 'CONTACTS' },
@@ -296,16 +315,23 @@ export class StoriesService {
   }
 
   /**
-   * Viewers list for author
+   * Viewers list for author or admin
    */
-  async getStoryViews(authorId: string, storyId: string) {
+  async getStoryViews(userId: string, storyId: string) {
     const story = await prisma.story.findUnique({
       where: { id: storyId },
       select: { authorId: true },
     });
 
-    if (!story || story.authorId !== authorId) {
-      throw new Error('Not authorized to view analytics for this story');
+    if (!story) {
+      throw httpError(404, 'Story not found');
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+    const isAdmin = user && ['ADMIN', 'SUPERADMIN'].includes(user.role);
+
+    if (story.authorId !== userId && !isAdmin) {
+      throw httpError(403, 'Not authorized to view analytics for this story');
     }
 
     const views = await prisma.storyView.findMany({
@@ -345,13 +371,20 @@ export class StoriesService {
   /**
    * Delete or archive a story
    */
-  async deleteStory(authorId: string, storyId: string) {
+  async deleteStory(userId: string, storyId: string) {
     const story = await prisma.story.findUnique({
       where: { id: storyId },
     });
 
-    if (!story || story.authorId !== authorId) {
-      throw new Error('Story not found or unauthorized');
+    if (!story) {
+      throw httpError(404, 'Story not found');
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+    const isAdmin = user && ['ADMIN', 'SUPERADMIN'].includes(user.role);
+
+    if (story.authorId !== userId && !isAdmin) {
+      throw httpError(403, 'Story not found or unauthorized');
     }
 
     await prisma.story.delete({
