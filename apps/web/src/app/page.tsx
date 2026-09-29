@@ -103,6 +103,17 @@ export default function MessengerPage() {
 
   // Check Auth on Mount
   useEffect(() => {
+    // Initialize Telegram WebApp if opened inside Telegram
+    if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
+      try {
+        const tg = (window as any).Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+      } catch {
+        // Not running in Telegram WebApp
+      }
+    }
+
     checkAuth().then((isAuth) => {
       if (!isAuth) {
         router.push('/login');

@@ -33,8 +33,12 @@ import { managementRouter } from './chats/management.controller';
 const app = express();
 
 // Ensure uploads folder exists
-if (!fs.existsSync(ENV.UPLOAD_DIR)) {
-  fs.mkdirSync(ENV.UPLOAD_DIR, { recursive: true });
+try {
+  if (!fs.existsSync(ENV.UPLOAD_DIR)) {
+    fs.mkdirSync(ENV.UPLOAD_DIR, { recursive: true });
+  }
+} catch {
+  // Read-only filesystem or serverless environment fallback
 }
 
 // Security & Parsing Middlewares
