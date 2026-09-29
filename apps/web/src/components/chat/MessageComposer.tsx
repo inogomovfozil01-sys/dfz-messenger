@@ -296,13 +296,13 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
 
       {/* Telegram Composer Input Bar */}
       <div className="flex items-end gap-2">
-        <div className="flex-1 flex items-end gap-1.5 bg-dfz-surface border border-dfz-border rounded-2xl px-2 py-1 focus-within:border-[var(--accent-primary)] transition-colors shadow-inner">
+        <div className="flex-1 flex items-end gap-1.5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl px-2 py-1 focus-within:border-[var(--accent-primary)] transition-colors shadow-inner">
         {/* Attachment Button & Popup Menu */}
         <div className="relative">
           <button
             type="button"
             onClick={() => setShowAttachMenu(!showAttachMenu)}
-            className="p-2 text-dfz-text-muted hover:text-dfz-text hover:bg-dfz-surface-hover rounded-full transition-colors flex-shrink-0 mb-0.5"
+            className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] rounded-full transition-colors flex-shrink-0 mb-0.5"
             title="Прикрепить"
           >
             <Paperclip size={18} />
@@ -310,7 +310,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
 
           {showAttachMenu && (
             <div
-              className="absolute bottom-12 left-0 w-48 bg-dfz-surface border border-dfz-border rounded-dfz-xl shadow-dfz-dropdown py-1 z-40 animate-scale-in"
+              className="absolute bottom-12 left-0 w-48 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl shadow-xl py-1 z-40 animate-scale-in"
               onClick={() => setShowAttachMenu(false)}
             >
               <button
@@ -394,21 +394,21 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
           <button
             type="button"
             onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-            className="p-2 text-dfz-text-muted hover:text-dfz-text hover:bg-dfz-surface-hover rounded-full transition-colors flex-shrink-0 mb-0.5"
+            className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] rounded-full transition-colors flex-shrink-0 mb-0.5"
             title="Эмодзи и стикеры"
           >
             <Smile size={18} />
           </button>
 
           {showEmojiPicker && (
-            <div className="absolute bottom-12 left-0 z-40 bg-dfz-surface border border-dfz-border rounded-dfz-xl shadow-dfz-dropdown overflow-hidden flex flex-col animate-scale-in">
+            <div className="absolute bottom-12 left-0 z-40 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-scale-in">
               {/* Tab Selector Header */}
-              <div className="flex border-b border-dfz-border bg-dfz-bg p-1 gap-1">
+              <div className="flex border-b border-[var(--border-subtle)] bg-[var(--bg-surface-secondary)] p-1 gap-1">
                 <button
                   type="button"
                   onClick={() => setPickerTab('EMOJI')}
-                  className={`flex-1 py-1 text-xs font-semibold rounded-dfz-md transition-colors flex items-center justify-center gap-1.5 ${
-                    pickerTab === 'EMOJI' ? 'bg-dfz-surface text-dfz-text shadow-dfz-sm' : 'text-dfz-text-muted hover:text-dfz-text'
+                  className={`flex-1 py-1 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1.5 ${
+                    pickerTab === 'EMOJI' ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                   }`}
                 >
                   <Smile size={14} />
@@ -417,11 +417,11 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
                 <button
                   type="button"
                   onClick={() => setPickerTab('STICKERS')}
-                  className={`flex-1 py-1 text-xs font-semibold rounded-dfz-md transition-colors flex items-center justify-center gap-1.5 ${
-                    pickerTab === 'STICKERS' ? 'bg-dfz-surface text-dfz-text shadow-dfz-sm' : 'text-dfz-text-muted hover:text-dfz-text'
+                  className={`flex-1 py-1 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1.5 ${
+                    pickerTab === 'STICKERS' ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                   }`}
                 >
-                  <Sparkles size={14} className="text-dfz-accent" />
+                  <Sparkles size={14} className="text-[var(--accent-primary)]" />
                   <span>Стикеры</span>
                 </button>
               </div>
@@ -451,7 +451,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
           onPaste={handlePaste}
           placeholder="Написать сообщение..."
           rows={1}
-          className="flex-1 max-h-36 min-h-[24px] py-1.5 px-1 bg-transparent text-dfz-text placeholder:text-dfz-text-muted text-sm resize-none focus:outline-none leading-relaxed"
+          className="flex-1 max-h-36 min-h-[24px] py-1.5 px-1 bg-transparent text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] text-sm resize-none focus:outline-none leading-relaxed"
         />
 
         </div>

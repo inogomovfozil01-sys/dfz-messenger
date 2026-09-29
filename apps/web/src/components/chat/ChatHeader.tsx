@@ -152,28 +152,28 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   // If searching in chat, render in-chat search bar
   if (isSearchingInChat) {
     return (
-      <div className="flex items-center justify-between h-[72px] px-3 sm:px-6 bg-dfz-surface border-b border-dfz-border select-none z-10 flex-shrink-0 animate-fade-in">
+      <div className="flex items-center justify-between h-[58px] px-3 sm:px-4 bg-[var(--bg-surface)] border-b border-[var(--border-subtle)] select-none z-10 flex-shrink-0 animate-fade-in">
         <div className="flex items-center gap-2 flex-1 min-w-0 mr-3">
-          <Search size={16} className="text-dfz-text-muted flex-shrink-0" />
+          <Search size={16} className="text-[var(--text-tertiary)] flex-shrink-0" />
           <input
             type="text"
             autoFocus
             value={inChatSearchQuery}
             onChange={(e) => searchInChat(e.target.value)}
             placeholder="Поиск сообщений в этом чате..."
-            className="w-full h-8 px-2 bg-transparent text-xs text-dfz-text placeholder:text-dfz-text-muted focus:outline-none"
+            className="w-full h-8 px-2 bg-transparent text-xs text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none"
           />
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
           {inChatSearchQuery && (
-            <span className="text-[11px] text-dfz-text-muted font-medium">
+            <span className="text-[11px] text-[var(--text-secondary)] font-medium">
               Найдено: {inChatSearchResults.length}
             </span>
           )}
           <button
             onClick={toggleSearchInChat}
-            className="p-1.5 text-dfz-text-muted hover:text-dfz-text rounded-full hover:bg-dfz-surface-hover transition-colors"
+            className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-full hover:bg-[var(--bg-surface-hover)] transition-colors"
             title="Закрыть поиск"
           >
             <X size={18} />
@@ -184,8 +184,8 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   }
 
   return (
-    <div className="flex flex-col bg-dfz-surface border-b border-dfz-border select-none z-10 flex-shrink-0">
-      <div className="flex items-center justify-between h-[72px] px-3 sm:px-6">
+    <div className="flex flex-col bg-[var(--bg-surface)] border-b border-[var(--border-subtle)] select-none z-10 flex-shrink-0">
+      <div className="flex items-center justify-between h-[58px] px-3 sm:px-4">
         <div className="flex items-center gap-3 min-w-0">
           {/* Mobile Back Button */}
           <button

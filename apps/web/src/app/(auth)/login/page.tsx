@@ -2,125 +2,149 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { BrandMark } from '../../../components/ui/BrandMark';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Lock, User, CheckCircle, Smartphone } from 'lucide-react';
+import { ArrowRight, Lock, User, Eye, EyeOff, AlertCircle, Download } from 'lucide-react';
+import { BrandMark } from '../../../components/ui/BrandMark';
 import { useAuthStore } from '../../../stores/authStore';
 import { usePwaInstall } from '../../../hooks/usePwaInstall';
-import { PwaInstallGate } from '../../../components/pwa/PwaInstallGate';
 
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuthStore();
-  const { isStandalone, isBypassed, bypassPwa } = usePwaInstall();
+  const { isStandalone, canInstall, promptInstall } = usePwaInstall();
 
   const [isLoading, setIsLoading] = useState(false);
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-
-  // If NOT in standalone PWA and NOT explicitly bypassed for browser testing:
-  if (!isStandalone && !isBypassed) {
-    return (
-      <PwaInstallGate
-        title="Вход в DFZ Messenger"
-        description="Для защиты ваших данных и стабильной работы мессенджера вход осуществляется через PWA-клиент."
-        onBypass={() => bypassPwa()}
-      />
-    );
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    if (!usernameOrEmail.trim() || !password) return;
 
+    setError('');
     setIsLoading(true);
-    const res = await login({ usernameOrEmail, password });
-    setIsLoading(false);
-    if (res.success) {
-      router.push('/');
-    } else {
-      setError(res.error || 'Неверный логин или пароль');
+
+    try {
+      const res = await login({ usernameOrEmail: usernameOrEmail.trim(), password });
+      setIsLoading(false);
+      if (res.success) {
+        router.push('/');
+      } else {
+        setError(res.error || 'Неверный логин или пароль');
+      }
+    } catch (err: any) {
+      setIsLoading(false);
+      setError(err?.message || 'Ошибка подключения к серверу');
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-dfz-bg text-dfz-text">
-      <div className="w-full max-w-sm bg-dfz-surface border border-dfz-border rounded-dfz-xl p-8 shadow-dfz-dropdown space-y-6 animate-scale-in">
-        {/* Logo & Header */}
-        <div className="text-center space-y-1">
-          <BrandMark className="w-14 h-14 mx-auto mb-3 shadow-dfz-md" />
+    <div className="min-h-screen w-full flex items-center justify-center p-4 bg-[var(--bg-main)] text-[var(--text-primary)] select-none">
+      {/* Telegram Centered Auth Card */}
+      <div className="w-full max-w-[400px] bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl p-7 sm:p-8 shadow-2xl space-y-6 relative overflow-hidden animate-scale-in">
+        {/* Subtle Top Glow */}
+        <div className="absolute -top-16 left-1/2 -translate-x-1/2 w-48 h-48 bg-[var(--accent-primary)]/15 rounded-full blur-3xl pointer-events-none" />
 
-          {/* PWA Mode Badge */}
-          {isStandalone ? (
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-mono font-semibold mb-2">
-              <CheckCircle size={11} />
-              <span>DFZ PWA CLIENT • ЗАЩИЩЕННАЯ СРЕДА</span>
-            </div>
-          ) : (
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-mono font-semibold mb-2">
-              <Smartphone size={11} />
-              <span>WEB BROWSER SESSION</span>
-            </div>
-          )}
-
-          <h1 className="text-xl font-bold tracking-tight text-dfz-text">Вход в DFZ Messenger</h1>
-          <p className="text-xs text-dfz-text-muted">Введите ваши учетные данные для доступа к чатам</p>
+        {/* Brand Header */}
+        <div className="text-center space-y-2 relative">
+          <div className="relative w-16 h-16 mx-auto mb-2">
+            <BrandMark className="w-16 h-16 shadow-lg shadow-[var(--accent-primary)]/20 rounded-2xl mx-auto" />
+          </div>
+          <h1 className="text-xl font-bold tracking-tight text-[var(--text-primary)]">Вход в DFZ Messenger</h1>
+          <p className="text-xs text-[var(--text-secondary)]">Введите ваши данные для входа в аккаунт</p>
         </div>
 
+        {/* Error Alert */}
         {error && (
-          <div className="p-3 bg-dfz-danger/10 border border-dfz-danger/20 rounded-dfz-md text-xs text-dfz-danger">
-            {error}
+          <div className="p-3 bg-red-500/10 border border-red-500/25 rounded-xl text-xs text-red-400 flex items-center gap-2">
+            <AlertCircle size={16} className="shrink-0" />
+            <span>{error}</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Username or Email */}
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-dfz-text-muted">Username или Email</label>
-            <div className="relative">
-              <User size={16} className="absolute left-3 top-2.5 text-dfz-text-muted" />
+            <label className="text-xs font-medium text-[var(--text-secondary)]">Username или Email</label>
+            <div className="relative flex items-center">
+              <User size={16} className="absolute left-3.5 text-[var(--text-tertiary)] pointer-events-none" />
               <input
                 type="text"
                 required
+                autoComplete="username"
                 value={usernameOrEmail}
                 onChange={(e) => setUsernameOrEmail(e.target.value)}
                 placeholder="admin или alex_dev"
-                className="w-full h-9 pl-9 pr-3 bg-dfz-bg border border-dfz-border rounded-dfz-lg text-xs text-dfz-text placeholder:text-dfz-text-muted focus:outline-none focus:border-dfz-border-focus"
+                className="w-full h-11 pl-10 pr-3.5 bg-[var(--bg-surface-secondary)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] rounded-xl text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none transition-colors"
               />
             </div>
           </div>
 
+          {/* Password */}
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-dfz-text-muted">Пароль</label>
-            <div className="relative">
-              <Lock size={16} className="absolute left-3 top-2.5 text-dfz-text-muted" />
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium text-[var(--text-secondary)]">Пароль</label>
+            </div>
+            <div className="relative flex items-center">
+              <Lock size={16} className="absolute left-3.5 text-[var(--text-tertiary)] pointer-events-none" />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 required
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full h-9 pl-9 pr-3 bg-dfz-bg border border-dfz-border rounded-dfz-lg text-xs text-dfz-text placeholder:text-dfz-text-muted focus:outline-none focus:border-dfz-border-focus"
+                className="w-full h-11 pl-10 pr-10 bg-[var(--bg-surface-secondary)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] rounded-xl text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none transition-colors"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] p-1 rounded transition-colors"
+                title={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
           </div>
 
+          {/* Submit Button */}
           <button
             type="submit"
-            disabled={isLoading || !usernameOrEmail || !password}
-            className="w-full h-10 flex items-center justify-center gap-2 bg-dfz-accent hover:bg-dfz-accent-hover text-white text-xs font-semibold rounded-dfz-lg transition-colors shadow-dfz-sm disabled:opacity-50"
+            disabled={isLoading || !usernameOrEmail.trim() || !password}
+            className="w-full h-11 mt-2 flex items-center justify-center gap-2 bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white text-sm font-semibold rounded-xl transition-all shadow-md active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <span>{isLoading ? 'Вход...' : 'Войти'}</span>
-            <ArrowRight size={14} />
+            {isLoading ? (
+              <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full inline-block animate-spin" />
+            ) : (
+              <>
+                <span>ВОЙТИ</span>
+                <ArrowRight size={16} />
+              </>
+            )}
           </button>
         </form>
 
-        <div className="pt-2 text-center text-xs text-dfz-text-muted border-t border-dfz-border">
+        {/* Link to Register */}
+        <div className="pt-2 text-center text-xs text-[var(--text-secondary)] border-t border-[var(--border-subtle)]">
           Нет аккаунта?{' '}
-          <Link href="/register" className="text-dfz-accent hover:underline font-semibold">
+          <Link href="/register" className="text-[var(--accent-primary)] hover:underline font-semibold ml-1">
             Зарегистрироваться
           </Link>
         </div>
+
+        {/* Optional PWA install banner */}
+        {!isStandalone && canInstall && (
+          <button
+            type="button"
+            onClick={promptInstall}
+            className="w-full py-2 px-3 rounded-xl bg-[var(--bg-surface-secondary)] hover:bg-[var(--bg-surface-hover)] border border-[var(--border-subtle)] text-xs text-[var(--accent-primary)] font-medium flex items-center justify-center gap-2 transition-colors"
+          >
+            <Download size={14} />
+            <span>Установить приложение на устройство</span>
+          </button>
+        )}
       </div>
     </div>
   );

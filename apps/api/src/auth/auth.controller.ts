@@ -18,7 +18,7 @@ const registerSchema = z.object({
     .string()
     .min(6, 'Password must be at least 6 characters')
     .max(100, 'Password is too long'),
-  email: z.string().email('Invalid email address').optional().nullable(),
+  email: z.string().email('Invalid email address').optional().nullable().or(z.literal('')),
   displayName: z.string().max(64).optional(),
   bio: z.string().max(200).optional(),
   deviceName: z.string().optional(),
@@ -63,7 +63,7 @@ function clearAuthCookies(res: Response) {
 // 1. Register
 authRouter.post(
   '/register',
-  rateLimiter({ maxRequests: 10, windowSeconds: 60, keyPrefix: 'rl_auth_reg' }),
+  rateLimiter({ maxRequests: 20, windowSeconds: 60, keyPrefix: 'rl_auth_reg' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const data = registerSchema.parse(req.body);
@@ -72,7 +72,7 @@ authRouter.post(
 
       const result = await authService.register({
         ...data,
-        email: data.email || undefined,
+        email: data.email && data.email.trim() ? data.email.trim().toLowerCase() : undefined,
         userAgent,
         ipAddress,
       });

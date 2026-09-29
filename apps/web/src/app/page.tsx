@@ -160,27 +160,7 @@ export default function MessengerPage() {
   }
 
   return (
-    <div className="flex h-[100dvh] w-screen bg-dfz-bg text-dfz-text overflow-hidden font-sans select-none">
-      <nav aria-label="Основная навигация" className="dfz-rail hidden md:flex flex-col items-center gap-3 shrink-0">
-        <BrandMark className="w-11 h-11 mb-7" />
-        <button title="Сообщения" aria-label="Сообщения" aria-current={currentView === 'chats' ? 'page' : undefined} onClick={() => setCurrentView('chats')}><MessageSquare size={22}/></button>
-        <button title="Контакты" aria-label="Контакты" aria-current={currentView === 'contacts' ? 'page' : undefined} onClick={() => setCurrentView('contacts')}><Users size={22}/></button>
-        <button title="Звонки" aria-label="Звонки" onClick={() => setIsCallsOpen(true)}><Phone size={21}/></button>
-        <button title="Избранное" aria-label="Избранное" onClick={handleOpenSavedMessages}><Bookmark size={21}/></button>
-        <div className="flex-1"/>
-        {(user.role === 'ADMIN' || user.role === 'SUPERADMIN') && (
-          <Link
-            href="/admin"
-            title="Панель администратора"
-            aria-label="Панель администратора"
-            className="w-9 h-9 rounded-full flex items-center justify-center text-rose-400 hover:bg-rose-500/15 transition-colors border border-rose-500/30"
-          >
-            <Shield size={20} />
-          </Link>
-        )}
-        <button title="Настройки" aria-label="Настройки" onClick={() => setIsSettingsOpen(true)}><Settings size={22}/></button>
-        <button title="Мой профиль" aria-label="Мой профиль" onClick={() => setInspectedUserId(user.id)}><span className="w-9 h-9 grid place-items-center rounded-full bg-dfz-surface-active text-sm font-semibold text-dfz-text">{(profile?.displayName || user.username).slice(0,2).toUpperCase()}</span></button>
-      </nav>
+    <div className="flex h-[100dvh] w-screen bg-[var(--bg-main)] text-[var(--text-primary)] overflow-hidden font-sans select-none">
       {/* Network Offline Alert Bar */}
       {isOffline && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-[#e53935] text-white text-xs py-1 px-4 text-center flex items-center justify-center gap-2 font-medium shadow-md">
@@ -212,7 +192,7 @@ export default function MessengerPage() {
 
       {/* 2. Telegram Main Chat Area (full width on mobile if chat is active) */}
       <div
-        className={`flex-1 h-full flex flex-col bg-dfz-bg relative overflow-hidden ${
+        className={`flex-1 h-full flex flex-col bg-[var(--bg-main)] relative overflow-hidden ${
           activeChatId ? 'flex' : 'hidden md:flex'
         }`}
       >
@@ -235,13 +215,10 @@ export default function MessengerPage() {
           </div>
         ) : (
           /* Telegram Classic Empty State */
-          <div className="dfz-chat-canvas flex-1 flex flex-col items-center justify-center p-8 text-center select-none">
-            <BrandMark className="w-24 h-24 mb-7 shadow-dfz-lg" />
-            <p className="text-[10px] uppercase tracking-[.25em] text-dfz-text-muted mb-3">DFZ MESSENGER</p>
-            <h2 className="text-3xl font-semibold tracking-tight">Ближе к своим.</h2>
-            <p className="text-sm text-dfz-text-muted mt-3 max-w-xs leading-relaxed">Личные разговоры, общие идеи и важные сообщения — в одном месте.</p>
-            <button onClick={() => setIsNewChatOpen(true)} className="mt-7 px-5 py-3 rounded-xl bg-dfz-accent hover:bg-dfz-accent-hover text-white text-sm font-medium flex items-center gap-2"><Plus size={17}/>Начать разговор</button>
-            <p className="text-xs text-dfz-text-subtle mt-10">Выберите чат слева или найдите человека по имени</p>
+          <div className="tg-wallpaper flex-1 flex flex-col items-center justify-center p-8 text-center select-none relative">
+            <div className="px-4 py-2 rounded-full bg-black/40 backdrop-blur-md border border-white/5 text-xs font-medium text-[var(--text-secondary)] shadow-sm">
+              Выберите чат, чтобы начать общение
+            </div>
           </div>
         )}
       </div>

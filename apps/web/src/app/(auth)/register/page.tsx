@@ -2,23 +2,24 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { BrandMark } from '../../../components/ui/BrandMark';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Lock, User, Mail, Check, AlertCircle, CheckCircle, Smartphone } from 'lucide-react';
+import { ArrowRight, Lock, User, Mail, Check, AlertCircle, Eye, EyeOff, Smartphone, Download } from 'lucide-react';
+import { BrandMark } from '../../../components/ui/BrandMark';
 import { useAuthStore } from '../../../stores/authStore';
 import { apiRequest } from '../../../lib/api';
 import { usePwaInstall } from '../../../hooks/usePwaInstall';
-import { PwaInstallGate } from '../../../components/pwa/PwaInstallGate';
 
 export default function RegisterPage() {
   const router = useRouter();
   const { register } = useAuthStore();
-  const { isStandalone, isBypassed, bypassPwa } = usePwaInstall();
-  const [isLoading, setIsLoading] = useState(false);
+  const { isStandalone, canInstall, promptInstall } = usePwaInstall();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
   // Realtime username check
@@ -28,19 +29,9 @@ export default function RegisterPage() {
     message?: string;
   }>({ checking: false });
 
-  // If NOT in standalone PWA and NOT explicitly bypassed for browser testing:
-  if (!isStandalone && !isBypassed) {
-    return (
-      <PwaInstallGate
-        title="Регистрация в DFZ Messenger"
-        description="Для регистрации аккаунта и создания защищенной сессии требуется PWA-приложение на вашем устройстве."
-        onBypass={() => bypassPwa()}
-      />
-    );
-  }
-
   useEffect(() => {
-    if (!username.trim() || username.length < 3) {
+    const clean = username.trim().toLowerCase();
+    if (!clean || clean.length < 3) {
       setUsernameStatus({ checking: false });
       return;
     }
@@ -48,81 +39,107 @@ export default function RegisterPage() {
     let active = true;
     setUsernameStatus({ checking: true });
     const timer = setTimeout(async () => {
-      setUsernameStatus({ checking: true });
-      const res = await apiRequest<{ available: boolean; message: string }>(
-        `/api/users/check-username/${username.trim().toLowerCase()}`
-      );
-      if (!active) return;
-      if (res.success && res.data) {
-        setUsernameStatus({
-          checking: false,
-          available: res.data.available,
-          message: res.data.message,
-        });
-      } else {
-        setUsernameStatus({ checking: false });
+      try {
+        const res = await apiRequest<{ available: boolean; message: string }>(
+          `/api/users/check-username/${clean}`
+        );
+        if (!active) return;
+        if (res.success && res.data) {
+          setUsernameStatus({
+            checking: false,
+            available: res.data.available,
+            message: res.data.message,
+          });
+        } else {
+          setUsernameStatus({ checking: false });
+        }
+      } catch {
+        if (active) setUsernameStatus({ checking: false });
       }
-    }, 400);
+    }, 350);
 
-    return () => { active = false; clearTimeout(timer); };
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
   }, [username]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (usernameStatus.available === false) return;
+    const cleanUsername = username.trim().toLowerCase();
+
+    if (!cleanUsername || cleanUsername.length < 3) {
+      setError('Имя пользователя должно содержать не менее 3 символов');
+      return;
+    }
+
+    if (!password || password.length < 6) {
+      setError('Пароль должен быть не менее 6 символов');
+      return;
+    }
+
+    if (usernameStatus.available === false) {
+      setError(usernameStatus.message || 'Это имя пользователя уже занято');
+      return;
+    }
+
     setError('');
-
     setIsLoading(true);
-    const res = await register({
-      username: username.trim().toLowerCase(),
-      password,
-      email: email.trim() || undefined,
-    });
 
-    setIsLoading(false);
-    if (res.success) {
-      router.push('/onboarding');
-    } else {
-      setError(res.error || 'Ошибка при регистрации');
+    try {
+      const res = await register({
+        username: cleanUsername,
+        password,
+        displayName: displayName.trim() || undefined,
+        email: email.trim() || undefined,
+      });
+
+      setIsLoading(false);
+      if (res.success) {
+        router.push('/');
+      } else {
+        setError(res.error || 'Ошибка при регистрации. Попробуйте еще раз.');
+      }
+    } catch (err: any) {
+      setIsLoading(false);
+      setError(err?.message || 'Ошибка подключения к серверу');
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-dfz-bg text-dfz-text">
-      <div className="w-full max-w-sm bg-dfz-surface border border-dfz-border rounded-dfz-xl p-8 shadow-dfz-dropdown space-y-6 animate-scale-in">
-        {/* Logo & Header */}
-        <div className="text-center space-y-1">
-          <BrandMark className="w-14 h-14 mx-auto mb-3 shadow-dfz-md" />
+    <div className="min-h-screen w-full flex items-center justify-center p-4 bg-[var(--bg-main)] text-[var(--text-primary)] select-none">
+      {/* Telegram Centered Auth Card */}
+      <div className="w-full max-w-[400px] bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl p-7 sm:p-8 shadow-2xl space-y-6 relative overflow-hidden animate-scale-in">
+        {/* Subtle Top Glow */}
+        <div className="absolute -top-16 left-1/2 -translate-x-1/2 w-48 h-48 bg-[var(--accent-primary)]/15 rounded-full blur-3xl pointer-events-none" />
 
-          {/* PWA Mode Badge */}
-          {isStandalone ? (
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-mono font-semibold mb-2">
-              <CheckCircle size={11} />
-              <span>DFZ PWA CLIENT • ЗАЩИЩЕННАЯ СРЕДА</span>
-            </div>
-          ) : (
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-mono font-semibold mb-2">
-              <Smartphone size={11} />
-              <span>WEB BROWSER SESSION</span>
-            </div>
-          )}
-
-          <h1 className="text-xl font-bold tracking-tight text-dfz-text">Регистрация</h1>
-          <p className="text-xs text-dfz-text-muted">Создайте аккаунт в новом поколении мессенджера</p>
+        {/* Brand Header */}
+        <div className="text-center space-y-2 relative">
+          <div className="relative w-16 h-16 mx-auto mb-2">
+            <BrandMark className="w-16 h-16 shadow-lg shadow-[var(--accent-primary)]/20 rounded-2xl mx-auto" />
+          </div>
+          <h1 className="text-xl font-bold tracking-tight text-[var(--text-primary)]">Регистрация в DFZ</h1>
+          <p className="text-xs text-[var(--text-secondary)]">Создайте аккаунт для свободного общения</p>
         </div>
 
+        {/* Error Alert */}
         {error && (
-          <div className="p-3 bg-dfz-danger/10 border border-dfz-danger/20 rounded-dfz-md text-xs text-dfz-danger">
-            {error}
+          <div className="p-3 bg-red-500/10 border border-red-500/25 rounded-xl text-xs text-red-400 flex items-center gap-2">
+            <AlertCircle size={16} className="shrink-0" />
+            <span>{error}</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Username with Realtime Validation */}
+          {/* Username */}
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-dfz-text-muted">Username</label>
-            <div className="relative">
-              <User size={16} className="absolute left-3 top-2.5 text-dfz-text-muted" />
+            <label className="text-xs font-medium text-[var(--text-secondary)]">
+              Имя пользователя (username) <span className="text-[var(--accent-primary)]">*</span>
+            </label>
+            <div className="relative flex items-center">
+              <span className="absolute left-3.5 text-sm font-semibold text-[var(--text-tertiary)] pointer-events-none">
+                @
+              </span>
               <input
                 type="text"
                 required
@@ -131,24 +148,23 @@ export default function RegisterPage() {
                 autoComplete="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                placeholder="никнейм (например: alex_99)"
-                className="w-full h-9 pl-9 pr-9 bg-dfz-bg border border-dfz-border rounded-dfz-lg text-xs text-dfz-text placeholder:text-dfz-text-muted focus:outline-none focus:border-dfz-border-focus"
+                placeholder="username (например: alex_99)"
+                className="w-full h-11 pl-8 pr-10 bg-[var(--bg-surface-secondary)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] rounded-xl text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none transition-colors"
               />
-              {/* Validation icon */}
-              <div className="absolute right-3 top-2.5">
+              <div className="absolute right-3.5">
                 {usernameStatus.checking ? (
-                  <span className="w-4 h-4 border-2 border-dfz-accent border-t-transparent rounded-full inline-block animate-spin" />
+                  <span className="w-4 h-4 border-2 border-[var(--accent-primary)] border-t-transparent rounded-full inline-block animate-spin" />
                 ) : usernameStatus.available === true ? (
-                  <Check size={16} className="text-dfz-success" />
+                  <Check size={16} className="text-emerald-400" />
                 ) : usernameStatus.available === false ? (
-                  <AlertCircle size={16} className="text-dfz-danger" />
+                  <AlertCircle size={16} className="text-red-400" />
                 ) : null}
               </div>
             </div>
             {usernameStatus.message && (
               <p
-                className={`text-[11px] ${
-                  usernameStatus.available ? 'text-dfz-success' : 'text-dfz-danger'
+                className={`text-[11px] px-1 ${
+                  usernameStatus.available ? 'text-emerald-400' : 'text-red-400'
                 }`}
               >
                 {usernameStatus.message}
@@ -156,62 +172,104 @@ export default function RegisterPage() {
             )}
           </div>
 
-          {/* Email */}
+          {/* Display Name */}
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-dfz-text-muted">
-              Email <span className="opacity-60 font-normal">(необязательно)</span>
+            <label className="text-xs font-medium text-[var(--text-secondary)]">
+              Отображаемое имя <span className="text-[var(--text-tertiary)]">(необязательно)</span>
             </label>
-            <div className="relative">
-              <Mail size={16} className="absolute left-3 top-2.5 text-dfz-text-muted" />
+            <div className="relative flex items-center">
+              <User size={16} className="absolute left-3.5 text-[var(--text-tertiary)] pointer-events-none" />
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@example.com"
-                className="w-full h-9 pl-9 pr-3 bg-dfz-bg border border-dfz-border rounded-dfz-lg text-xs text-dfz-text placeholder:text-dfz-text-muted focus:outline-none focus:border-dfz-border-focus"
+                type="text"
+                maxLength={64}
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Как вас зовут (например: Александр)"
+                className="w-full h-11 pl-10 pr-3.5 bg-[var(--bg-surface-secondary)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] rounded-xl text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none transition-colors"
               />
             </div>
           </div>
 
           {/* Password */}
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-dfz-text-muted">Пароль</label>
-            <div className="relative">
-              <Lock size={16} className="absolute left-3 top-2.5 text-dfz-text-muted" />
+            <label className="text-xs font-medium text-[var(--text-secondary)]">
+              Пароль <span className="text-[var(--accent-primary)]">*</span>
+            </label>
+            <div className="relative flex items-center">
+              <Lock size={16} className="absolute left-3.5 text-[var(--text-tertiary)] pointer-events-none" />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 required
                 minLength={6}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Минимум 6 символов"
-                className="w-full h-9 pl-9 pr-3 bg-dfz-bg border border-dfz-border rounded-dfz-lg text-xs text-dfz-text placeholder:text-dfz-text-muted focus:outline-none focus:border-dfz-border-focus"
+                className="w-full h-11 pl-10 pr-10 bg-[var(--bg-surface-secondary)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] rounded-xl text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none transition-colors"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] p-1 rounded transition-colors"
+                title={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </div>
+
+          {/* Email (Optional) */}
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-[var(--text-secondary)]">
+              Email <span className="text-[var(--text-tertiary)]">(необязательно)</span>
+            </label>
+            <div className="relative flex items-center">
+              <Mail size={16} className="absolute left-3.5 text-[var(--text-tertiary)] pointer-events-none" />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@example.com"
+                className="w-full h-11 pl-10 pr-3.5 bg-[var(--bg-surface-secondary)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] rounded-xl text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none transition-colors"
               />
             </div>
           </div>
 
+          {/* Submit Button */}
           <button
             type="submit"
-            disabled={
-              isLoading ||
-              !username ||
-              !password ||
-              usernameStatus.available === false ||
-              usernameStatus.checking
-            }
-            className="w-full h-10 flex items-center justify-center gap-2 bg-dfz-accent hover:bg-dfz-accent-hover text-white text-xs font-semibold rounded-dfz-lg transition-colors shadow-dfz-sm disabled:opacity-50"
+            disabled={isLoading || !username || !password || username.length < 3 || password.length < 6}
+            className="w-full h-11 mt-2 flex items-center justify-center gap-2 bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white text-sm font-semibold rounded-xl transition-all shadow-md active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <span>{isLoading ? 'Регистрация...' : 'Продолжить'}</span>
-            <ArrowRight size={14} />
+            {isLoading ? (
+              <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full inline-block animate-spin" />
+            ) : (
+              <>
+                <span>ЗАРЕГИСТРИРОВАТЬСЯ</span>
+                <ArrowRight size={16} />
+              </>
+            )}
           </button>
         </form>
 
-        <div className="pt-2 text-center text-xs text-dfz-text-muted border-t border-dfz-border">
-          Уже есть аккаунт?{' '}
-          <Link href="/login" className="text-dfz-accent hover:underline font-semibold">
+        {/* Link to Login */}
+        <div className="pt-2 text-center text-xs text-[var(--text-secondary)] border-t border-[var(--border-subtle)]">
+          Уже зарегистрированы?{' '}
+          <Link href="/login" className="text-[var(--accent-primary)] hover:underline font-semibold ml-1">
             Войти
           </Link>
         </div>
+
+        {/* Optional PWA install banner */}
+        {!isStandalone && canInstall && (
+          <button
+            type="button"
+            onClick={promptInstall}
+            className="w-full py-2 px-3 rounded-xl bg-[var(--bg-surface-secondary)] hover:bg-[var(--bg-surface-hover)] border border-[var(--border-subtle)] text-xs text-[var(--accent-primary)] font-medium flex items-center justify-center gap-2 transition-colors"
+          >
+            <Download size={14} />
+            <span>Установить приложение на устройство</span>
+          </button>
+        )}
       </div>
     </div>
   );

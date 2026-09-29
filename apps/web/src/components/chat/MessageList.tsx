@@ -80,23 +80,23 @@ export const MessageList: React.FC<MessageListProps> = ({ chatId }) => {
 
   if (isLoadingMessages && chatMessages.length === 0) {
     return (
-      <div className="flex-1 p-4 space-y-4 overflow-y-auto">
-        <Skeleton className="w-48 h-10 rounded-dfz-xl" />
-        <Skeleton className="w-64 h-14 rounded-dfz-xl ml-auto" />
-        <Skeleton className="w-56 h-10 rounded-dfz-xl" />
-        <Skeleton className="w-72 h-16 rounded-dfz-xl ml-auto" />
+      <div className="tg-wallpaper flex-1 p-4 sm:px-7 space-y-4 overflow-y-auto">
+        <Skeleton className="w-48 h-10 rounded-[18px]" />
+        <Skeleton className="w-64 h-14 rounded-[18px] ml-auto" />
+        <Skeleton className="w-56 h-10 rounded-[18px]" />
+        <Skeleton className="w-72 h-16 rounded-[18px] ml-auto" />
       </div>
     );
   }
 
   if (chatMessages.length === 0) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-dfz-text-muted select-none">
-        <div className="w-16 h-16 rounded-full bg-dfz-surface border border-dfz-border flex items-center justify-center text-2xl mb-3 shadow-dfz-sm">
-          <MessageSquare size={26} />
+      <div className="tg-wallpaper flex-1 flex flex-col items-center justify-center p-6 text-center text-[var(--text-secondary)] select-none">
+        <div className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-md border border-white/5 flex items-center justify-center text-[var(--accent-primary)] mb-3 shadow-sm">
+          <MessageSquare size={24} />
         </div>
-        <h4 className="text-base font-semibold text-dfz-text mb-1">Здесь пока нет сообщений</h4>
-        <p className="text-xs max-w-xs">
+        <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-1">Здесь пока нет сообщений</h4>
+        <p className="text-xs text-[var(--text-secondary)] max-w-xs">
           Напишите первое сообщение, отправьте файл или запишите голосовую заметку.
         </p>
       </div>
@@ -107,7 +107,7 @@ export const MessageList: React.FC<MessageListProps> = ({ chatId }) => {
     <div
       ref={scrollContainerRef}
       onScroll={handleScroll}
-      className="dfz-chat-canvas flex-1 p-4 sm:px-7 overflow-y-auto overflow-x-hidden flex flex-col"
+      className="dfz-chat-canvas tg-wallpaper flex-1 p-4 sm:px-7 overflow-y-auto overflow-x-hidden flex flex-col"
     >
       {/* Lightbox for full image preview */}
       {previewImage && (
@@ -120,7 +120,7 @@ export const MessageList: React.FC<MessageListProps> = ({ chatId }) => {
 
       {/* Loading older indicator */}
       {hasMore[chatId] && (
-        <div className="py-2 text-center text-xs text-dfz-text-muted">
+        <div className="py-2 text-center text-xs text-[var(--text-secondary)]">
           Загрузка предыдущих сообщений...
         </div>
       )}
@@ -146,8 +146,8 @@ export const MessageList: React.FC<MessageListProps> = ({ chatId }) => {
         return (
           <div key={msg.id} id={`message-${msg.id}`} className="scroll-mt-4">
             {showDateSeparator && (
-              <div className="flex items-center justify-center my-3 select-none">
-                <span className="px-3 py-1 bg-dfz-surface/90 border border-dfz-border rounded-full text-[11px] font-medium text-dfz-text-muted shadow-dfz-sm">
+              <div className="flex items-center justify-center my-3 select-none sticky top-2 z-10">
+                <span className="tg-date-pill shadow-sm">
                   {formatDateSeparator(msg.createdAt)}
                 </span>
               </div>
@@ -169,8 +169,8 @@ export const MessageList: React.FC<MessageListProps> = ({ chatId }) => {
 
       {/* Typing indicator bubble */}
       {currentTyping.length > 0 && (
-        <div className="flex items-center gap-2 text-xs text-dfz-text-muted px-2 py-1 mt-1 animate-pulse">
-          <span className="inline-block w-2 h-2 rounded-full bg-dfz-accent" />
+        <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)] px-2 py-1 mt-1 animate-pulse">
+          <span className="inline-block w-2 h-2 rounded-full bg-[var(--accent-primary)]" />
           <span>
             {currentTyping.join(', ')} {currentTyping.length > 1 ? 'печатают' : 'печатает'}...
           </span>
@@ -178,7 +178,19 @@ export const MessageList: React.FC<MessageListProps> = ({ chatId }) => {
       )}
 
       <div ref={bottomAnchorRef} />
-      {hasNewMessages && <button className="sticky bottom-2 self-end flex items-center gap-2 rounded-full px-3 py-2 bg-dfz-accent text-white shadow-lg" onClick={() => { bottomAnchorRef.current?.scrollIntoView({ behavior: 'smooth' }); setHasNewMessages(false); }}><ArrowDown size={16} />Новые сообщения</button>}
+      {hasNewMessages && (
+        <button
+          type="button"
+          className="sticky bottom-4 self-center sm:self-end flex items-center gap-2 rounded-full px-4 py-2 bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white shadow-lg text-xs font-medium transition-all"
+          onClick={() => {
+            bottomAnchorRef.current?.scrollIntoView({ behavior: 'smooth' });
+            setHasNewMessages(false);
+          }}
+        >
+          <ArrowDown size={14} />
+          <span>Новые сообщения</span>
+        </button>
+      )}
     </div>
   );
 };

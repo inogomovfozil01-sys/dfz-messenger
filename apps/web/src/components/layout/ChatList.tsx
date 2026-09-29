@@ -185,16 +185,15 @@ export const ChatList: React.FC<ChatListProps> = ({
     : [];
 
   return (
-    <div className="dfz-chat-list w-full md:w-[320px] lg:w-[350px] h-full bg-dfz-surface border-r border-dfz-border flex flex-col select-none flex-shrink-0 relative overflow-hidden">
-      {/* Telegram Top Header: Hamburger Menu + Search */}
-      <div className="p-4 pb-2 space-y-3 border-b border-dfz-border/80">
-        <div className="flex items-center justify-between mb-2"><div className="flex items-center gap-3"><BrandMark className="w-10 h-10 md:hidden" /><div><h1 className="text-xl font-semibold tracking-tight">Сообщения</h1><p className="text-xs text-dfz-text-muted mt-0.5">Ваше пространство общения</p></div></div><button onClick={onNewChat} title="Новое сообщение" className="w-10 h-10 grid place-items-center rounded-xl bg-dfz-accent-subtle text-dfz-accent"><Edit2 size={18}/></button></div>
+    <div className="dfz-chat-list w-full md:w-[380px] lg:w-[420px] h-full bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] flex flex-col select-none flex-shrink-0 relative overflow-hidden">
+      {/* Telegram Web Top Bar: Hamburger Menu + Search */}
+      <div className="p-2.5 pb-1.5 space-y-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]">
         <div className="flex items-center gap-2">
           {/* Hamburger Menu Button */}
           <button
             type="button"
             onClick={onOpenMenu}
-            className="p-2 rounded-full text-dfz-text-muted hover:text-dfz-text hover:bg-dfz-surface-hover transition-colors flex-shrink-0"
+            className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors flex-shrink-0"
             title="Главное меню"
           >
             <Menu size={22} />
@@ -202,20 +201,21 @@ export const ChatList: React.FC<ChatListProps> = ({
 
           {/* Telegram Rounded Search Input */}
           <div className="relative flex-1 flex items-center">
-            <Search size={16} className="absolute left-3.5 text-dfz-text-muted pointer-events-none" />
+            <Search size={16} className="absolute left-3.5 text-[var(--text-tertiary)] pointer-events-none" />
             <input
               type="text"
               data-global-search
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              aria-label="Поиск пользователей и сообщений" placeholder="Поиск в DFZ"
-              className="w-full h-11 pl-10 pr-8 bg-dfz-bg border border-dfz-border/60 rounded-xl text-sm text-dfz-text placeholder:text-dfz-text-muted focus:outline-none focus:border-[var(--accent-primary)] transition-colors"
+              aria-label="Поиск пользователей и сообщений"
+              placeholder="Поиск"
+              className="w-full h-10 pl-10 pr-8 bg-[var(--bg-surface-secondary)] border border-transparent focus:border-[var(--accent-primary)] rounded-full text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none transition-colors"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 p-1 rounded-full text-dfz-text-muted hover:text-dfz-text"
+                className="absolute right-2.5 p-1 rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
               >
                 <X size={14} />
               </button>
@@ -224,7 +224,7 @@ export const ChatList: React.FC<ChatListProps> = ({
         </div>
 
         {/* Telegram Folder Tabs with Unread Count Badges */}
-        <div className="flex items-center gap-1 overflow-x-auto pb-1 no-scrollbar pt-1">
+        <div className="flex items-center gap-1 overflow-x-auto pb-1 no-scrollbar pt-0.5">
           {folders.map((f) => {
             const isActive = activeFolder === f.id;
             return (
@@ -232,16 +232,16 @@ export const ChatList: React.FC<ChatListProps> = ({
                 key={f.id}
                 type="button"
                 onClick={() => setActiveFolder(f.id)}
-                className={`relative px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                className={`relative px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
                   isActive
                     ? 'bg-[var(--accent-primary)] text-white shadow-sm'
-                    : 'text-dfz-text-muted hover:text-dfz-text hover:bg-dfz-surface-hover'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)]'
                 }`}
               >
                 <span>{f.label}</span>
                 {f.count !== undefined && f.count > 0 && (
                   <span
-                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                    className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
                       isActive ? 'bg-white/25 text-white' : 'bg-[var(--accent-primary)] text-white'
                     }`}
                   >
