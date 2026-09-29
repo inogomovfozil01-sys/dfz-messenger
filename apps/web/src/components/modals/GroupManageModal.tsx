@@ -64,6 +64,8 @@ export const GroupManageModal: React.FC<GroupManageModalProps> = ({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [isPublic, setIsPublic] = useState(false);
   const [publicHandle, setPublicHandle] = useState('');
   const [isForum, setIsForum] = useState(false);
@@ -297,11 +299,36 @@ export const GroupManageModal: React.FC<GroupManageModalProps> = ({
     }
   };
 
-  const handleAvatarSelect = () => {
-    const url = prompt('Введите URL аватара группы:', avatarUrl);
-    if (url !== null) {
-      setAvatarUrl(url.trim());
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAvatarUrl(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    setIsUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await apiRequest<{ url: string }>('/api/media/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      if (res.success && res.data?.url) {
+        setAvatarUrl(res.data.url);
+      }
+    } catch {
+      // Keep data URI preview
+    } finally {
+      setIsUploadingAvatar(false);
     }
+  };
+
+  const handleAvatarSelect = () => {
+    avatarInputRef.current?.click();
   };
 
   const adminsList = members.filter(
@@ -395,6 +422,13 @@ export const GroupManageModal: React.FC<GroupManageModalProps> = ({
             <div className="space-y-4 animate-fade-in">
               {/* Group Avatar & Basic Info */}
               <div className="flex flex-col items-center pt-2">
+                <input
+                  type="file"
+                  ref={avatarInputRef}
+                  onChange={handleAvatarFileChange}
+                  accept="image/*"
+                  className="hidden"
+                />
                 <div
                   onClick={handleAvatarSelect}
                   className="relative w-24 h-24 rounded-full cursor-pointer group select-none shadow-lg ring-2 ring-transparent hover:ring-[#8774e1] transition-all"
@@ -406,17 +440,34 @@ export const GroupManageModal: React.FC<GroupManageModalProps> = ({
                     className="w-24 h-24 text-2xl"
                   />
                   <div className="absolute inset-0 bg-black/45 rounded-full flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Camera size={26} className="text-white drop-shadow" />
-                    <span className="text-[10px] text-white font-medium mt-0.5">Выбрать</span>
+                    {isUploadingAvatar ? (
+                      <span className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <Camera size={26} className="text-white drop-shadow" />
+                        <span className="text-[10px] text-white font-medium mt-0.5">Выбрать</span>
+                      </>
+                    )}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleAvatarSelect}
-                  className="mt-2 text-xs text-[#8774e1] hover:underline font-semibold"
-                >
-                  Выбрать фото
-                </button>
+                <div className="flex items-center gap-2 mt-2">
+                  <button
+                    type="button"
+                    onClick={handleAvatarSelect}
+                    className="text-xs text-[#8774e1] hover:underline font-semibold"
+                  >
+                    Выбрать фото
+                  </button>
+                  {avatarUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setAvatarUrl('')}
+                      className="text-xs text-rose-400 hover:underline"
+                    >
+                      Удалить
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Title & Description Card */}

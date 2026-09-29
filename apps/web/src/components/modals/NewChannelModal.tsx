@@ -23,7 +23,37 @@ export const NewChannelModal: React.FC<NewChannelModalProps> = ({ isOpen, onClos
   const [isPublic, setIsPublic] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   const { selectChat, fetchChats } = useChatStore();
+
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAvatarUrl(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    setIsUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await apiRequest<{ url: string }>('/api/media/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      if (res.success && res.data?.url) {
+        setAvatarUrl(res.data.url);
+      }
+    } catch {
+      // Fallback to data URI
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -72,10 +102,42 @@ export const NewChannelModal: React.FC<NewChannelModalProps> = ({ isOpen, onClos
           </div>
         )}
 
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleAvatarFileChange}
+          accept="image/*"
+          className="hidden"
+        />
+
         <div className="flex items-center gap-3">
-          <Avatar src={avatarUrl} name={title || 'Канал'} size="lg" />
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            className="relative cursor-pointer group flex-shrink-0"
+            title="Нажмите, чтобы загрузить фото канала"
+          >
+            <Avatar src={avatarUrl} name={title || 'Канал'} size="lg" />
+            <div className="absolute inset-0 bg-black/40 group-hover:bg-black/60 rounded-full flex items-center justify-center transition-colors">
+              {isUploadingAvatar ? (
+                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Camera size={18} className="text-white drop-shadow" />
+              )}
+            </div>
+          </div>
           <div className="flex-1 space-y-1">
-            <label className="text-[11px] font-semibold text-dfz-text-muted">Название канала</label>
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-semibold text-dfz-text-muted">Название канала</label>
+              {avatarUrl && (
+                <button
+                  type="button"
+                  onClick={() => setAvatarUrl('')}
+                  className="text-[10px] text-rose-400 hover:underline"
+                >
+                  Удалить фото
+                </button>
+              )}
+            </div>
             <input
               type="text"
               required
@@ -95,17 +157,6 @@ export const NewChannelModal: React.FC<NewChannelModalProps> = ({ isOpen, onClos
             onChange={(e) => setDescription(e.target.value)}
             placeholder="О чем этот канал, тематика публикаций..."
             className="w-full p-2.5 bg-dfz-bg border border-dfz-border rounded-dfz-lg text-xs text-dfz-text focus:outline-none focus:border-dfz-accent resize-none"
-          />
-        </div>
-
-        <div className="space-y-1">
-          <label className="text-[11px] font-semibold text-dfz-text-muted">URL Аватара (необязательно)</label>
-          <input
-            type="url"
-            value={avatarUrl}
-            onChange={(e) => setAvatarUrl(e.target.value)}
-            placeholder="https://..."
-            className="w-full h-8 px-3 bg-dfz-bg border border-dfz-border rounded-dfz-lg text-xs text-dfz-text focus:outline-none focus:border-dfz-accent font-mono"
           />
         </div>
 

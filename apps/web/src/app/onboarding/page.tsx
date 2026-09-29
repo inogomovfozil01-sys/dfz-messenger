@@ -2,9 +2,10 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ShieldCheck, ArrowRight, User, Image, FileText, Lock, Check } from 'lucide-react';
+import { ShieldCheck, ArrowRight, User, Image, FileText, Lock, Check, Camera } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { Avatar } from '../../components/ui/Avatar';
+import { apiRequest } from '../../lib/api';
 import { PrivacyVisibility } from '@dfz/types';
 
 export default function OnboardingPage() {
@@ -17,8 +18,38 @@ export default function OnboardingPage() {
   const [displayName, setDisplayName] = useState(profile?.displayName || user?.username || '');
   const [bio, setBio] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const avatarInputRef = React.useRef<HTMLInputElement>(null);
   const [lastSeenVis, setLastSeenVis] = useState<PrivacyVisibility>(PrivacyVisibility.EVERYONE);
   const [callVis, setCallVis] = useState<PrivacyVisibility>(PrivacyVisibility.EVERYONE);
+
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAvatarUrl(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    setIsUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await apiRequest<{ url: string }>('/api/media/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      if (res.success && res.data?.url) {
+        setAvatarUrl(res.data.url);
+      }
+    } catch {
+      // Fallback
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
 
   const handleFinish = async () => {
     await updateProfile({
@@ -91,19 +122,47 @@ export default function OnboardingPage() {
               <p className="text-xs text-dfz-text-muted">Персонализируйте ваш профиль</p>
             </div>
 
-            <div className="flex justify-center my-2">
-              <Avatar src={avatarUrl} name={displayName || 'U'} size="xl" />
-            </div>
+            <input
+              type="file"
+              ref={avatarInputRef}
+              onChange={handleAvatarFileChange}
+              accept="image/*"
+              className="hidden"
+            />
 
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-dfz-text-muted">Ссылка на фото (URL)</label>
-              <input
-                type="url"
-                value={avatarUrl}
-                onChange={(e) => setAvatarUrl(e.target.value)}
-                placeholder="https://images.unsplash.com/..."
-                className="w-full h-9 px-3 bg-dfz-bg border border-dfz-border rounded-dfz-lg text-xs text-dfz-text focus:outline-none focus:border-dfz-border-focus"
-              />
+            <div className="flex flex-col items-center my-2">
+              <div
+                onClick={() => avatarInputRef.current?.click()}
+                className="relative cursor-pointer group rounded-full select-none"
+                title="Нажмите, чтобы выбрать фото"
+              >
+                <Avatar src={avatarUrl} name={displayName || 'U'} size="xl" />
+                <div className="absolute inset-0 bg-black/40 group-hover:bg-black/60 rounded-full flex items-center justify-center transition-colors">
+                  {isUploadingAvatar ? (
+                    <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Camera size={24} className="text-white drop-shadow" />
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 mt-2">
+                <button
+                  type="button"
+                  onClick={() => avatarInputRef.current?.click()}
+                  className="text-xs text-dfz-accent hover:underline font-semibold"
+                >
+                  {avatarUrl ? 'Изменить фото' : 'Загрузить фото'}
+                </button>
+                {avatarUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setAvatarUrl('')}
+                    className="text-xs text-rose-400 hover:underline font-semibold"
+                  >
+                    Удалить
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="space-y-1">

@@ -24,6 +24,7 @@ import {
   Volume2,
   Eye,
   Smartphone,
+  Camera,
 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Avatar } from '../ui/Avatar';
@@ -60,6 +61,36 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const [bio, setBio] = useState(profile?.bio || '');
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatarUrl || '');
   const [isSaved, setIsSaved] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const avatarInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAvatarUrl(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    setIsUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await apiRequest<{ url: string }>('/api/media/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      if (res.success && res.data?.url) {
+        setAvatarUrl(res.data.url);
+      }
+    } catch {
+      // Fallback
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
 
   // Privacy states
   const [lastSeen, setLastSeen] = useState<PrivacyVisibility>(
@@ -403,13 +434,51 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           {/* TAB 1: PROFILE */}
           {activeTab === 'profile' && (
             <form onSubmit={handleSaveProfile} className="space-y-4">
+              <input
+                type="file"
+                ref={avatarInputRef}
+                onChange={handleAvatarFileChange}
+                accept="image/*"
+                className="hidden"
+              />
               <div className="flex items-center gap-4">
-                <Avatar src={avatarUrl} name={displayName || user?.username || 'U'} size="lg" />
+                <div
+                  onClick={() => avatarInputRef.current?.click()}
+                  className="relative cursor-pointer group flex-shrink-0"
+                  title="Нажмите, чтобы загрузить фото профиля"
+                >
+                  <Avatar src={avatarUrl} name={displayName || user?.username || 'U'} size="lg" />
+                  <div className="absolute inset-0 bg-black/40 group-hover:bg-black/60 rounded-full flex items-center justify-center transition-colors">
+                    {isUploadingAvatar ? (
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Camera size={18} className="text-white drop-shadow" />
+                    )}
+                  </div>
+                </div>
                 <div>
                   <h4 className="text-sm font-bold text-dfz-text">
                     {profile?.displayName || user?.username}
                   </h4>
-                  <p className="text-xs text-dfz-text-muted">@{user?.username}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <p className="text-xs text-dfz-text-muted">@{user?.username}</p>
+                    <button
+                      type="button"
+                      onClick={() => avatarInputRef.current?.click()}
+                      className="text-[11px] text-dfz-accent hover:underline font-medium"
+                    >
+                      {avatarUrl ? 'Изменить фото' : 'Загрузить фото'}
+                    </button>
+                    {avatarUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setAvatarUrl('')}
+                        className="text-[11px] text-rose-400 hover:underline font-medium"
+                      >
+                        Удалить
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -461,17 +530,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   onChange={(e) => setBio(e.target.value)}
                   placeholder="Пара слов о себе..."
                   className="w-full p-2.5 bg-dfz-bg border border-dfz-border rounded-dfz-lg text-xs text-dfz-text focus:outline-none focus:border-dfz-accent resize-none"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-dfz-text-muted">URL Аватара профиля</label>
-                <input
-                  type="url"
-                  value={avatarUrl}
-                  onChange={(e) => setAvatarUrl(e.target.value)}
-                  placeholder="https://..."
-                  className="w-full h-9 px-3 bg-dfz-bg border border-dfz-border rounded-dfz-lg text-xs text-dfz-text focus:outline-none focus:border-dfz-accent font-mono"
                 />
               </div>
 

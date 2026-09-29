@@ -47,6 +47,37 @@ export const ChannelManageModal: React.FC<ChannelManageModalProps> = ({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const avatarInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAvatarUrl(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    setIsUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await apiRequest<{ url: string }>('/api/media/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      if (res.success && res.data?.url) {
+        setAvatarUrl(res.data.url);
+      }
+    } catch {
+      // Fallback
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
   const [isPublic, setIsPublic] = useState(true);
   const [signMessages, setSignMessages] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
@@ -288,17 +319,49 @@ export const ChannelManageModal: React.FC<ChannelManageModalProps> = ({
           {/* TAB 1: GENERAL */}
           {activeTab === 'general' && (
             <form onSubmit={handleSaveGeneral} className="space-y-4">
+              <input
+                type="file"
+                ref={avatarInputRef}
+                onChange={handleAvatarFileChange}
+                accept="image/*"
+                className="hidden"
+              />
               <div className="flex items-center gap-4">
-                <Avatar src={avatarUrl || chat.avatarUrl} name={title || chat.title} size="xl" />
-                <div className="flex-1 space-y-1">
-                  <label className="text-[11px] font-semibold text-dfz-text-muted">URL Аватара канала</label>
-                  <input
-                    type="url"
-                    value={avatarUrl}
-                    onChange={(e) => setAvatarUrl(e.target.value)}
-                    placeholder="https://... (прямая ссылка на картинку)"
-                    className="w-full h-8 px-2.5 bg-dfz-bg border border-dfz-border rounded-dfz-lg text-xs text-dfz-text focus:outline-none focus:border-dfz-accent font-mono"
-                  />
+                <div
+                  onClick={() => avatarInputRef.current?.click()}
+                  className="relative cursor-pointer group flex-shrink-0"
+                  title="Загрузить фото канала"
+                >
+                  <Avatar src={avatarUrl || chat.avatarUrl} name={title || chat.title} size="xl" />
+                  <div className="absolute inset-0 bg-black/40 group-hover:bg-black/60 rounded-full flex items-center justify-center transition-colors">
+                    {isUploadingAvatar ? (
+                      <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Camera size={22} className="text-white drop-shadow" />
+                    )}
+                  </div>
+                </div>
+                <div className="flex-1 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-semibold text-dfz-text-muted">Фотография канала</label>
+                    {avatarUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setAvatarUrl('')}
+                        className="text-[10px] text-rose-400 hover:underline"
+                      >
+                        Удалить фото
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => avatarInputRef.current?.click()}
+                    className="px-3 py-1.5 rounded-dfz-lg bg-dfz-surface hover:bg-dfz-surface-hover border border-dfz-border text-dfz-text text-xs font-semibold flex items-center gap-2 transition-colors"
+                  >
+                    <Camera size={14} className="text-dfz-accent" />
+                    <span>{avatarUrl ? 'Изменить фото' : 'Загрузить фото'}</span>
+                  </button>
                 </div>
               </div>
 

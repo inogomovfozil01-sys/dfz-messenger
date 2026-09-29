@@ -58,11 +58,21 @@ export const Avatar: React.FC<AvatarProps> = ({
     return colors[index];
   };
 
+  const resolveMediaUrl = (url?: string | null) => {
+    if (!url) return '';
+    if (url.startsWith('/api/') && process.env.NEXT_PUBLIC_API_URL) {
+      return `${process.env.NEXT_PUBLIC_API_URL}${url}`;
+    }
+    return url;
+  };
+
+  const resolvedSrc = resolveMediaUrl(src);
+
   return (
     <div className={`relative inline-block select-none flex-shrink-0 ${className}`}>
-      {src ? (
+      {resolvedSrc ? (
         <img
-          src={src}
+          src={resolvedSrc}
           alt={name || 'Avatar'}
           className={`${sizeClasses[size]} rounded-full object-cover border border-dfz-border`}
           onError={(e) => {
