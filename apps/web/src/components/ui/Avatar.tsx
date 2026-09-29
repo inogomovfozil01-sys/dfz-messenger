@@ -43,13 +43,13 @@ export const Avatar: React.FC<AvatarProps> = ({
   const getBackgroundColor = (str?: string | null) => {
     const s = str || '?';
     const colors = [
-      'bg-blue-600',
-      'bg-indigo-600',
-      'bg-violet-600',
-      'bg-emerald-600',
-      'bg-teal-600',
-      'bg-rose-600',
-      'bg-amber-600',
+      'bg-[#52627a]',
+      'bg-[#62618b]',
+      'bg-[#6d6082]',
+      'bg-[#526f68]',
+      'bg-[#4d6c76]',
+      'bg-[#80636e]',
+      'bg-[#7b6c54]',
     ];
     let hash = 0;
     for (let i = 0; i < s.length; i++) {

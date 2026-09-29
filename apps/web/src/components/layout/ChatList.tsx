@@ -192,19 +192,17 @@ export const ChatList: React.FC<ChatListProps> = ({
     : [];
 
   return (
-    <div className="dfz-chat-list w-full md:w-[380px] lg:w-[420px] h-full bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] flex flex-col select-none flex-shrink-0 relative overflow-hidden">
+    <div className="dfz-chat-list w-full md:w-[340px] h-full bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] flex flex-col select-none flex-shrink-0 relative overflow-hidden">
       {/* Telegram Web Top Bar: Hamburger Menu + Search */}
-      <div className="p-2.5 pb-1.5 space-y-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]">
-        <div className="flex items-center gap-2">
-          {/* Hamburger Menu Button */}
-          <button
-            type="button"
-            onClick={onOpenMenu}
-            className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors flex-shrink-0"
-            title="Главное меню"
-          >
-            <Menu size={22} />
+      <div className="px-4 pt-4 pb-0 space-y-3 bg-[var(--bg-surface)]">
+        <div className="flex items-center justify-between">
+          <button onClick={onOpenMenu} className="flex items-center gap-2.5 text-left rounded-lg" aria-label="Открыть меню DFZ">
+            <BrandMark size={34} />
+            <span><span className="block text-[15px] font-semibold tracking-tight">DFZ Messenger</span><span className="block text-[11px] text-[var(--text-secondary)]">Личное пространство для общения</span></span>
           </button>
+          <button onClick={() => setIsFabOpen(!isFabOpen)} title="Новая беседа" aria-label="Новая беседа" aria-expanded={isFabOpen} className="dfz-icon-button"><Edit2 size={18} /></button>
+        </div>
+        <div className="flex items-center gap-2">
 
           {/* Telegram Rounded Search Input */}
           <div className="relative flex-1 flex items-center">
@@ -226,8 +224,8 @@ export const ChatList: React.FC<ChatListProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               aria-label="Поиск пользователей и сообщений"
-              placeholder="Поиск"
-              className="w-full h-10 pl-10 pr-8 bg-[var(--bg-surface-secondary)] border border-transparent focus:border-[var(--accent-primary)] rounded-full text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none transition-colors"
+              placeholder="Поиск чатов и сообщений"
+              className="w-full h-10 pl-10 pr-8 bg-[var(--bg-surface-secondary)] border border-transparent focus:border-[var(--accent-primary)] rounded-lg text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none transition-colors"
             />
             {searchQuery && (
               <button
@@ -242,7 +240,7 @@ export const ChatList: React.FC<ChatListProps> = ({
         </div>
 
         {/* Telegram Folder Tabs with Unread Count Badges */}
-        <div className="flex items-center gap-1 overflow-x-auto pb-1 no-scrollbar pt-0.5">
+        <div className="dfz-folders flex items-center gap-4 overflow-x-auto no-scrollbar">
           {folders.map((f) => {
             const isActive = activeFolder === f.id;
             return (
@@ -250,9 +248,10 @@ export const ChatList: React.FC<ChatListProps> = ({
                 key={f.id}
                 type="button"
                 onClick={() => setActiveFolder(f.id)}
-                className={`relative px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                aria-pressed={isActive}
+                className={`relative py-3 text-[13px] font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 ${
                   isActive
-                    ? 'bg-[var(--accent-primary)] text-white shadow-sm'
+                    ? 'text-[var(--accent-text)]'
                     : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)]'
                 }`}
               >
@@ -260,7 +259,7 @@ export const ChatList: React.FC<ChatListProps> = ({
                 {f.count !== undefined && f.count > 0 && (
                   <span
                     className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-                      isActive ? 'bg-white/25 text-white' : 'bg-[var(--accent-primary)] text-white'
+                      isActive ? 'bg-[var(--accent-subtle)] text-[var(--accent-text)]' : 'bg-[var(--bg-surface-hover)] text-[var(--text-secondary)]'
                     }`}
                   >
                     {f.count > 99 ? '99+' : f.count}
@@ -443,16 +442,8 @@ export const ChatList: React.FC<ChatListProps> = ({
 
       {/* Telegram Floating Action Button (FAB) (✏️ Pencil Button) */}
       {!searchQuery.trim() && (
-        <div className="absolute bottom-5 right-5 z-20">
+        <div className="absolute top-[62px] right-4 z-20">
           <div className="relative">
-            <button
-              type="button"
-              onClick={() => setIsFabOpen(!isFabOpen)}
-              className="w-13 h-13 p-3.5 rounded-full bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white shadow-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95"
-              title="Создать чат"
-            >
-              <Edit2 size={22} />
-            </button>
 
             {/* Telegram FAB Popup Menu */}
             {isFabOpen && (
@@ -461,7 +452,7 @@ export const ChatList: React.FC<ChatListProps> = ({
                   onClick={() => setIsFabOpen(false)}
                   className="fixed inset-0 z-30"
                 />
-                <div className="absolute right-0 bottom-16 w-52 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl shadow-2xl py-1.5 z-40 animate-scale-in text-xs font-semibold text-[var(--text-primary)]">
+                <div className="absolute right-0 top-0 w-52 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg shadow-xl py-1.5 z-40 text-[13px] font-medium text-[var(--text-primary)]">
                   <button
                     type="button"
                     onClick={() => {

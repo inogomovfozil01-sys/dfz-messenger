@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import { createHash } from 'crypto';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '../prisma';
@@ -89,7 +90,7 @@ export class AuthService {
       deviceName: input.deviceName,
     });
 
-    const tokens = this.generateTokens(user.id, user.username, user.role as UserRole, session.id);
+    const tokens = await this.issueTokens(user.id, user.username, user.role as UserRole, session.id);
 
     return {
       user: {
@@ -158,7 +159,7 @@ export class AuthService {
       deviceName: input.deviceName,
     });
 
-    const tokens = this.generateTokens(user.id, user.username, user.role as UserRole, session.id);
+    const tokens = await this.issueTokens(user.id, user.username, user.role as UserRole, session.id);
 
     return {
       user: {
@@ -179,7 +180,7 @@ export class AuthService {
 
   async refreshTokens(refreshToken: string) {
     try {
-      const decoded = jwt.verify(refreshToken, ENV.JWT_REFRESH_SECRET) as {
+      const decoded = jwt.verify(refreshToken, ENV.JWT_REFRESH_SECRET, { algorithms: ['HS256'] }) as {
         userId: string;
         sessionId: string;
       };
@@ -189,25 +190,29 @@ export class AuthService {
         include: { user: true },
       });
 
-      if (!session || session.isRevoked || new Date() > session.expiresAt || session.user.isBanned) {
+      if (!session || session.userId !== decoded.userId || session.isRevoked || new Date() >= session.expiresAt || session.user.isBanned) {
         const err: any = new Error('Session is invalid or revoked');
         err.status = 401;
         err.code = 'INVALID_SESSION';
         throw err;
       }
 
-      // Update session activity
-      await prisma.session.update({
-        where: { id: session.id },
-        data: { lastActiveAt: new Date() },
-      });
-
-      return this.generateTokens(
+      const tokens = this.generateTokens(
         session.user.id,
         session.user.username,
         session.user.role as UserRole,
         session.id
       );
+      // Compare-and-swap ensures only one concurrent redemption succeeds.
+      const rotated = await prisma.session.updateMany({
+        where: { id: session.id, tokenHash: this.hashToken(refreshToken), isRevoked: false, expiresAt: { gt: new Date() } },
+        data: { tokenHash: this.hashToken(tokens.refreshToken), lastActiveAt: new Date() },
+      });
+      if (rotated.count !== 1) {
+        await prisma.session.updateMany({ where: { id: session.id }, data: { isRevoked: true } });
+        throw new Error('Refresh token reuse detected');
+      }
+      return tokens;
     } catch (error: any) {
       const err: any = new Error('Invalid refresh token');
       err.status = 401;
@@ -406,7 +411,7 @@ export class AuthService {
     );
 
     const refreshToken = jwt.sign(
-      { userId, sessionId },
+      { userId, sessionId, jti: uuidv4() },
       ENV.JWT_REFRESH_SECRET,
       { expiresIn: `${ENV.JWT_REFRESH_EXPIRES_IN_DAYS}d` }
     );
@@ -416,6 +421,16 @@ export class AuthService {
       refreshToken,
       expiresIn: 900, // 15 mins in seconds
     };
+  }
+
+  private hashToken(token: string) {
+    return createHash('sha256').update(token).digest('hex');
+  }
+
+  private async issueTokens(userId: string, username: string, role: UserRole, sessionId: string) {
+    const tokens = this.generateTokens(userId, username, role, sessionId);
+    await prisma.session.update({ where: { id: sessionId }, data: { tokenHash: this.hashToken(tokens.refreshToken) } });
+    return tokens;
   }
 }
 

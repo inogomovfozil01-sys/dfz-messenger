@@ -1,5 +1,17 @@
 # DFZ Messenger — audit and verification ledger
 
+## Security follow-up — 2026-09-29
+
+Current code inspection found regressions relative to earlier notes: media GET was anonymous/publicly cached, refresh tokens were reusable, CONTACTS visibility accepted the viewer's own contact list, and platform admins bypassed group posting/story privacy.
+
+Fixed: session-authorized private media with ownership/membership/cleared-history checks, avatar/story upload ownership, file signature detection and canonical extensions, strict owner contact lists, group/story privacy enforcement, HTTP origin checks and WebSocket handshake origin filtering, refresh hash rotation with atomic redemption/replay revocation, bounded upload/message/refresh rate limits, atomic message retry serialization. Client refresh is shared between concurrent requests and coordinated across tabs through Web Locks where available. Dev-seed no longer deletes existing data and refuses remote/production databases.
+
+Verified against explicitly selected local PostgreSQL `dfz_rebuild_qa`: 17 new security/concurrency scenarios, 13 core integration scenarios, 14 economy scenarios, existing security and management regression suites, and client concurrent/stale-401 refresh tests passed. Redis was unavailable; these runs used local memory fallback. Existing tests were retained and included in `npm test`. Tests now reject non-QA database URLs.
+
+No production database writes or deployment performed. No complete browser/device acceptance review performed in this stage. Runtime operations, external provider integrations and remaining feature scope are not certified by these tests. Setup, rollout compatibility and explicit release blockers are documented in `DEPLOYMENT.md`.
+
+API TypeScript build and final Next.js production build passed. `git diff --check` passed. Next.js reports non-blocking webpack cache and missing metadataBase warnings; neither was represented as a clean browser-console check.
+
 Audit date: 2026-09-27. Existing Next.js frontend, Express API, Prisma/PostgreSQL and Socket.IO retained. Pre-existing working-tree edits retained. Status describes end-to-end behavior, not the existence of a component. IMPLEMENTED does not imply production verified; verification evidence is recorded separately.
 
 | Area / request sections | Initial status | Evidence / required work |

@@ -1,6 +1,7 @@
 import { requireCommunication, requireMember, requireRight, httpError } from '../common/access';
 import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '../prisma';
+import { requireOwnedMedia } from '../media/media.service';
 import { ChatType, MemberRole, ReceiptStatus } from '@dfz/types';
 import { usersService } from '../users/users.service';
 import { gatewayInstance } from '../gateway/websocket.gateway';
@@ -291,6 +292,7 @@ export class ChatsService {
     avatarUrl?: string;
     memberIds?: string[];
   }) {
+    await requireOwnedMedia(ownerId, data.avatarUrl);
     const inviteCode = uuidv4().substring(0, 8);
     const membersToCreate: any[] = [
       { userId: ownerId, role: MemberRole.OWNER },
@@ -328,6 +330,7 @@ export class ChatsService {
     avatarUrl?: string;
     isPublic?: boolean;
   }) {
+    await requireOwnedMedia(ownerId, data.avatarUrl);
     const inviteCode = uuidv4().substring(0, 8);
     const channel = await prisma.chat.create({
       data: {
@@ -602,6 +605,7 @@ export class ChatsService {
     }
 
     requireRight(membership, 'changeInfo');
+    await requireOwnedMedia(userId, data.avatarUrl);
     const updated = await prisma.chat.update({
       where: { id: chatId },
       data: {

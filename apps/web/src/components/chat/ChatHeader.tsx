@@ -132,7 +132,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   // If in multi-select mode, render select bar
   if (isSelectMode) {
     return (
-      <div className="flex items-center justify-between h-14 px-4 bg-[#19232e] border-b border-dfz-border select-none z-10 flex-shrink-0 animate-fade-in">
+      <div className="flex items-center justify-between h-14 px-4 bg-[var(--bg-surface)] border-b border-dfz-border select-none z-10 flex-shrink-0 animate-fade-in">
         <div className="flex items-center gap-3">
           <button
             onClick={clearSelectedMessages}
@@ -165,7 +165,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   // If searching in chat, render in-chat search bar
   if (isSearchingInChat) {
     return (
-      <div className="flex items-center justify-between h-[58px] px-3 sm:px-4 bg-[var(--bg-surface)] border-b border-[var(--border-subtle)] select-none z-10 flex-shrink-0 animate-fade-in">
+      <div className="dfz-chat-header flex items-center justify-between h-16 px-3 sm:px-6 gap-2 bg-[var(--bg-surface)] border-b border-[var(--border-subtle)] select-none z-10 flex-shrink-0 animate-fade-in">
         <div className="flex items-center gap-2 flex-1 min-w-0 mr-3">
           <Search size={16} className="text-[var(--text-tertiary)] flex-shrink-0" />
           <input
@@ -198,8 +198,8 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
 
   return (
     <div className="flex flex-col bg-[var(--bg-surface)] border-b border-[var(--border-subtle)] select-none z-10 flex-shrink-0">
-      <div className="flex items-center justify-between h-[58px] px-3 sm:px-4">
-        <div className="flex items-center gap-3 min-w-0">
+      <div className="dfz-chat-header flex items-center justify-between h-16 px-3 sm:px-6 gap-2">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
           {/* Mobile Back Button */}
           <button
             type="button"
@@ -216,13 +216,13 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
               src={chat.avatarUrl}
               name={chat.title || 'Chat'}
               size="md"
-              isOnline={chat.type === ChatType.DIRECT && !!otherMember?.lastSeenAt}
+              isOnline={chat.type === ChatType.DIRECT && !!(otherMember as any)?.isOnline}
             />
           </div>
 
           {/* Chat Title & Subtitle */}
           <div onClick={onToggleInfo} className="flex-1 min-w-0 cursor-pointer">
-            <h2 className="text-sm font-semibold text-dfz-text truncate leading-tight">
+            <h2 className="text-[16px] font-semibold text-dfz-text truncate leading-tight">
               {chat.title || 'Чат'}
             </h2>
             <p className="text-xs text-dfz-text-muted truncate leading-tight mt-0.5">
@@ -376,7 +376,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
       {pinnedList.length > 0 && currentPinned && (
         <div
           onClick={handleCyclePin}
-          className="flex items-center justify-between px-3 sm:px-4 py-1.5 bg-[#19232e]/80 hover:bg-[#19232e] border-t border-dfz-border/60 text-xs cursor-pointer transition-colors"
+          className="flex items-center justify-between px-3 sm:px-4 py-1.5 bg-[var(--bg-surface)]/80 hover:bg-[var(--bg-surface)] border-t border-dfz-border/60 text-xs cursor-pointer transition-colors"
         >
           <div className="flex items-center gap-2 min-w-0">
             <Pin size={13} className="text-[var(--accent-primary)] flex-shrink-0" />

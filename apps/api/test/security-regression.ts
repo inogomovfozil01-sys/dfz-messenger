@@ -1,3 +1,4 @@
+import './require-local-db';
 import assert from 'node:assert/strict';
 import { prisma } from '../src/prisma';
 import { authService } from '../src/auth/auth.service';
@@ -38,7 +39,9 @@ async function main() {
     await denied(() => pollsService.createPoll(bid, channel.id, { question: 'Bypass?', options: ['yes', 'no'] }));
     await denied(() => callsService.logCallStart({ callerId: cid, receiverId: bid, chatId: privateChat.id, type: 'AUDIO' as any }));
     await usersService.updatePrivacy(aid, { photoVisibility: PrivacyVisibility.NOBODY, lastSeenVisibility: PrivacyVisibility.NOBODY });
-    await usersService.updateProfile(aid, { avatarUrl: 'https://example.invalid/private.png' });
+    const key = `privacy-test-${suffix}.png`;
+    await prisma.upload.create({ data: { storageKey: key, ownerId: aid, originalName: 'private.png', mimeType: 'image/png', sizeBytes: 1 } });
+    await usersService.updateProfile(aid, { avatarUrl: `/api/media/files/${key}` });
     await contactsService.addContact(bid, aid);
     assert.equal((await contactsService.getContacts(bid))[0].contactUser.avatarUrl, null);
     const privateDetail = await chatsService.getChatById(privateChat.id, bid);
@@ -67,6 +70,7 @@ async function main() {
     await denied(() => requireSession(aid, sessionId));
     console.log('PASS: authorization, privacy across contacts/chat lists/details, block, cleared history/pins and revoked sessions');
   } finally {
+    await prisma.upload.deleteMany({ where: { ownerId: { in: [aid,bid,cid] } } });
     await prisma.chat.deleteMany({ where: { members: { some: { userId: { in: [aid,bid,cid] } } } } });
     await prisma.user.deleteMany({ where: { id: { in: [aid,bid,cid] } } });
     await prisma.$disconnect();

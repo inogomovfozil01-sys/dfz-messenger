@@ -4,9 +4,8 @@ import os from 'os';
 import { mediaService } from './media.service';
 import { authGuard } from '../common/auth.guard';
 import { LIMITS } from '@dfz/config';
+import { rateLimiter } from '../common/rate-limiter';
 
-import jwt from 'jsonwebtoken';
-import { ENV } from '../config';
 
 export const mediaRouter = Router();
 
@@ -17,23 +16,11 @@ const upload = multer({
   },
 });
 
-mediaRouter.get('/files/:key', async (req, res, next) => {
+mediaRouter.get('/files/:key', authGuard, async (req, res, next) => {
   try {
-    let userId: string | undefined = undefined;
-    let token = req.cookies?.dfz_access_token || (req.query?.token as string);
-    if (!token && req.headers.authorization) {
-      const parts = req.headers.authorization.split(' ');
-      if (parts.length === 2 && parts[0] === 'Bearer') token = parts[1];
-    }
-    if (token) {
-      try {
-        const decoded = jwt.verify(token, ENV.JWT_ACCESS_SECRET) as any;
-        userId = decoded.userId;
-      } catch {}
-    }
-
-    const file = await mediaService.getFile(req.params.key, userId);
-    res.setHeader('Cache-Control', 'public, max-age=86400');
+    const file = await mediaService.getFile(req.params.key, req.user!.userId);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.type(file.mimeType);
     if (!/^(image|video|audio)\//.test(file.mimeType)) res.attachment(req.params.key);
@@ -42,6 +29,7 @@ mediaRouter.get('/files/:key', async (req, res, next) => {
 });
 
 mediaRouter.use(authGuard);
+mediaRouter.use(rateLimiter({ maxRequests: 30, windowSeconds: 60, keyPrefix: 'rl_upload' }));
 
 // 1. Upload single file
 mediaRouter.post('/upload', upload.single('file'), async (req: Request, res: Response, next: NextFunction) => {

@@ -146,13 +146,13 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
 
   return (
     <>
-      <div className="w-80 border-l border-[#292930] bg-[#18181c] flex flex-col h-full shrink-0 select-none text-dfz-text">
+      <div className="fixed inset-y-0 right-0 z-40 xl:static xl:z-auto w-full md:w-[340px] border-l border-[var(--border-subtle)] bg-[var(--bg-surface)] flex flex-col h-full shrink-0 select-none text-dfz-text">
         {/* Telegram Exact Header Bar with Edit Pencil */}
-        <div className="h-14 px-4 border-b border-[#292930] flex items-center justify-between shrink-0 bg-[#18181c]">
+        <div className="h-14 px-4 border-b border-[var(--border-subtle)] flex items-center justify-between shrink-0 bg-[var(--bg-surface)]">
           <div className="flex items-center gap-3">
             <button
               onClick={onClose}
-              className="p-1.5 -ml-1 rounded-full hover:bg-[#28282e] text-dfz-text-muted hover:text-dfz-text transition-colors"
+              className="p-1.5 -ml-1 rounded-full hover:bg-[var(--bg-surface-hover)] text-dfz-text-muted hover:text-dfz-text transition-colors"
               title="Закрыть"
             >
               <X size={19} />
@@ -164,7 +164,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
           {(isOwnerOrAdmin || chat.type === ChatType.DIRECT) && (
             <button
               onClick={handleEditClick}
-              className="p-2 rounded-full hover:bg-[#28282e] text-dfz-text-muted hover:text-dfz-text transition-colors"
+              className="p-2 rounded-full hover:bg-[var(--bg-surface-hover)] text-dfz-text-muted hover:text-dfz-text transition-colors"
               title={chat.type === ChatType.DIRECT ? 'Изменить профиль' : 'Управление группой'}
             >
               <Edit2 size={17} />
@@ -198,7 +198,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
 
           {/* Telegram Info Card Container (Screenshot 1 & 3) */}
           <div className="px-4 pb-4 space-y-2">
-            <div className="p-3.5 rounded-dfz-xl bg-[#212126] border border-[#292930] space-y-3">
+            <div className="p-3.5 rounded-dfz-xl bg-[var(--bg-surface-secondary)] border border-[var(--border-subtle)] space-y-3">
               {/* Username / Link */}
               <div className="flex items-start gap-3">
                 <Info size={16} className="text-dfz-text-muted mt-0.5 shrink-0" />
@@ -218,14 +218,14 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
 
               {/* Bio if available */}
               {directUserProfile?.bio && (
-                <div className="pt-2 border-t border-[#292930]/80">
+                <div className="pt-2 border-t border-[var(--border-subtle)]/80">
                   <p className="text-xs text-dfz-text leading-relaxed">{directUserProfile.bio}</p>
                   <span className="text-[10px] text-dfz-text-muted">О себе</span>
                 </div>
               )}
 
               {/* Birthday (Screenshot 1) */}
-              <div className="pt-2 border-t border-[#292930]/80 flex items-start gap-3">
+              <div className="pt-2 border-t border-[var(--border-subtle)]/80 flex items-start gap-3">
                 <Calendar size={16} className="text-purple-400 mt-0.5 shrink-0" />
                 <div>
                   <div className="text-xs text-dfz-text">
@@ -237,7 +237,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
 
               {/* Phone (Screenshot 3) */}
               {directUserProfile?.phone && (
-                <div className="pt-2 border-t border-[#292930]/80 flex items-start gap-3">
+                <div className="pt-2 border-t border-[var(--border-subtle)]/80 flex items-start gap-3">
                   <Phone size={16} className="text-emerald-400 mt-0.5 shrink-0" />
                   <div>
                     <div className="text-xs text-dfz-text font-mono">{directUserProfile.phone}</div>
@@ -247,7 +247,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
               )}
 
               {/* Notifications Toggle Switch (Screenshot 1 & 3) */}
-              <div className="pt-2 border-t border-[#292930]/80 flex items-center justify-between">
+              <div className="pt-2 border-t border-[var(--border-subtle)]/80 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Bell size={16} className="text-rose-400" />
                   <span className="text-xs text-dfz-text">Уведомления</span>
@@ -257,7 +257,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
                   type="button"
                   onClick={() => toggleMuteChat(chat.id, !chat.isMuted)}
                   className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                    !chat.isMuted ? 'bg-dfz-accent' : 'bg-[#2a2a32]'
+                    !chat.isMuted ? 'bg-dfz-accent' : 'bg-[var(--bg-surface-hover)]'
                   }`}
                 >
                   <span
@@ -272,7 +272,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
 
           {/* Segmented Media Pills (Screenshot 1: Истории | Медиа | Ссылки | Голосовые) */}
           <div className="px-4 pb-2">
-            <div className="flex items-center gap-1 p-1 bg-[#212126] rounded-dfz-xl border border-[#292930] text-[11px] font-semibold overflow-x-auto no-scrollbar">
+            <div className="flex items-center gap-1 p-1 bg-[var(--bg-surface-secondary)] rounded-dfz-xl border border-[var(--border-subtle)] text-[11px] font-semibold overflow-x-auto no-scrollbar">
               {chat.type === ChatType.GROUP || chat.type === ChatType.CHANNEL ? (
                 <>
                   <button
@@ -370,7 +370,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
                 {chat.members?.map((m) => (
                   <div
                     key={m.userId}
-                    className="flex items-center justify-between p-2 rounded-dfz-lg hover:bg-[#212126] transition-colors"
+                    className="flex items-center justify-between p-2 rounded-dfz-lg hover:bg-[var(--bg-surface-secondary)] transition-colors"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <Avatar
@@ -410,7 +410,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
                   mediaItems.map((item, i) => (
                     <div
                       key={i}
-                      className="aspect-square bg-[#212126] rounded-dfz-md overflow-hidden border border-[#292930] hover:opacity-90 cursor-pointer"
+                      className="aspect-square bg-[var(--bg-surface-secondary)] rounded-dfz-md overflow-hidden border border-[var(--border-subtle)] hover:opacity-90 cursor-pointer"
                     >
                       <img src={item.url} alt="media" className="w-full h-full object-cover" />
                     </div>
@@ -432,7 +432,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
                       href={link.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="p-2.5 rounded-dfz-lg bg-[#212126] border border-[#292930] flex items-center gap-2 text-xs text-dfz-text hover:text-dfz-accent transition-colors"
+                      className="p-2.5 rounded-dfz-lg bg-[var(--bg-surface-secondary)] border border-[var(--border-subtle)] flex items-center gap-2 text-xs text-dfz-text hover:text-dfz-accent transition-colors"
                     >
                       <Link2 size={14} className="shrink-0 text-dfz-accent" />
                       <span className="truncate flex-1">{link.url}</span>
@@ -454,7 +454,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
                   mediaItems.map((item, i) => (
                     <div
                       key={i}
-                      className="p-2.5 rounded-dfz-lg bg-[#212126] border border-[#292930] space-y-1"
+                      className="p-2.5 rounded-dfz-lg bg-[var(--bg-surface-secondary)] border border-[var(--border-subtle)] space-y-1"
                     >
                       <div className="flex items-center justify-between text-[11px] text-dfz-text-muted">
                         <span>Голосовая заметка</span>
@@ -476,7 +476,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
 
           {/* Direct Chat Danger Zone (Block / Report) */}
           {otherMember && (
-            <div className="p-4 pt-0 space-y-2 border-t border-[#292930]/80 mt-4">
+            <div className="p-4 pt-0 space-y-2 border-t border-[var(--border-subtle)]/80 mt-4">
               <button
                 onClick={handleBlockUser}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-rose-400 hover:bg-rose-500/10 rounded-dfz-lg transition-colors text-left"
@@ -487,7 +487,7 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({
 
               <button
                 onClick={handleReportUser}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-dfz-text-muted hover:text-dfz-text hover:bg-[#212126] rounded-dfz-lg transition-colors text-left"
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-dfz-text-muted hover:text-dfz-text hover:bg-[var(--bg-surface-secondary)] rounded-dfz-lg transition-colors text-left"
               >
                 <Shield size={15} />
                 <span>Пожаловаться</span>

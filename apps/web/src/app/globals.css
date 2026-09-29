@@ -15,30 +15,30 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 }
 
 :root {
-  /* Exact Telegram Dark Graphite & Violet Theme */
-  --bg-main: #0e0e10;
-  --bg-surface: #18181c;
-  --bg-surface-secondary: #212126;
-  --bg-surface-hover: #28282e;
-  --bg-surface-active: #2f2a48;
-  --border-subtle: #292930;
-  --border-focus: #8774e1;
+  /* DFZ graphite and restrained iris design tokens. */
+  --bg-main: #101113;
+  --bg-surface: #17181c;
+  --bg-surface-secondary: #202126;
+  --bg-surface-hover: #282a31;
+  --bg-surface-active: #292a3d;
+  --border-subtle: #2b2d34;
+  --border-focus: #7775d6;
   --text-primary: #ffffff;
-  --text-secondary: #9e9ea7;
-  --text-tertiary: #6b6b75;
-  --accent-primary: #8774e1;
-  --accent-hover: #7662d8;
+  --text-secondary: #a2a5af;
+  --text-tertiary: #858996;
+  --accent-primary: #7775d6;
+  --accent-hover: #6866c6;
   --accent-subtle: rgba(135, 116, 225, 0.15);
-  --accent-text: #b3a5f5;
+  --accent-text: #b2b0f0;
   --color-danger: #ef5350;
   --color-danger-hover: #e53935;
   --color-success: #4caf50;
   --color-warning: #f5c542;
-  --bubble-outgoing: #7b61ff;
+  --bubble-outgoing: #303047;
   --bubble-outgoing-text: #ffffff;
-  --bubble-incoming: #212126;
+  --bubble-incoming: #202126;
   --bubble-incoming-text: #ffffff;
-  --badge-unread: #8774e1;
+  --badge-unread: #7775d6;
   --badge-muted: #3a3a44;
 }
 
@@ -55,15 +55,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   /* DFZ light theme */
   --bg-surface-secondary: #f6f5fa;
   --accent-text: #624bb4;
-  --bg-main: #f1f0f6;
+  --bg-main: #f2f3f6;
   --bg-surface: #ffffff;
   --bg-surface-hover: #f4f4f5;
   --bg-surface-active: #e9e4fa;
   --border-subtle: #dfe1e5;
   --border-focus: #6d5bd0;
   --text-primary: #111827;
-  --text-secondary: #707579;
-  --text-tertiary: #9ca3af;
+  --text-secondary: #626977;
+  --text-tertiary: #737988;
   --accent-primary: #6d5bd0;
   --accent-hover: #5946bc;
   --accent-subtle: rgba(109, 91, 208, 0.1);
@@ -71,7 +71,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   --color-danger-hover: #c62828;
   --color-success: #4fae4e;
   --color-warning: #e5a93b;
-  --bubble-outgoing: #e8e1fc;
+  --bubble-outgoing: #e7e6f5;
   --bubble-outgoing-text: #000000;
   --bubble-incoming: #ffffff;
   --bubble-incoming-text: #000000;
@@ -82,22 +82,19 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 /* Telegram Wallpaper Background with subtle vector doodle texture */
 .tg-wallpaper {
   background-color: var(--bg-main);
-  background-image: radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 0),
-    radial-gradient(rgba(36, 129, 204, 0.05) 1px, transparent 0);
+  background-image: none;
   background-size: 24px 24px, 48px 48px;
   background-position: 0 0, 12px 12px;
 }
 
 /* Floating Date Pill in Telegram Chat */
 .tg-date-pill {
-  background: rgba(14, 22, 33, 0.55);
-  backdrop-filter: blur(8px);
-  color: #ffffff;
+  background: var(--bg-surface-secondary);
+  color: var(--text-secondary);
   font-size: 11px;
   font-weight: 600;
   padding: 3px 12px;
-  border-radius: 9999px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
 }
 
 /* Telegram Message Bubble Tails */
@@ -157,12 +154,26 @@ body {
 .dfz-rail button:hover,.dfz-rail button[aria-current=page] { background:var(--accent-subtle); color:var(--accent-text); }
 .dfz-brand-mark { display:grid; place-items:center; width:38px; height:38px; background:var(--accent-primary); color:white; border-radius:12px; font-weight:800; font-size:12px; letter-spacing:-.7px; box-shadow:0 4px 18px #6d5bd022; }
 .dfz-chat-list { background:var(--bg-surface); }
-.dfz-chat-row { margin:3px 10px; border:1px solid transparent; border-radius:14px; min-height:76px; }
-.dfz-chat-row[aria-current=true] { border-color:color-mix(in srgb,var(--accent-primary) 35%,transparent); }
-.dfz-chat-canvas { background:radial-gradient(ellipse at 70% 0%,#6d5bd009,transparent 60%),var(--bg-main); }
-.dfz-composer { background:var(--bg-main); border-top:0; padding:14px 24px 22px; }
-.dfz-composer > div:last-child { max-width:980px; margin:auto; }
+.dfz-chat-row { margin:2px 8px; border:0; border-radius:8px; min-height:72px; }
+.dfz-chat-row[aria-current=true] { box-shadow:inset 3px 0 var(--accent-primary); }
+.dfz-chat-canvas { background:var(--bg-main); }
+.dfz-composer { background:var(--bg-main); border-top:0; padding:12px 24px 20px; }
+.dfz-composer > div:last-child { max-width:1120px; margin:auto; }
 .dfz-composer textarea:focus-visible { outline:none; }
+.dfz-folders { border-bottom:1px solid var(--border-subtle); }
+.dfz-folders button[aria-pressed=true]::after { content:''; position:absolute; bottom:0; left:0; right:0; height:2px; background:var(--accent-primary); border-radius:2px; }
+.dfz-icon-button { width:40px; height:40px; display:grid; place-items:center; border-radius:8px; color:var(--text-secondary); flex-shrink:0; }
+.dfz-icon-button:hover { color:var(--text-primary); background:var(--bg-surface-hover); }
+.dfz-chat-header > div:last-child > button, .dfz-chat-header > div:last-child > button + button { width:40px; height:40px; display:grid; place-items:center; border-radius:8px; }
+.dfz-auth-screen { height:100dvh; overflow-y:auto; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:32px 20px; background:var(--bg-main); }
+.dfz-auth-card { width:100%; max-width:420px; padding:32px; border:1px solid var(--border-subtle); border-radius:12px; background:var(--bg-surface); }
+@media(max-width:767px) {
+  .dfz-chat-header > div:last-child { gap:0; }
+  .dfz-chat-header > div:last-child > button { width:36px; height:44px; padding:8px; }
+  .dfz-chat-header > div:last-child > button[title="Видеозвонок"], .dfz-chat-header > div:last-child > button[title="Информация о чате"] { display:none; }
+  .dfz-auth-card { padding:26px 22px; }
+}
+@media(max-height:600px) { .dfz-auth-screen { justify-content:flex-start; } }
 .dfz-empty-mark { width:100px;height:100px;border:1px solid var(--border-subtle);border-radius:30px;display:grid;place-items:center;color:var(--accent-text);background:var(--bg-surface);box-shadow:0 24px 80px #00000020; }
 @media(max-width:767px) { .dfz-composer { padding:10px 8px max(10px,env(safe-area-inset-bottom)); } .dfz-chat-row { margin:3px 8px; } input,textarea,select { font-size:16px !important; } }
 

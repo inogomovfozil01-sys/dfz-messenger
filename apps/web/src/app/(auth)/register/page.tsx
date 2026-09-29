@@ -108,7 +108,7 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center p-4 bg-[var(--bg-main)] text-[var(--text-primary)] select-none">
-      {/* Telegram Centered Auth Card */}
+      {/* DFZ Centered Auth Card */}
       <div className="w-full max-w-[400px] bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl p-7 sm:p-8 shadow-2xl space-y-6 relative overflow-hidden animate-scale-in">
         {/* Subtle Top Glow */}
         <div className="absolute -top-16 left-1/2 -translate-x-1/2 w-48 h-48 bg-[var(--accent-primary)]/15 rounded-full blur-3xl pointer-events-none" />
@@ -118,8 +118,8 @@ export default function RegisterPage() {
           <div className="relative w-16 h-16 mx-auto mb-2">
             <BrandMark className="w-16 h-16 shadow-lg shadow-[var(--accent-primary)]/20 rounded-2xl mx-auto" />
           </div>
-          <h1 className="text-xl font-bold tracking-tight text-[var(--text-primary)]">Регистрация в Telegram Web</h1>
-          <p className="text-xs text-[var(--text-secondary)]">Создайте аккаунт Telegram</p>
+          <h1 className="text-xl font-bold tracking-tight text-[var(--text-primary)]">Регистрация в DFZ Messenger</h1>
+          <p className="text-xs text-[var(--text-secondary)]">Создайте аккаунт DFZ</p>
         </div>
 
         {/* Error Alert */}

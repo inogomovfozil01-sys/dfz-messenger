@@ -1,4 +1,23 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+let refreshInFlight: Promise<boolean> | null = null;
+let authGeneration = 0;
+
+async function refreshSession(generation: number): Promise<boolean> {
+  if (generation !== authGeneration) return true;
+  if (!refreshInFlight) {
+    const refresh = async () => {
+      // A different tab may have already rotated the shared HttpOnly cookies.
+      const current = await fetch(`${API_BASE}/api/auth/me`, { credentials: 'include' });
+      const ok = current.ok || (await fetch(`${API_BASE}/api/auth/refresh`, { method: 'POST', credentials: 'include' })).ok;
+      if (ok) authGeneration++;
+      return ok;
+    };
+    refreshInFlight = (async () => typeof navigator !== 'undefined' && navigator.locks
+      ? await navigator.locks.request('dfz-session-refresh', refresh)
+      : await refresh())().finally(() => { refreshInFlight = null; });
+  }
+  return refreshInFlight;
+}
 
 interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;
@@ -37,16 +56,13 @@ export async function apiRequest<T = any>(
   };
 
   try {
+    const generation = authGeneration;
     let response = await fetch(url, config);
 
     // If 401 Unauthorized, try refreshing token once
     if (response.status === 401 && endpoint !== '/api/auth/login' && endpoint !== '/api/auth/refresh' && endpoint !== '/api/auth/register') {
       try {
-        const refreshRes = await fetch(`${API_BASE}/api/auth/refresh`, {
-          method: 'POST',
-          credentials: 'include',
-        });
-        if (refreshRes.ok) {
+        if (await refreshSession(generation)) {
           // Retry original request
           response = await fetch(url, config);
         }

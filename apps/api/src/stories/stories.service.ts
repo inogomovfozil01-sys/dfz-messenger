@@ -1,4 +1,5 @@
 import { prisma } from '../prisma';
+import { requireOwnedMedia } from '../media/media.service';
 import { gatewayInstance } from '../gateway/websocket.gateway';
 import { Story, StoryFeedItem, StoryMediaType, PrivacyVisibility } from '@dfz/types';
 import { maySee, httpError } from '../common/access';
@@ -9,9 +10,7 @@ export class StoriesService {
     if (!story) {
       throw httpError(404, 'Story unavailable');
     }
-    const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
-    const isAdmin = user && ['ADMIN', 'SUPERADMIN'].includes(user.role);
-    if (story.authorId === userId || isAdmin) {
+    if (story.authorId === userId) {
       return story;
     }
     if (story.isArchived || story.expiresAt <= new Date() || !(await maySee(userId, story.authorId, story.privacy))) {
@@ -32,12 +31,13 @@ export class StoriesService {
       privacy?: PrivacyVisibility;
     }
   ) {
+    if (data.mediaType !== 'TEXT') await requireOwnedMedia(authorId, data.mediaUrl);
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
     const story = await prisma.story.create({
       data: {
         authorId,
-        mediaUrl: data.mediaUrl,
+        mediaUrl: data.mediaType === 'TEXT' ? '' : data.mediaUrl,
         mediaType: data.mediaType || 'IMAGE',
         caption: data.caption,
         textOverlay: data.textOverlay,
@@ -82,10 +82,7 @@ export class StoriesService {
     // 1. Fetch user contacts (bi-directional)
     const contacts = await prisma.contact.findMany({
       where: {
-        OR: [
-          { userId: currentUserId },
-          { contactUserId: currentUserId },
-        ],
+        contactUserId: currentUserId,
       },
       select: { userId: true, contactUserId: true },
     });

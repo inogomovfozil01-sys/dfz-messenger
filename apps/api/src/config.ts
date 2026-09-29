@@ -25,7 +25,7 @@ export const ENV = {
   
   ADMIN_USERNAME: process.env.ADMIN_USERNAME || 'dfzadmin',
   ADMIN_EMAIL: process.env.ADMIN_EMAIL || 'admin@dfzmessenger.local',
-  ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || '200220032013',
+  ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || '',
 
   // Economy & Activity Configuration
   ACTIVITY_REWARD_STARS: parseInt(process.env.ACTIVITY_REWARD_STARS || '100', 10),

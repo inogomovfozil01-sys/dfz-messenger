@@ -95,9 +95,9 @@ export default function MessengerPage() {
   useEffect(() => {
     const totalUnread = chats.reduce((sum, c) => sum + (c.isMuted ? 0 : (c.unreadCount || 0)), 0);
     if (totalUnread > 0) {
-      document.title = `(${totalUnread}) Telegram Web`;
+      document.title = `(${totalUnread}) DFZ Messenger`;
     } else {
-      document.title = 'Telegram Web';
+      document.title = 'DFZ Messenger';
     }
   }, [chats]);
 
@@ -219,7 +219,7 @@ export default function MessengerPage() {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-[var(--bg-main)] text-white select-none">
         <BrandMark size={72} className="mb-4 animate-pulse drop-shadow-lg" />
-        <h2 className="text-base font-bold tracking-tight">Telegram</h2>
+        <h2 className="text-base font-bold tracking-tight">DFZ Messenger</h2>
         <p className="text-xs text-[var(--text-secondary)] mt-1 font-medium">Подключение…</p>
       </div>
     );
@@ -285,10 +285,11 @@ export default function MessengerPage() {
           </div>
         ) : (
           /* Telegram Classic Empty State */
-          <div className="tg-wallpaper flex-1 flex flex-col items-center justify-center p-8 text-center select-none relative">
-            <div className="px-4 py-2 rounded-full bg-black/40 backdrop-blur-md border border-white/5 text-xs font-medium text-[var(--text-secondary)] shadow-sm">
-              Выберите чат, чтобы начать общение
-            </div>
+          <div className="dfz-chat-canvas flex-1 flex flex-col items-center justify-center p-8 text-center select-none relative">
+            <BrandMark size={56} className="mb-5" />
+            <h1 className="text-xl font-semibold tracking-tight">DFZ Messenger</h1>
+            <p className="text-sm text-[var(--text-secondary)] mt-2 max-w-[260px] leading-relaxed">Выберите беседу или начните новую.<br />Всё важное — в одном месте.</p>
+            <button onClick={() => setIsNewChatOpen(true)} className="mt-6 text-[13px] font-medium text-[var(--accent-text)] px-4 py-2.5 rounded-lg border border-[var(--border-subtle)] hover:bg-[var(--bg-surface-hover)]">Новое сообщение</button>
           </div>
         )}
       </div>

@@ -308,8 +308,18 @@ export class MessagesService {
       throw err;
     }
 
-    // 3. Create message
-    const message = await prisma.message.create({
+    // Serialize retries across API workers before testing and inserting the key.
+    const message = await prisma.$transaction(async tx => {
+    if (data.idempotencyKey) {
+      const key = JSON.stringify([data.chatId, userId, data.idempotencyKey]);
+      await tx.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock(hashtextextended(${key}, 0))`;
+      const existing = await tx.message.findFirst({
+        where: { chatId: data.chatId, senderId: userId, idempotencyKey: data.idempotencyKey },
+        include: { sender: { include: { profile: true } }, attachments: true, replyTo: { include: { sender: { include: { profile: true } } } } },
+      });
+      if (existing) return existing;
+    }
+    const created = await tx.message.create({
       data: {
         chatId: data.chatId,
         senderId: userId,
@@ -343,9 +353,11 @@ export class MessagesService {
     });
 
     // Update chat updatedAt timestamp
-    await prisma.chat.update({
+    await tx.chat.update({
       where: { id: data.chatId },
       data: { updatedAt: new Date() },
+    });
+    return created;
     });
 
     return this.formatSingleMessage(message, userId);

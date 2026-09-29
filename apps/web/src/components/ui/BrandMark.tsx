@@ -5,36 +5,21 @@ interface BrandMarkProps {
   size?: number;
 }
 
-/** Official Telegram vector paper airplane logo */
+/** DFZ geometric monogram, shared by authentication and messenger UI. */
 export function BrandMark({ className = '', size = 48 }: BrandMarkProps) {
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 240 240"
+      viewBox="0 0 64 64"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
-      aria-label="Telegram"
+      role="img"
+      aria-label="DFZ Messenger"
     >
-      <circle cx="120" cy="120" r="120" fill="url(#tg_brand_grad)" />
-      <path
-        d="M54 117.5L174 71.5C179.5 69.5 184.5 73 182.5 78.5L162 175C160.5 181.5 156.5 183 151 180L120 157L105 171.5C103.5 173 102 174.5 99 174.5L101 144.5L156 94.5C158.5 92.5 155.5 91 152 93.5L84 136.5L55 127.5C48.5 125.5 48.5 121 55.5 118L54 117.5Z"
-        fill="white"
-      />
-      <defs>
-        <linearGradient
-          id="tg_brand_grad"
-          x1="120"
-          y1="0"
-          x2="120"
-          y2="240"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop stopColor="#2AABEE" />
-          <stop offset="1" stopColor="#229ED9" />
-        </linearGradient>
-      </defs>
+      <rect width="64" height="64" rx="14" fill="#7775D6" />
+      <path d="M11 21h6l5 5v12l-5 5h-6V21Zm18 22V21h11M29 31h9M45 21h10L45 43h10" stroke="white" strokeWidth="3.5" strokeLinejoin="miter" />
     </svg>
   );
 }

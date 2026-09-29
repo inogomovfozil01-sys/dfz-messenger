@@ -1,6 +1,11 @@
 # DFZ Messenger
 
-> Полноценный, production-ready Realtime Web-Мессенджер нового поколения, построенный на современной масштабируемой архитектуре.
+Статус релиза: разработка продолжается; весь production scope ещё не реализован.
+Актуальные ограничения и порядок развёртывания: [DEPLOYMENT.md](DEPLOYMENT.md).
+`npm test` запускается только с явным DATABASE_URL локальной `dfz_rebuild_qa`.
+Dev-seed работает только с пустой локальной БД и не удаляет существующие данные.
+
+> DFZ Messenger — разрабатываемый realtime web-мессенджер на Next.js, Express, PostgreSQL и Socket.IO.
 
 ---
 
@@ -149,7 +154,7 @@ npm run dev:web
 
 1. **Главный Администратор (Superadmin):**
    - Username: `dfzadmin`
-   - Пароль: `200220032013`
+   - Пароль: значение `ADMIN_PASSWORD`, заданное перед локальным seed.
    - Доступ к панели: `http://localhost:3000/admin`
 
 2. **Инженер (User 1):**

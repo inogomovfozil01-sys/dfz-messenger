@@ -248,7 +248,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       <div
         id={'msg-' + message.id}
         onContextMenu={handleContextMenu}
-        className={`group relative flex gap-2.5 my-1 max-w-[85%] md:max-w-[70%] select-text animate-message-in ${
+        className={`group relative flex gap-2.5 my-1 max-w-[88%] md:max-w-[65%] select-text animate-message-in ${
           isOutgoing ? 'ml-auto flex-row-reverse' : 'mr-auto'
         }`}
       >
@@ -349,7 +349,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       ) : (
         /* Telegram Bubble Container */
         <div
-          className={`relative rounded-[18px] px-4 py-2.5 text-sm leading-relaxed transition-all shadow-sm max-w-full ${
+          className={`relative rounded-xl px-3.5 py-2 text-[15px] leading-[1.5] transition-colors max-w-full ${
             isOutgoing
               ? 'bg-[var(--bubble-outgoing)] text-[var(--bubble-outgoing-text)] rounded-br-[6px]'
               : 'bg-[var(--bubble-incoming)] text-[var(--bubble-incoming-text)] rounded-bl-[6px]'
@@ -372,7 +372,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               <div className="font-semibold text-[var(--accent-text)] text-[11px] truncate">
                 {message.replyTo.senderName || 'Сообщение'}
               </div>
-              <div className="truncate text-white/80 text-[12px]">{message.replyTo.content}</div>
+              <div className="truncate text-[var(--text-secondary)] text-[12px]">{message.replyTo.content}</div>
             </div>
           )}
 

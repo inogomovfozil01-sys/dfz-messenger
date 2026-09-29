@@ -1,3 +1,4 @@
+import './require-local-db';
 import assert from 'assert';
 import { authService } from '../src/auth/auth.service';
 import { chatsService } from '../src/chats/chats.service';
@@ -133,8 +134,10 @@ async function runTests() {
 
     // 12. Stories
     console.log('Test 11: 24-hour Stories Lifecycle');
+    const storyKey = `story-test-${Date.now()}.png`;
+    await prisma.upload.create({ data: { storageKey: storyKey, ownerId: regResult.user.id, originalName: 'story.png', mimeType: 'image/png', sizeBytes: 1 } });
     const story = await storiesService.createStory(regResult.user.id, {
-      mediaUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500',
+      mediaUrl: `/api/media/files/${storyKey}`,
       caption: 'Test story caption',
     });
     assert.ok(story.id);
@@ -192,6 +195,7 @@ async function runTests() {
     console.log('  ✅ Forum topics creation and listing verified');
 
     // Clean up test data
+    await prisma.upload.deleteMany({ where: { ownerId: { in: [regResult.user.id, user2.user.id] } } });
     await prisma.user.deleteMany({
       where: { id: { in: [regResult.user.id, user2.user.id] } },
     });

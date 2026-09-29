@@ -11,7 +11,11 @@ export class WebSocketGateway {
   public io: Server;
   private onlineUsers = new Map<string, Set<string>>();
   constructor(server: HttpServer) {
-    this.io = new Server(server, { cors: { origin: [ENV.CLIENT_URL, 'http://localhost:3000', 'http://127.0.0.1:3000'], credentials: true }, maxHttpBufferSize: 65536 });
+    const origins = [ENV.CLIENT_URL, ...(ENV.NODE_ENV === 'production' ? [] : ['http://localhost:3000', 'http://127.0.0.1:3000'])];
+    this.io = new Server(server, {
+      cors: { origin: origins, credentials: true }, maxHttpBufferSize: 65536,
+      allowRequest: (req, callback) => callback(null, !req.headers.origin || origins.includes(req.headers.origin)),
+    });
     this.io.use(async (socket, next) => {
       try {
         const cookies = Object.fromEntries((socket.handshake.headers.cookie || '').split(';').filter(s => s.includes('=')).map(s => { const i = s.indexOf('='); return [s.slice(0, i).trim(), decodeURIComponent(s.slice(i + 1))]; }));

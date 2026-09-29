@@ -15,6 +15,14 @@ export const StoriesStrip: React.FC = () => {
   const ownFeedItem = feed.find((f) => f.user.id === user?.id);
   const otherFeedItems = feed.filter((f) => f.user.id !== user?.id);
 
+  if (!isLoadingFeed && !ownFeedItem && otherFeedItems.length === 0) return (
+    <div className="px-4 py-2 border-b border-[var(--border-subtle)]">
+      <button onClick={openCreator} className="w-full flex items-center justify-between min-h-9 text-[13px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-lg" aria-label="Добавить историю">
+        <span>Истории</span><Plus size={17} />
+      </button>
+    </div>
+  );
+
   return (
     <div className="w-full py-2.5 px-3 border-b border-dfz-border/60 bg-dfz-surface select-none">
       <div className="flex items-center gap-3 overflow-x-auto no-scrollbar scroll-smooth">
@@ -31,7 +39,7 @@ export const StoriesStrip: React.FC = () => {
               }}
               className={`p-0.5 rounded-full transition-transform active:scale-95 ${
                 ownFeedItem && ownFeedItem.stories.length > 0
-                  ? 'bg-gradient-to-tr from-dfz-accent via-purple-500 to-pink-500'
+                  ? 'bg-dfz-accent'
                   : 'ring-1 ring-dfz-border hover:ring-dfz-accent/60'
               }`}
             >
@@ -76,7 +84,7 @@ export const StoriesStrip: React.FC = () => {
               <div
                 className={`p-0.5 rounded-full transition-transform active:scale-95 ${
                   hasUnseen
-                    ? 'bg-gradient-to-tr from-dfz-accent via-purple-500 to-pink-500 animate-pulse-ring'
+                    ? 'bg-dfz-accent'
                     : 'ring-1.5 ring-dfz-border/80'
                 }`}
               >

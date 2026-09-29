@@ -23,10 +23,7 @@ export async function maySee(viewer: string, owner: string, visibility: string =
   if (visibility === 'EVERYONE') return true;
   return !!await prisma.contact.findFirst({
     where: {
-      OR: [
-        { userId: owner, contactUserId: viewer },
-        { userId: viewer, contactUserId: owner },
-      ],
+      userId: owner, contactUserId: viewer,
     },
   });
 }
@@ -48,10 +45,6 @@ export function requireRight(member: { role: string; permissions: unknown }, rig
 
 export async function requirePosting(chatId: string, userId: string, type = 'TEXT') {
   const member = await requireMember(chatId, userId);
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
-  if (user?.role === 'ADMIN' || user?.role === 'SUPERADMIN') {
-    return member;
-  }
   requireRight(member, 'sendMessages', member.chat.type !== 'CHANNEL');
   if (type !== 'TEXT') requireRight(member, type === 'POLL' ? 'sendPolls' : type === 'STICKER' ? 'sendStickers' : 'sendMedia', member.chat.type !== 'CHANNEL');
   if (member.role === 'MEMBER') {

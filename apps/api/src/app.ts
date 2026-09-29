@@ -31,6 +31,7 @@ import { foldersRouter } from './chats/folders.controller';
 import { managementRouter } from './chats/management.controller';
 
 const app = express();
+const allowedOrigins = [ENV.CLIENT_URL, ...(ENV.NODE_ENV === 'production' ? [] : ['http://localhost:3000', 'http://127.0.0.1:3000'])];
 
 // Ensure uploads folder exists
 try {
@@ -51,7 +52,7 @@ app.use(
 
 app.use(
   cors({
-    origin: [ENV.CLIENT_URL, 'http://localhost:3000', 'http://127.0.0.1:3000'],
+    origin: allowedOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
@@ -59,6 +60,16 @@ app.use(
 );
 
 app.use(cookieParser());
+// CORS alone does not prevent cross-site cookie-authenticated mutations.
+app.use((req, res, next) => {
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    const origin = req.get('origin');
+    if ((origin && !allowedOrigins.includes(origin)) || (!origin && req.get('sec-fetch-site') === 'cross-site')) {
+      return res.status(403).json({ success: false, error: { code: 'CSRF_REJECTED', message: 'Request origin is not allowed' } });
+    }
+  }
+  next();
+});
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 

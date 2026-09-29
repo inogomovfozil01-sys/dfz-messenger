@@ -373,7 +373,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
 
       {/* Telegram Composer Input Bar */}
       <div className="flex items-end gap-2">
-        <div className="flex-1 flex items-end gap-1.5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl px-2 py-1 focus-within:border-[var(--accent-primary)] transition-colors shadow-inner">
+        <div className="flex-1 flex items-end gap-1.5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl px-2 py-1.5 focus-within:border-[var(--accent-primary)] transition-colors">
         {/* Attachment Button & Popup Menu */}
         <div className="relative">
           <button
@@ -554,7 +554,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
           onPaste={handlePaste}
           placeholder="Написать сообщение..."
           rows={1}
-          className="flex-1 max-h-36 min-h-[24px] py-1.5 px-1 bg-transparent text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] text-sm resize-none focus:outline-none leading-relaxed"
+          className="flex-1 max-h-36 min-h-[24px] py-1.5 px-1 bg-transparent text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] text-[15px] resize-none focus:outline-none leading-relaxed"
         />
 
         </div>
@@ -569,7 +569,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
                 e.preventDefault();
                 setShowSendMenu(!showSendMenu);
               }}
-              className="w-11 h-11 bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white rounded-full transition-transform active:scale-95 flex items-center justify-center flex-shrink-0 shadow-md animate-scale-in"
+              className="w-11 h-11 bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white rounded-[10px] transition-colors flex items-center justify-center flex-shrink-0 animate-scale-in"
               title="Отправить (Enter) • ПКМ: Без звука / По расписанию"
             >
               <Send size={18} className="translate-x-0.5 -translate-y-0.5" />
@@ -621,7 +621,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
             <button
               type="button"
               onClick={() => setIsRecording(true)}
-              className="w-11 h-11 bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white rounded-full transition-transform active:scale-95 flex items-center justify-center flex-shrink-0 shadow-md"
+              className="w-11 h-11 bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white rounded-[10px] transition-colors flex items-center justify-center flex-shrink-0"
               title="Записать голосовое сообщение"
             >
               <Mic size={19} />

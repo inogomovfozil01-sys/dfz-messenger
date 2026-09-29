@@ -1,3 +1,4 @@
+import './require-local-db';
 import assert from 'assert';
 import { prisma } from '../src/prisma';
 import { starsService } from '../src/economy/stars.service';

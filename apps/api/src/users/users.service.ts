@@ -1,4 +1,5 @@
 import { prisma } from '../prisma';
+import { requireOwnedMedia } from '../media/media.service';
 import { PrivacyVisibility } from '@dfz/types';
 import { maySee } from '../common/access';
 import { gatewayInstance } from '../gateway/websocket.gateway';
@@ -33,6 +34,7 @@ export class UsersService {
     username?: string;
     phone?: string | null;
   }) {
+    await requireOwnedMedia(userId, data.avatarUrl);
     if (data.username) {
       const cleanUsername = data.username.trim().toLowerCase();
       const existing = await prisma.user.findFirst({

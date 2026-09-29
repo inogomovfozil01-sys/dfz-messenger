@@ -3,26 +3,26 @@ import './globals.css';
 import { AppUpdates } from '../components/layout/AppUpdates';
 
 export const metadata: Metadata = {
-  title: 'Telegram Web Client',
-  description: 'Telegram Web is a cloud-based mobile and desktop messaging app with a focus on security and speed.',
+  title: 'DFZ Messenger',
+  description: 'DFZ Messenger is a cloud-based mobile and desktop messaging app with a focus on security and speed.',
   manifest: '/manifest.json',
   openGraph: {
-    title: 'Telegram Web Client',
-    description: 'Fast, secure, and modern Telegram web messaging client.',
+    title: 'DFZ Messenger',
+    description: 'Fast, secure, and modern DFZ web messaging client.',
     type: 'website',
-    siteName: 'Telegram Web',
-    images: [{ url: '/icon.svg', width: 240, height: 240, alt: 'Telegram' }],
+    siteName: 'DFZ Messenger',
+    images: [{ url: '/icon.svg', width: 240, height: 240, alt: 'DFZ' }],
   },
   twitter: {
     card: 'summary',
-    title: 'Telegram Web Client',
-    description: 'Fast, secure, and modern Telegram web messaging client.',
+    title: 'DFZ Messenger',
+    description: 'Fast, secure, and modern DFZ web messaging client.',
     images: ['/icon.svg'],
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Telegram',
+    title: 'DFZ',
   },
 };
 
@@ -30,7 +30,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#0e1621',
+  themeColor: '#101113',
 };
 
 export default function RootLayout({
@@ -43,7 +43,6 @@ export default function RootLayout({
       <head>
         <link rel="icon" href="/icon.svg?v=2" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png" />
-        <script src="https://telegram.org/js/telegram-web-app.js" async />
       </head>
       <body className="bg-dfz-bg text-dfz-text selection:bg-dfz-accent selection:text-white">
         {children}

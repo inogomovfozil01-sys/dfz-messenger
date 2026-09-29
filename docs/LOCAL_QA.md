@@ -9,7 +9,9 @@ npm run build:api
 npm run test --workspace=@dfz/api
 npx tsx apps/api/test/security-regression.ts
 npx tsx apps/api/test/management-regression.ts
+npx tsx apps/api/test/security-hardening.ts
 npx tsx apps/api/test/test-economy.ts
+npx tsx apps/web/test/api-client.ts
 ```
 
 Stop the web development server before `npm run build:web`; the dev server and production build share `.next`. After a successful build use `npm run start --workspace=@dfz/web` for a local production preview. Start the API separately with the explicit QA environment above.

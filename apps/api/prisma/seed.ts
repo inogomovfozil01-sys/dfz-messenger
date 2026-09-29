@@ -4,27 +4,17 @@ import { PrismaClient, UserRole, ChatType, MemberRole, MessageType } from '@pris
 const prisma = new PrismaClient();
 
 async function main() {
+  const database = new URL(process.env.DATABASE_URL || 'postgresql://invalid/');
+  if (process.env.NODE_ENV === 'production' || !['localhost', '127.0.0.1'].includes(database.hostname) || !['/dfz_messenger', '/dfz_rebuild_qa'].includes(database.pathname)) {
+    throw new Error('Development seed requires a local development database; production seeding is forbidden');
+  }
+  if (await prisma.user.count()) throw new Error('Development seed requires an empty database; existing data will not be deleted');
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (!adminPassword || adminPassword.length < 12) throw new Error('Set ADMIN_PASSWORD to a unique password of at least 12 characters');
   console.log('🌱 Starting database seeding for DFZ Messenger...');
 
-  // Clean existing data
-  await prisma.reaction.deleteMany({});
-  await prisma.messageReceipt.deleteMany({});
-  await prisma.attachment.deleteMany({});
-  await prisma.pinnedMessage.deleteMany({});
-  await prisma.message.deleteMany({});
-  await prisma.chatMember.deleteMany({});
-  await prisma.chat.deleteMany({});
-  await prisma.contact.deleteMany({});
-  await prisma.session.deleteMany({});
-  await prisma.credential.deleteMany({});
-  await prisma.profile.deleteMany({});
-  await prisma.block.deleteMany({});
-  await prisma.report.deleteMany({});
-  await prisma.auditLog.deleteMany({});
-  await prisma.user.deleteMany({});
-
   const salt = await bcrypt.genSalt(12);
-  const adminPassHash = await bcrypt.hash('200220032013', salt);
+  const adminPassHash = await bcrypt.hash(adminPassword, salt);
   const userPassHash = await bcrypt.hash('TestPass123!', salt);
 
   // 1. Super Admin User
@@ -232,7 +222,7 @@ async function main() {
 
   console.log('✅ Seeding completed successfully!');
   console.log('Test Accounts:');
-  console.log('1. Admin: dfzadmin / 200220032013');
+  console.log('1. Admin: dfzadmin (password from ADMIN_PASSWORD)');
   console.log('2. User 1: alex_dev / TestPass123!');
   console.log('3. User 2: elena_ux / TestPass123!');
 }

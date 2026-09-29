@@ -24,7 +24,7 @@ declare global {
 
 export async function authGuard(req: Request, res: Response, next: NextFunction) {
   try {
-    let token = req.cookies?.dfz_access_token || (req.query?.token as string);
+    let token = req.cookies?.dfz_access_token;
 
     if (!token && req.headers.authorization) {
       const parts = req.headers.authorization.split(' ');
@@ -40,7 +40,7 @@ export async function authGuard(req: Request, res: Response, next: NextFunction)
       });
     }
 
-    const decoded = jwt.verify(token, ENV.JWT_ACCESS_SECRET) as AuthUserPayload;
+    const decoded = jwt.verify(token, ENV.JWT_ACCESS_SECRET, { algorithms: ['HS256'] }) as AuthUserPayload;
 
     await requireSession(decoded.userId, decoded.sessionId);
 

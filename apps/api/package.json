@@ -11,7 +11,7 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
-    "test": "tsx test/run-tests.ts"
+    "test": "tsx test/run-tests.ts && tsx test/security-regression.ts && tsx test/management-regression.ts && tsx test/security-hardening.ts && tsx test/test-economy.ts"
   },
   "dependencies": {
     "@dfz/config": "*",

@@ -4,10 +4,12 @@ import { messagesService } from './messages.service';
 import { authGuard } from '../common/auth.guard';
 import { MessageType, ReceiptStatus } from '@dfz/types';
 import { gatewayInstance } from '../gateway/websocket.gateway';
+import { rateLimiter } from '../common/rate-limiter';
 
 export const messagesRouter = Router();
 
 messagesRouter.use(authGuard);
+messagesRouter.use(rateLimiter({ maxRequests: 120, windowSeconds: 60, keyPrefix: 'rl_messages' }));
 
 messagesRouter.post('/forward', async (req, res, next) => {
   try {
@@ -24,7 +26,7 @@ const sendMessageSchema = z.object({
   type: z.nativeEnum(MessageType).optional(),
   replyToId: z.string().optional(),
   topicId: z.string().optional(),
-  idempotencyKey: z.string().optional(),
+  idempotencyKey: z.string().min(1).max(128).optional(),
   attachments: z.array(z.object({
     originalName: z.string(),
     mimeType: z.string(),
@@ -36,7 +38,7 @@ const sendMessageSchema = z.object({
     waveform: z.array(z.number()).optional(),
     width: z.number().optional(),
     height: z.number().optional(),
-  })).optional(),
+  })).max(10).optional(),
 });
 
 // 1. Get messages with cursor pagination

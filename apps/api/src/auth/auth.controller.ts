@@ -118,7 +118,7 @@ authRouter.post(
 );
 
 // 3. Refresh Token
-authRouter.post('/refresh', async (req: Request, res: Response, next: NextFunction) => {
+authRouter.post('/refresh', rateLimiter({ maxRequests: 60, windowSeconds: 60, keyPrefix: 'rl_auth_refresh' }), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const refreshToken = req.cookies?.dfz_refresh_token || req.body?.refreshToken;
 
