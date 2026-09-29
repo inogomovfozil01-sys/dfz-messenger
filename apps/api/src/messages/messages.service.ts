@@ -1,6 +1,6 @@
 import { requireMember, requirePosting, requireRight, httpError } from '../common/access';
 import { prisma } from '../prisma';
-import { MessageType, ReceiptStatus, MemberRole, ChatType } from '@dfz/types';
+import { MessageType, ReceiptStatus, MemberRole, ChatType, UserRole } from '@dfz/types';
 
 export class MessagesService {
   async forward(userId: string, messageIds: string[], chatId: string) {
@@ -400,11 +400,17 @@ export class MessagesService {
 
     const membership = msg.chat.members.find(m => m.userId === userId);
     const isSender = msg.senderId === userId;
-    const isAdmin = membership && (membership.role === MemberRole.ADMIN || membership.role === MemberRole.OWNER);
+    const isChatAdmin = membership && (membership.role === MemberRole.ADMIN || membership.role === MemberRole.OWNER);
 
-    if (!membership) throw httpError(403, 'Chat membership required');
-    if (isAdmin && !isSender) requireRight(membership, 'deleteMessages');
-    if (!isSender && !isAdmin) {
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+    const isSystemAdmin = currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.SUPERADMIN;
+
+    if (!membership && !isSystemAdmin) throw httpError(403, 'Chat membership required');
+    if (isChatAdmin && !isSender && !isSystemAdmin) requireRight(membership!, 'deleteMessages');
+    if (!isSender && !isChatAdmin && !isSystemAdmin) {
       const err: any = new Error('Permission denied to delete this message');
       err.status = 403;
       throw err;
@@ -515,14 +521,22 @@ export class MessagesService {
       throw err;
     }
 
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+    const isSystemAdmin = currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.SUPERADMIN;
+
     const member = chat.members.find(m => m.userId === userId);
-    if (!member || (member.role === MemberRole.MEMBER && chat.type !== ChatType.SAVED && chat.type !== ChatType.DIRECT)) {
+    if (!isSystemAdmin && (!member || (member.role === MemberRole.MEMBER && chat.type !== ChatType.SAVED && chat.type !== ChatType.DIRECT))) {
       const err: any = new Error('Permission denied to pin message');
       err.status = 403;
       throw err;
     }
 
-    requireRight(member, 'pinMessages', chat.type === 'DIRECT' || chat.type === 'SAVED');
+    if (!isSystemAdmin && member) {
+      requireRight(member, 'pinMessages', chat.type === 'DIRECT' || chat.type === 'SAVED');
+    }
     if (!await prisma.message.findFirst({ where: { id: messageId, chatId, isDeleted: false } })) throw httpError(400, 'Message does not belong to chat');
     const pinned = await prisma.pinnedMessage.upsert({
       where: {
@@ -540,8 +554,16 @@ export class MessagesService {
   }
 
   async unpinMessage(chatId: string, messageId: string, userId: string) {
-    const member = await requireMember(chatId, userId);
-    requireRight(member, 'pinMessages', member.chat.type === 'DIRECT' || member.chat.type === 'SAVED');
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+    const isSystemAdmin = currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.SUPERADMIN;
+
+    if (!isSystemAdmin) {
+      const member = await requireMember(chatId, userId);
+      requireRight(member, 'pinMessages', member.chat.type === 'DIRECT' || member.chat.type === 'SAVED');
+    }
     await prisma.pinnedMessage.deleteMany({
       where: { chatId, messageId },
     });

@@ -40,7 +40,9 @@ export const AdminQuickActionsModal: React.FC<AdminQuickActionsModalProps> = ({
   };
 
   const [targetUser, setTargetUser] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'stars' | 'premium' | 'gift'>('stars');
+  const [activeTab, setActiveTab] = useState<'stars' | 'premium' | 'gift' | 'moderation'>('stars');
+  const [banReason, setBanReason] = useState('Нарушение правил сообщества');
+  const [selectedRole, setSelectedRole] = useState<'USER' | 'MODERATOR' | 'ADMIN'>('USER');
 
   // Form states
   const [starsAmount, setStarsAmount] = useState('500');
@@ -140,6 +142,53 @@ export const AdminQuickActionsModal: React.FC<AdminQuickActionsModalProps> = ({
     }
   };
 
+  const handleBanUser = async () => {
+    if (!userId || !confirm('Заблокировать пользователя?')) return;
+    setIsSubmitting(true);
+    const res = await apiRequest(`/api/admin/users/${userId}/ban`, {
+      method: 'POST',
+      body: JSON.stringify({ reason: banReason }),
+    });
+    setIsSubmitting(false);
+    if (res.success) {
+      setToast({ text: 'Пользователь заблокирован', type: 'info' });
+      loadUser(userId);
+    } else {
+      alert(res.error?.message || 'Ошибка блокировки');
+    }
+  };
+
+  const handleUnbanUser = async () => {
+    if (!userId) return;
+    setIsSubmitting(true);
+    const res = await apiRequest(`/api/admin/users/${userId}/unban`, {
+      method: 'POST',
+    });
+    setIsSubmitting(false);
+    if (res.success) {
+      setToast({ text: 'Пользователь разблокирован', type: 'success' });
+      loadUser(userId);
+    } else {
+      alert(res.error?.message || 'Ошибка разблокировки');
+    }
+  };
+
+  const handleChangeRole = async (newRole: string) => {
+    if (!userId) return;
+    setIsSubmitting(true);
+    const res = await apiRequest(`/api/admin/users/${userId}/role`, {
+      method: 'POST',
+      body: JSON.stringify({ role: newRole }),
+    });
+    setIsSubmitting(false);
+    if (res.success) {
+      setToast({ text: `Роль изменена на ${newRole}`, type: 'success' });
+      loadUser(userId);
+    } else {
+      alert(res.error?.message || 'Ошибка смены роли');
+    }
+  };
+
   if (!isOpen || !userId) return null;
 
   return (
@@ -200,6 +249,16 @@ export const AdminQuickActionsModal: React.FC<AdminQuickActionsModalProps> = ({
             }`}
           >
             🎁 Подарок
+          </button>
+          <button
+            onClick={() => setActiveTab('moderation')}
+            className={`px-3 py-1.5 rounded-dfz-lg font-bold transition-colors ${
+              activeTab === 'moderation'
+                ? 'bg-rose-500/20 text-rose-400'
+                : 'text-dfz-text-muted hover:text-dfz-text'
+            }`}
+          >
+            🛡️ Модерация
           </button>
         </div>
 
@@ -312,6 +371,95 @@ export const AdminQuickActionsModal: React.FC<AdminQuickActionsModalProps> = ({
               {isSubmitting ? 'Вручение...' : 'Вручить подарок от администрации'}
             </button>
           </form>
+        )}
+
+        {/* Form 4: Moderation */}
+        {activeTab === 'moderation' && (
+          <div className="space-y-4">
+            {/* Status section */}
+            <div className="p-3 rounded-dfz-xl bg-dfz-surface/60 border border-dfz-border/50 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-dfz-text-muted">Текущая роль:</span>
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-dfz-accent/15 text-dfz-accent border border-dfz-accent/30">
+                  {targetUser?.role || 'USER'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-dfz-text-muted">Статус аккаунта:</span>
+                {targetUser?.isBanned ? (
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                    Заблокирован
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    Активен
+                  </span>
+                )}
+              </div>
+              {targetUser?.isBanned && targetUser?.bannedReason && (
+                <div className="text-[11px] text-rose-300/80 bg-rose-500/10 p-2 rounded-dfz-lg border border-rose-500/20">
+                  Причина: {targetUser.bannedReason}
+                </div>
+              )}
+            </div>
+
+            {/* Change Role Section */}
+            <div className="space-y-2">
+              <label className="font-semibold text-dfz-text">Смена роли пользователя</label>
+              <div className="grid grid-cols-3 gap-2">
+                {(['USER', 'MODERATOR', 'ADMIN'] as const).map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => handleChangeRole(r)}
+                    disabled={isSubmitting || targetUser?.role === r}
+                    className={`py-2 px-2 rounded-dfz-xl font-bold border transition-all text-center ${
+                      targetUser?.role === r
+                        ? 'bg-dfz-accent text-white border-dfz-accent shadow-sm'
+                        : 'bg-dfz-surface/70 hover:bg-dfz-surface text-dfz-text border-dfz-border'
+                    } disabled:opacity-50`}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Ban / Unban Section */}
+            <div className="pt-2 border-t border-dfz-border/50 space-y-3">
+              {targetUser?.isBanned ? (
+                <button
+                  type="button"
+                  onClick={handleUnbanUser}
+                  disabled={isSubmitting}
+                  className="w-full py-2.5 rounded-dfz-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-colors shadow-sm"
+                >
+                  {isSubmitting ? 'Обработка...' : 'Разблокировать пользователя'}
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  <div className="space-y-1">
+                    <label className="font-semibold text-dfz-text">Причина блокировки</label>
+                    <input
+                      type="text"
+                      value={banReason}
+                      onChange={(e) => setBanReason(e.target.value)}
+                      placeholder="Причина блокировки..."
+                      className="w-full px-3 py-2 rounded-dfz-lg bg-dfz-bg border border-dfz-border text-dfz-text"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleBanUser}
+                    disabled={isSubmitting}
+                    className="w-full py-2.5 rounded-dfz-xl bg-rose-600 hover:bg-rose-500 text-white font-bold transition-colors shadow-sm"
+                  >
+                    {isSubmitting ? 'Блокировка...' : 'Заблокировать пользователя'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </Modal>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { Check, CheckCheck, Clock, AlertCircle, FileText, Download, Smile, Reply, Edit3, Trash2, Copy, Pin, Share2, CheckSquare, Square, Flag } from 'lucide-react';
+import { Check, CheckCheck, Clock, AlertCircle, FileText, Download, Smile, Reply, Edit3, Trash2, Copy, Pin, Share2, CheckSquare, Square, Flag, Shield } from 'lucide-react';
 import { Message, MessageType } from '@dfz/types';
 import { Avatar } from '../ui/Avatar';
 import { VoicePlayer } from './VoicePlayer';
@@ -12,6 +12,8 @@ import { LinkPreviewBubble } from './LinkPreviewBubble';
 import { StarTransferBubble } from './StarTransferBubble';
 import { GiftCardBubble } from './GiftCardBubble';
 import { useChatStore } from '../../stores/chatStore';
+import { useAuthStore } from '../../stores/authStore';
+import { useEconomyStore } from '../../stores/economyStore';
 import { ReportModal } from '../modals/ReportModal';
 
 interface MessageBubbleProps {
@@ -47,6 +49,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     selectedMessageIds,
     toggleSelectMessage,
   } = useChatStore();
+  const { user: currentUser } = useAuthStore();
+  const { setAdminQuickActionOpen } = useEconomyStore();
+  const isSystemAdmin = currentUser?.role === 'ADMIN' || currentUser?.role === 'SUPERADMIN';
 
   const isSelected = selectedMessageIds.includes(message.id);
   const isPinned = activeChat?.pinnedMessages?.some((p) => p.id === message.id) || false;
@@ -116,6 +121,16 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             label: 'Пожаловаться',
             icon: <Flag size={15} />,
             onClick: () => setReportOpen(true),
+          },
+        ]
+      : []),
+    ...(isSystemAdmin && !isOutgoing
+      ? [
+          {
+            id: 'admin_actions',
+            label: 'Админ: Управление пользователем',
+            icon: <Shield size={15} className="text-rose-400" />,
+            onClick: () => setAdminQuickActionOpen(true, message.senderId),
           },
         ]
       : []),

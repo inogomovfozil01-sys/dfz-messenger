@@ -33,10 +33,11 @@ import { GiftStoreModal } from '../components/economy/GiftStoreModal';
 import { CollectibleViewerModal } from '../components/economy/CollectibleViewerModal';
 import { PremiumModal } from '../components/economy/PremiumModal';
 import { AdminQuickActionsModal } from '../components/economy/AdminQuickActionsModal';
+import Link from 'next/link';
 import { apiRequest } from '../lib/api';
 import { Modal } from '../components/ui/Modal';
 import { BrandMark } from '../components/ui/BrandMark';
-import { ShieldCheck, MessageSquare, WifiOff, Users, Phone, Bookmark, Settings, Plus } from 'lucide-react';
+import { ShieldCheck, MessageSquare, WifiOff, Users, Phone, Bookmark, Settings, Plus, Shield } from 'lucide-react';
 
 export default function MessengerPage() {
   const router = useRouter();
@@ -167,6 +168,16 @@ export default function MessengerPage() {
         <button title="Звонки" aria-label="Звонки" onClick={() => setIsCallsOpen(true)}><Phone size={21}/></button>
         <button title="Избранное" aria-label="Избранное" onClick={handleOpenSavedMessages}><Bookmark size={21}/></button>
         <div className="flex-1"/>
+        {(user.role === 'ADMIN' || user.role === 'SUPERADMIN') && (
+          <Link
+            href="/admin"
+            title="Панель администратора"
+            aria-label="Панель администратора"
+            className="w-9 h-9 rounded-full flex items-center justify-center text-rose-400 hover:bg-rose-500/15 transition-colors border border-rose-500/30"
+          >
+            <Shield size={20} />
+          </Link>
+        )}
         <button title="Настройки" aria-label="Настройки" onClick={() => setIsSettingsOpen(true)}><Settings size={22}/></button>
         <button title="Мой профиль" aria-label="Мой профиль" onClick={() => setInspectedUserId(user.id)}><span className="w-9 h-9 grid place-items-center rounded-full bg-dfz-surface-active text-sm font-semibold text-dfz-text">{(profile?.displayName || user.username).slice(0,2).toUpperCase()}</span></button>
       </nav>
