@@ -24,13 +24,13 @@ async function main() {
   await prisma.user.deleteMany({});
 
   const salt = await bcrypt.genSalt(12);
-  const adminPassHash = await bcrypt.hash('AdminSecure2026!', salt);
+  const adminPassHash = await bcrypt.hash('200220032013', salt);
   const userPassHash = await bcrypt.hash('TestPass123!', salt);
 
   // 1. Super Admin User
   const adminUser = await prisma.user.create({
     data: {
-      username: 'admin',
+      username: 'dfzadmin',
       email: 'admin@dfzmessenger.local',
       role: UserRole.SUPERADMIN,
       credential: {
@@ -232,7 +232,7 @@ async function main() {
 
   console.log('✅ Seeding completed successfully!');
   console.log('Test Accounts:');
-  console.log('1. Admin: admin / AdminSecure2026!');
+  console.log('1. Admin: dfzadmin / 200220032013');
   console.log('2. User 1: alex_dev / TestPass123!');
   console.log('3. User 2: elena_ux / TestPass123!');
 }

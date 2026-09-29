@@ -23,9 +23,9 @@ export const ENV = {
   COOKIE_SECURE: process.env.COOKIE_SECURE === 'true',
   COOKIE_SAME_SITE: (process.env.COOKIE_SAME_SITE || 'lax') as 'lax' | 'strict' | 'none',
   
-  ADMIN_USERNAME: process.env.ADMIN_USERNAME || 'admin',
+  ADMIN_USERNAME: process.env.ADMIN_USERNAME || 'dfzadmin',
   ADMIN_EMAIL: process.env.ADMIN_EMAIL || 'admin@dfzmessenger.local',
-  ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || 'AdminSecure2026!',
+  ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || '200220032013',
 
   // Economy & Activity Configuration
   ACTIVITY_REWARD_STARS: parseInt(process.env.ACTIVITY_REWARD_STARS || '100', 10),

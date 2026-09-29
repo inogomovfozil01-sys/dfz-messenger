@@ -148,8 +148,8 @@ npm run dev:web
 После выполнения `npm run db:seed` в базе созданы следующие пользователи:
 
 1. **Главный Администратор (Superadmin):**
-   - Username: `admin`
-   - Пароль: `AdminSecure2026!`
+   - Username: `dfzadmin`
+   - Пароль: `200220032013`
    - Доступ к панели: `http://localhost:3000/admin`
 
 2. **Инженер (User 1):**
