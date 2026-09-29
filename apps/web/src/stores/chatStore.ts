@@ -13,6 +13,8 @@ interface ChatState {
   activeChatId: string | null;
   activeChat: Chat | null;
   messages: Record<string, Message[]>;
+  drafts: Record<string, string>;
+  connectionStatus: 'connected' | 'connecting' | 'updating' | 'offline';
   hasMore: Record<string, boolean>;
   nextCursor: Record<string, string | null>;
   typingUsers: Record<string, string[]>;
@@ -40,6 +42,8 @@ interface ChatState {
   activeChannelManageChat: Chat | null;
 
   // Actions
+  setDraft: (chatId: string, content: string) => void;
+  setConnectionStatus: (status: 'connected' | 'connecting' | 'updating' | 'offline') => void;
   fetchChats: () => Promise<void>;
   selectChat: (chatId: string) => Promise<void>;
   fetchMessages: (chatId: string, cursor?: string) => Promise<void>;
@@ -117,9 +121,35 @@ export const useChatStore = create<ChatState>((set, get) => ({
   forwardingMessage: null,
   isForwardOpen: false,
 
-  // Management modals
   activeGroupManageChat: null,
   activeChannelManageChat: null,
+
+  drafts: (() => {
+    if (typeof window === 'undefined') return {};
+    try {
+      return JSON.parse(localStorage.getItem('dfz_drafts') || '{}');
+    } catch {
+      return {};
+    }
+  })(),
+  connectionStatus: 'connected',
+  setDraft: (chatId: string, content: string) => {
+    set((state) => {
+      const next = { ...state.drafts };
+      if (!content || !content.trim()) {
+        delete next[chatId];
+      } else {
+        next[chatId] = content;
+      }
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('dfz_drafts', JSON.stringify(next));
+        } catch {}
+      }
+      return { drafts: next };
+    });
+  },
+  setConnectionStatus: (status) => set({ connectionStatus: status }),
 
   fetchChats: async () => {
     set({ isLoadingChats: true });
@@ -705,9 +735,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
     socket.off('message:receipt');
     socket.off('reaction:update');
     socket.off('chat:typing');
-    socket.off('poll:updated');
-    socket.off('connect', reconnectChats);
-    socket.on('connect', reconnectChats);
+    socket.off('connect');
+    socket.off('disconnect');
+    socket.on('connect', () => {
+      set({ connectionStatus: 'connected' });
+      reconnectChats();
+    });
+    socket.on('disconnect', () => {
+      set({ connectionStatus: 'connecting' });
+    });
 
     socket.on('message:new', (msg: Message) => {
       const message = (msg as any).message || msg;

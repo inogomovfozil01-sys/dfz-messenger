@@ -130,7 +130,56 @@ export default function MessengerPage() {
     });
 
     const shortcut = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); document.querySelector<HTMLInputElement>('[data-global-search]')?.focus(); }
+      const isCmdOrCtrl = event.ctrlKey || event.metaKey;
+      const key = event.key.toLowerCase();
+
+      // Ctrl + K -> Global Search
+      if (isCmdOrCtrl && key === 'k') {
+        event.preventDefault();
+        document.querySelector<HTMLInputElement>('[data-global-search]')?.focus();
+        return;
+      }
+
+      // Ctrl + N -> New Chat
+      if (isCmdOrCtrl && key === 'n') {
+        event.preventDefault();
+        setIsNewChatOpen(true);
+        return;
+      }
+
+      // Ctrl + F -> In-chat Search
+      if (isCmdOrCtrl && key === 'f') {
+        if (useChatStore.getState().activeChatId) {
+          event.preventDefault();
+          useChatStore.getState().toggleSearchInChat();
+          return;
+        }
+      }
+
+      // Ctrl + W -> Close active chat
+      if (isCmdOrCtrl && key === 'w') {
+        if (useChatStore.getState().activeChatId) {
+          event.preventDefault();
+          useChatStore.setState({ activeChatId: null, activeChat: null });
+          return;
+        }
+      }
+
+      // Esc -> Close active popup / drawer / search / info
+      if (event.key === 'Escape') {
+        if (isTelegramDrawerOpen) {
+          setIsTelegramDrawerOpen(false);
+          return;
+        }
+        if (useChatStore.getState().isSearchingInChat) {
+          useChatStore.getState().toggleSearchInChat();
+          return;
+        }
+        if (useChatStore.getState().isInfoPanelOpen) {
+          useChatStore.getState().toggleInfoPanel();
+          return;
+        }
+      }
     };
     window.addEventListener('keydown', shortcut);
     setIsOffline(!navigator.onLine);

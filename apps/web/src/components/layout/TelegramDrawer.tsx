@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   User,
@@ -14,6 +14,9 @@ import {
   Sun,
   LogOut,
   ChevronRight,
+  ChevronDown,
+  Check,
+  Plus,
   ShieldCheck,
   UsersRound,
   Megaphone,
@@ -24,6 +27,7 @@ import { Avatar } from '../ui/Avatar';
 import { useAuthStore } from '../../stores/authStore';
 import { useEconomyStore } from '../../stores/economyStore';
 import { usePwaInstall } from '../../hooks/usePwaInstall';
+import { AddAccountModal } from '../modals/AddAccountModal';
 import { UserRole } from '@dfz/types';
 
 interface TelegramDrawerProps {
@@ -59,6 +63,41 @@ export const TelegramDrawer: React.FC<TelegramDrawerProps> = ({
 
   const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.SUPERADMIN;
   const isPremium = user?.isPremium || (isAdmin && true);
+
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const [isAddAccountOpen, setIsAddAccountOpen] = useState(false);
+  const [storedAccounts, setStoredAccounts] = useState<any[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      return JSON.parse(localStorage.getItem('dfz_multi_accounts') || '[]');
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    if (user) {
+      try {
+        const stored: any[] = JSON.parse(localStorage.getItem('dfz_multi_accounts') || '[]');
+        const exists = stored.some((a) => a.id === user.id);
+        if (!exists) {
+          const updated = [
+            ...stored,
+            {
+              id: user.id,
+              username: user.username,
+              displayName: profile?.displayName || user.username,
+              avatarUrl: profile?.avatarUrl,
+            },
+          ];
+          localStorage.setItem('dfz_multi_accounts', JSON.stringify(updated));
+          setStoredAccounts(updated);
+        } else {
+          setStoredAccounts(stored);
+        }
+      } catch {}
+    }
+  }, [user?.id, profile?.displayName, profile?.avatarUrl]);
 
   // Close on Escape or click outside
   useEffect(() => {
@@ -125,36 +164,105 @@ export const TelegramDrawer: React.FC<TelegramDrawerProps> = ({
             </button>
           </div>
 
-          <div
-            onClick={() => {
-              onClose();
-              onOpenProfile();
-            }}
-            className="cursor-pointer group"
-          >
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <h3 className="font-bold text-sm text-dfz-text group-hover:text-dfz-accent transition-colors truncate">
-                {profile?.displayName || user.username}
-              </h3>
-              {isPremium && (
-                <span
-                  title="DFZ Premium"
-                  className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full bg-[#8774e1]/15 border border-[#8774e1]/30 text-[10px] font-bold text-[#8774e1]"
-                >
-                  <span>◆</span>
-                </span>
-              )}
-              {isAdmin && (
-                <span
-                  title="Администратор"
-                  className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full bg-rose-500/15 border border-rose-500/30 text-[10px] font-bold text-rose-400"
-                >
-                  <ShieldCheck size={11} />
-                </span>
-              )}
+          <div className="flex items-center justify-between">
+            <div
+              onClick={() => {
+                onClose();
+                onOpenProfile();
+              }}
+              className="cursor-pointer group flex-1 min-w-0"
+            >
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h3 className="font-bold text-sm text-dfz-text group-hover:text-dfz-accent transition-colors truncate">
+                  {profile?.displayName || user.username}
+                </h3>
+                {isPremium && (
+                  <span
+                    title="DFZ Premium"
+                    className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full bg-[#8774e1]/15 border border-[#8774e1]/30 text-[10px] font-bold text-[#8774e1]"
+                  >
+                    <span>◆</span>
+                  </span>
+                )}
+                {isAdmin && (
+                  <span
+                    title="Администратор"
+                    className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full bg-rose-500/15 border border-rose-500/30 text-[10px] font-bold text-rose-400"
+                  >
+                    <ShieldCheck size={11} />
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-dfz-text-muted mt-0.5">@{user.username}</p>
             </div>
-            <p className="text-xs text-dfz-text-muted mt-0.5">@{user.username}</p>
+
+            {/* Account Switcher Chevron */}
+            <button
+              type="button"
+              onClick={() => setIsAccountMenuOpen(!isAccountMenuOpen)}
+              className="p-1.5 rounded-full text-dfz-text-muted hover:text-dfz-text hover:bg-dfz-surface-hover transition-transform"
+              title="Переключить аккаунт"
+            >
+              <ChevronDown
+                size={18}
+                className={`transition-transform duration-200 ${isAccountMenuOpen ? 'rotate-180' : ''}`}
+              />
+            </button>
           </div>
+
+          {/* Multi-Account Drawer Dropdown (Telegram style) */}
+          {isAccountMenuOpen && (
+            <div className="mt-2.5 p-1 bg-dfz-surface-secondary border border-dfz-border rounded-xl space-y-1 animate-scale-in">
+              <div className="px-2 py-1 text-[10px] font-bold text-dfz-text-muted uppercase tracking-wider">
+                Аккаунты
+              </div>
+              {storedAccounts.map((acc: any) => {
+                const isCurrent = acc.id === user.id;
+                return (
+                  <div
+                    key={acc.id}
+                    onClick={() => {
+                      if (!isCurrent) {
+                        // Switch active user
+                        window.location.reload();
+                      }
+                    }}
+                    className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${
+                      isCurrent ? 'bg-[var(--accent-primary)]/15' : 'hover:bg-dfz-surface-hover'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Avatar
+                        src={acc.avatarUrl}
+                        name={acc.displayName || acc.username}
+                        size="sm"
+                      />
+                      <div className="min-w-0">
+                        <span className="font-semibold text-xs text-dfz-text truncate block">
+                          {acc.displayName || acc.username}
+                        </span>
+                        <span className="text-[10px] text-dfz-text-muted truncate block">
+                          @{acc.username}
+                        </span>
+                      </div>
+                    </div>
+                    {isCurrent && (
+                      <Check size={15} className="text-[var(--accent-primary)] font-bold flex-shrink-0" />
+                    )}
+                  </div>
+                );
+              })}
+
+              <button
+                type="button"
+                onClick={() => setIsAddAccountOpen(true)}
+                className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-dfz-surface-hover text-xs font-semibold text-[var(--accent-primary)] transition-colors"
+              >
+                <Plus size={15} />
+                <span>Добавить аккаунт</span>
+              </button>
+            </div>
+          )}
 
           {/* Quick Stars Badge Pill */}
           <button
@@ -358,6 +466,11 @@ export const TelegramDrawer: React.FC<TelegramDrawerProps> = ({
           <span className="text-[11px] text-dfz-text-muted/60 font-mono">Telegram Web</span>
         </div>
       </div>
+
+      <AddAccountModal
+        isOpen={isAddAccountOpen}
+        onClose={() => setIsAddAccountOpen(false)}
+      />
     </div>
   );
 };

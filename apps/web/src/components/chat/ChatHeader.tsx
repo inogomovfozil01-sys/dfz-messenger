@@ -90,7 +90,15 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
     }
   };
 
+  const connectionStatus = useChatStore((s) => s.connectionStatus);
+
   const handleCyclePin = () => {
+    if (currentPinned) {
+      const el = document.getElementById('msg-' + currentPinned.id);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
     if (pinnedList.length > 1) {
       setActivePinIndex((prev) => (prev + 1) % pinnedList.length);
     }
@@ -104,7 +112,12 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   };
 
   const renderSubtitle = () => {
+    if (connectionStatus === 'connecting') return 'Подключение...';
+    if (connectionStatus === 'updating') return 'Обновление...';
+    if (connectionStatus === 'offline') return 'Ожидание сети...';
+
     if (chat.type === ChatType.DIRECT) {
+      if ((chat as any).isBot) return 'бот';
       return (otherMember as any)?.isOnline ? 'В сети' : otherMember?.lastSeenAt ? `Был(а) ${new Date(otherMember.lastSeenAt).toLocaleString('ru')}` : 'Статус скрыт';
     }
     if (chat.type === ChatType.GROUP) {

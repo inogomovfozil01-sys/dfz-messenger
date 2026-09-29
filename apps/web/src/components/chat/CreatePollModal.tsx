@@ -19,6 +19,9 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
   const [options, setOptions] = useState<string[]>(['', '']);
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [allowMultiple, setAllowMultiple] = useState(false);
+  const [isQuiz, setIsQuiz] = useState(false);
+  const [correctOptionIndex, setCorrectOptionIndex] = useState(0);
+  const [explanation, setExplanation] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -66,8 +69,11 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
           chatId,
           question: question.trim(),
           options: validOptions,
-          isAnonymous,
-          allowMultiple,
+          isAnonymous: isQuiz ? false : isAnonymous,
+          allowMultiple: isQuiz ? false : allowMultiple,
+          isQuiz,
+          correctOptionIndex: isQuiz ? correctOptionIndex : undefined,
+          explanation: isQuiz ? explanation.trim() : undefined,
         }),
       });
 
@@ -128,9 +134,30 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
 
           {/* Options */}
           <div className="space-y-2">
-            <label className="block text-xs font-semibold text-dfz-text">Варианты ответа</label>
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-semibold text-dfz-text">Варианты ответа</label>
+              {isQuiz && (
+                <span className="text-[11px] text-emerald-400 font-medium">
+                  Выберите верный ответ
+                </span>
+              )}
+            </div>
             {options.map((opt, idx) => (
               <div key={idx} className="flex items-center gap-2">
+                {isQuiz && (
+                  <button
+                    type="button"
+                    onClick={() => setCorrectOptionIndex(idx)}
+                    className={`w-5 h-5 rounded-full border flex items-center justify-center flex-shrink-0 transition-colors ${
+                      correctOptionIndex === idx
+                        ? 'border-emerald-500 bg-emerald-500 text-white'
+                        : 'border-dfz-border bg-dfz-bg hover:border-emerald-500/50'
+                    }`}
+                    title="Выбрать как правильный ответ"
+                  >
+                    {correctOptionIndex === idx && <span className="w-2 h-2 rounded-full bg-white" />}
+                  </button>
+                )}
                 <input
                   type="text"
                   value={opt}
@@ -166,24 +193,59 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
           {/* Toggles */}
           <div className="space-y-3 pt-2 border-t border-dfz-border">
             <label className="flex items-center justify-between cursor-pointer">
-              <span className="text-xs text-dfz-text font-medium">Анонимное голосование</span>
+              <div>
+                <span className="text-xs text-dfz-text font-medium block">Режим викторины (Quiz)</span>
+                <span className="text-[11px] text-dfz-text-muted">Опрос имеет правильный ответ</span>
+              </div>
               <input
                 type="checkbox"
-                checked={isAnonymous}
-                onChange={(e) => setIsAnonymous(e.target.checked)}
+                checked={isQuiz}
+                onChange={(e) => {
+                  setIsQuiz(e.target.checked);
+                  if (e.target.checked) setAllowMultiple(false);
+                }}
                 className="w-4 h-4 rounded text-dfz-accent bg-dfz-bg border-dfz-border focus:ring-dfz-accent"
               />
             </label>
 
-            <label className="flex items-center justify-between cursor-pointer">
-              <span className="text-xs text-dfz-text font-medium">Выбор нескольких ответов</span>
-              <input
-                type="checkbox"
-                checked={allowMultiple}
-                onChange={(e) => setAllowMultiple(e.target.checked)}
-                className="w-4 h-4 rounded text-dfz-accent bg-dfz-bg border-dfz-border focus:ring-dfz-accent"
-              />
-            </label>
+            {isQuiz && (
+              <div className="animate-scale-in">
+                <label className="block text-xs font-semibold text-dfz-text mb-1">
+                  Объяснение правильного ответа
+                </label>
+                <textarea
+                  value={explanation}
+                  onChange={(e) => setExplanation(e.target.value)}
+                  placeholder="Пользователи увидят объяснение после голосования..."
+                  rows={2}
+                  className="w-full p-2 bg-dfz-bg border border-dfz-border rounded-dfz-lg text-xs text-dfz-text placeholder:text-dfz-text-muted focus:outline-none focus:border-dfz-border-focus resize-none"
+                />
+              </div>
+            )}
+
+            {!isQuiz && (
+              <>
+                <label className="flex items-center justify-between cursor-pointer">
+                  <span className="text-xs text-dfz-text font-medium">Анонимное голосование</span>
+                  <input
+                    type="checkbox"
+                    checked={isAnonymous}
+                    onChange={(e) => setIsAnonymous(e.target.checked)}
+                    className="w-4 h-4 rounded text-dfz-accent bg-dfz-bg border-dfz-border focus:ring-dfz-accent"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between cursor-pointer">
+                  <span className="text-xs text-dfz-text font-medium">Выбор нескольких ответов</span>
+                  <input
+                    type="checkbox"
+                    checked={allowMultiple}
+                    onChange={(e) => setAllowMultiple(e.target.checked)}
+                    className="w-4 h-4 rounded text-dfz-accent bg-dfz-bg border-dfz-border focus:ring-dfz-accent"
+                  />
+                </label>
+              </>
+            )}
           </div>
 
           {/* Footer Submit */}

@@ -63,7 +63,9 @@ export const PollBubble: React.FC<PollBubbleProps> = ({ poll, isOwnMessage, onPo
         <div className="flex items-center gap-1.5 text-[11px] font-semibold text-dfz-accent">
           <BarChart2 size={14} />
           <span>
-            {currentPoll.isClosed
+            {(currentPoll as any).isQuiz
+              ? 'Викторина'
+              : currentPoll.isClosed
               ? 'Опрос завершен'
               : currentPoll.isAnonymous
               ? 'Анонимный опрос'
@@ -131,6 +133,14 @@ export const PollBubble: React.FC<PollBubbleProps> = ({ poll, isOwnMessage, onPo
           );
         })}
       </div>
+
+      {/* Quiz Explanation */}
+      {showResults && (currentPoll as any).explanation && (
+        <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-xs text-emerald-300 animate-scale-in">
+          <span className="font-semibold text-emerald-400 block mb-0.5">💡 Объяснение:</span>
+          <p>{(currentPoll as any).explanation}</p>
+        </div>
+      )}
 
       {/* Footer Info & Actions */}
       <div className="flex items-center justify-between text-[11px] text-dfz-text-muted pt-1 border-t border-dfz-border/50">

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Paperclip, Smile, Send, Mic, Video, X, Edit3, Reply, BarChart2, Image, FileText, Sparkles, Star, Gift } from 'lucide-react';
+import { Paperclip, Smile, Send, Mic, Video, X, Edit3, Reply, BarChart2, Image, FileText, Sparkles, Star, Gift, MapPin, BellOff, Calendar } from 'lucide-react';
 import { useChatStore } from '../../stores/chatStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useEconomyStore } from '../../stores/economyStore';
@@ -10,6 +10,9 @@ import { EmojiPicker } from './EmojiPicker';
 import { StickerPicker } from './StickerPicker';
 import { CreatePollModal } from './CreatePollModal';
 import { VideoNoteRecorder } from './VideoNoteRecorder';
+import { ScheduledMessagesModal } from './ScheduledMessagesModal';
+import { LocationPickerModal } from './LocationPickerModal';
+import { MentionSuggestions } from './MentionSuggestions';
 import { MessageType, Sticker } from '@dfz/types';
 
 interface MessageComposerProps {
@@ -25,6 +28,10 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
   const [pickerTab, setPickerTab] = useState<'EMOJI' | 'STICKERS'>('EMOJI');
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [isPollModalOpen, setIsPollModalOpen] = useState(false);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [showSendMenu, setShowSendMenu] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
 
   const {
@@ -36,6 +43,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
     setEditingMessage,
     setTyping,
     activeChat,
+    drafts,
   } = useChatStore();
   const { user } = useAuthStore();
   const { setSendGiftOpen, setSendStarsOpen } = useEconomyStore();
@@ -45,16 +53,30 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
   const mediaInputRef = useRef<HTMLInputElement>(null);
   const typingTimerRef = useRef<any>(null);
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     let cancelled = false;
-    setText('');
-    apiRequest<any>(`/api/chats/${chatId}/draft`).then(res => { if (!cancelled && res.success) setText(res.data?.content || ''); });
+    const initial = drafts[chatId] || '';
+    setText(initial);
+    apiRequest<any>(`/api/chats/${chatId}/draft`).then(res => {
+      if (!cancelled && res.success && res.data?.content) {
+        setText(res.data.content);
+        useChatStore.getState().setDraft(chatId, res.data.content);
+      }
+    });
     const socket = socketService.getSocket();
-    const onDraft = (draft: {chatId: string; content: string}) => { if (draft.chatId === chatId && document.activeElement !== textareaRef.current) setText(draft.content); };
+    const onDraft = (draft: {chatId: string; content: string}) => {
+      if (draft.chatId === chatId && document.activeElement !== textareaRef.current) {
+        setText(draft.content);
+        useChatStore.getState().setDraft(chatId, draft.content);
+      }
+    };
     socket.on('draft:updated', onDraft);
     return () => { cancelled = true; socket.off('draft:updated', onDraft); };
   }, [chatId]);
+
   const saveDraft = (content: string) => {
+    useChatStore.getState().setDraft(chatId, content);
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
     draftTimerRef.current = setTimeout(() => { void apiRequest(`/api/chats/${chatId}/draft`, { method:'PUT', body:JSON.stringify({content}) }); }, 450);
   };
@@ -77,9 +99,19 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
   };
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setText(e.target.value);
-    if (!editingMessage) saveDraft(e.target.value);
+    const val = e.target.value;
+    setText(val);
+    if (!editingMessage) saveDraft(val);
     adjustHeight();
+
+    // Mention check
+    const words = val.slice(0, e.target.selectionStart || val.length).split(/\s/);
+    const lastWord = words[words.length - 1];
+    if (lastWord && lastWord.startsWith('@')) {
+      setMentionQuery(lastWord.slice(1));
+    } else {
+      setMentionQuery(null);
+    }
 
     // Typing event emission
     setTyping(chatId, true);
@@ -87,6 +119,30 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
     typingTimerRef.current = setTimeout(() => {
       setTyping(chatId, false);
     }, 2500);
+  };
+
+  const handleSelectMention = (username: string) => {
+    const words = text.split(/\s/);
+    words.pop();
+    const newText = (words.length ? words.join(' ') + ' ' : '') + `@${username} `;
+    setText(newText);
+    setMentionQuery(null);
+    textareaRef.current?.focus();
+  };
+
+  const handleSendLocation = async (data: {
+    latitude: number;
+    longitude: number;
+    title: string;
+    address: string;
+    isLive?: boolean;
+    liveDurationMinutes?: number;
+  }) => {
+    await sendMessage(
+      `📍 ${data.title}\n${data.address}`,
+      [],
+      'LOCATION' as any
+    );
   };
 
   const handleSend = async () => {
@@ -114,6 +170,27 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+    } else if (e.key === 'ArrowUp' && !text.trim() && !editingMessage) {
+      e.preventDefault();
+      const chatMessages = useChatStore.getState().messages[chatId] || [];
+      const lastUserMsg = [...chatMessages].reverse().find(
+        (m) => m.senderId === user?.id && !m.isDeleted && m.type === MessageType.TEXT
+      );
+      if (lastUserMsg) {
+        setEditingMessage(lastUserMsg);
+      }
+    } else if (e.key === 'Escape') {
+      if (mentionQuery !== null) {
+        e.preventDefault();
+        setMentionQuery(null);
+      } else if (editingMessage) {
+        e.preventDefault();
+        setEditingMessage(null);
+        setText('');
+      } else if (replyTo) {
+        e.preventDefault();
+        setReplyTo(null);
+      }
     }
   };
 
@@ -337,6 +414,17 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
                 <BarChart2 size={16} className="text-purple-500" />
                 <span>Создать опрос</span>
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAttachMenu(false);
+                  setIsLocationModalOpen(true);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-dfz-text hover:bg-dfz-surface-hover text-left"
+              >
+                <MapPin size={16} className="text-emerald-400" />
+                <span>Геолокация</span>
+              </button>
               <div className="my-1 border-t border-dfz-border/50" />
               <button
                 type="button"
@@ -442,6 +530,21 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
           )}
         </div>
 
+        {/* Mention Suggestions Popup */}
+        {mentionQuery !== null && activeChat && (
+          <MentionSuggestions
+            query={mentionQuery}
+            members={activeChat.members.map((m: any) => ({
+              id: m.userId,
+              username: m.username || m.user?.username,
+              displayName: m.displayName || m.user?.profile?.displayName || m.username,
+              avatarUrl: m.avatarUrl || m.user?.profile?.avatarUrl,
+            }))}
+            onSelect={handleSelectMention}
+            onClose={() => setMentionQuery(null)}
+          />
+        )}
+
         {/* Auto-expanding Textarea */}
         <textarea
           ref={textareaRef}
@@ -458,14 +561,50 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
 
         {/* Telegram Action Button: Round Send OR Voice & Video Note */}
         {text.trim() || editingMessage ? (
-          <button
-            type="button"
-            onClick={handleSend}
-            className="w-11 h-11 bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white rounded-full transition-transform active:scale-95 flex items-center justify-center flex-shrink-0 shadow-md animate-scale-in"
-            title="Отправить (Enter)"
-          >
-            <Send size={18} className="translate-x-0.5 -translate-y-0.5" />
-          </button>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={handleSend}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setShowSendMenu(!showSendMenu);
+              }}
+              className="w-11 h-11 bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white rounded-full transition-transform active:scale-95 flex items-center justify-center flex-shrink-0 shadow-md animate-scale-in"
+              title="Отправить (Enter) • ПКМ: Без звука / По расписанию"
+            >
+              <Send size={18} className="translate-x-0.5 -translate-y-0.5" />
+            </button>
+
+            {showSendMenu && (
+              <div
+                className="absolute bottom-13 right-0 w-52 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl shadow-2xl py-1.5 z-50 text-xs select-none animate-scale-in"
+                onMouseLeave={() => setShowSendMenu(false)}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowSendMenu(false);
+                    handleSend();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-dfz-text hover:bg-dfz-surface-hover text-left transition-colors"
+                >
+                  <BellOff size={15} className="text-dfz-text-muted" />
+                  <span>Отправить без звука</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowSendMenu(false);
+                    setIsScheduleModalOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-dfz-text hover:bg-dfz-surface-hover text-left transition-colors"
+                >
+                  <Calendar size={15} className="text-[var(--accent-primary)]" />
+                  <span>Отправить позже...</span>
+                </button>
+              </div>
+            )}
+          </div>
         ) : (
           <div className="flex items-center gap-0.5 flex-shrink-0">
             {/* Round Video Note Button */}
@@ -496,6 +635,25 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ chatId }) => {
         chatId={chatId}
         isOpen={isPollModalOpen}
         onClose={() => setIsPollModalOpen(false)}
+      />
+
+      {/* Scheduled Messages Modal */}
+      <ScheduledMessagesModal
+        isOpen={isScheduleModalOpen}
+        onClose={() => setIsScheduleModalOpen(false)}
+        chatId={chatId}
+        messageText={text}
+        onSchedule={() => {
+          setText('');
+          saveDraft('');
+        }}
+      />
+
+      {/* Location Picker Modal */}
+      <LocationPickerModal
+        isOpen={isLocationModalOpen}
+        onClose={() => setIsLocationModalOpen(false)}
+        onSendLocation={handleSendLocation}
       />
 
       {/* Video Note Recorder Overlay */}

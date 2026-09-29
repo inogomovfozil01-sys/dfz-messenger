@@ -55,6 +55,7 @@ export const ChatList: React.FC<ChatListProps> = ({
     deleteChat,
     markAsRead,
     typingUsers,
+    drafts,
   } = useChatStore();
 
   const [isFabOpen, setIsFabOpen] = useState(false);
@@ -369,6 +370,11 @@ export const ChatList: React.FC<ChatListProps> = ({
                       {typing && typing.length > 0 ? (
                         <span className="text-[var(--accent-primary)] font-medium italic animate-pulse">
                           {typing.join(', ')} печатает...
+                        </span>
+                      ) : drafts && drafts[chat.id] && (!chat.lastMessage || activeChatId !== chat.id) ? (
+                        <span className="truncate">
+                          <span className="text-[#e53935] font-semibold mr-1">Черновик:</span>
+                          <span className="text-dfz-text-muted">{drafts[chat.id]}</span>
                         </span>
                       ) : chat.lastMessage ? (
                         <span>

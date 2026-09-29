@@ -11,10 +11,70 @@ import { PollBubble } from './PollBubble';
 import { LinkPreviewBubble } from './LinkPreviewBubble';
 import { StarTransferBubble } from './StarTransferBubble';
 import { GiftCardBubble } from './GiftCardBubble';
+import { LocationBubble } from './LocationBubble';
 import { useChatStore } from '../../stores/chatStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useEconomyStore } from '../../stores/economyStore';
 import { ReportModal } from '../modals/ReportModal';
+
+const renderFormattedContent = (content: string) => {
+  const regex = /(https?:\/\/[^\s]+)|(#[a-zA-Z0-9_а-яА-ЯёЁ]+)|(@[a-zA-Z0-9_]+)/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(content)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(content.substring(lastIndex, match.index));
+    }
+    const token = match[0];
+    if (token.startsWith('http://') || token.startsWith('https://')) {
+      parts.push(
+        <a
+          key={match.index}
+          href={token}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sky-300 hover:underline break-all"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {token}
+        </a>
+      );
+    } else if (token.startsWith('#')) {
+      parts.push(
+        <span
+          key={match.index}
+          onClick={(e) => {
+            e.stopPropagation();
+            useChatStore.getState().setSearchQuery(token);
+          }}
+          className="text-sky-300 hover:underline cursor-pointer font-medium"
+        >
+          {token}
+        </span>
+      );
+    } else if (token.startsWith('@')) {
+      parts.push(
+        <span
+          key={match.index}
+          onClick={(e) => {
+            e.stopPropagation();
+            useChatStore.getState().setSearchQuery(token);
+          }}
+          className="text-sky-300 hover:underline cursor-pointer font-medium"
+        >
+          {token}
+        </span>
+      );
+    }
+    lastIndex = match.index + token.length;
+  }
+  if (lastIndex < content.length) {
+    parts.push(content.substring(lastIndex));
+  }
+  return parts;
+};
 
 interface MessageBubbleProps {
   message: Message;
@@ -186,6 +246,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       )}
 
       <div
+        id={'msg-' + message.id}
         onContextMenu={handleContextMenu}
         className={`group relative flex gap-2.5 my-1 max-w-[85%] md:max-w-[70%] select-text animate-message-in ${
           isOutgoing ? 'ml-auto flex-row-reverse' : 'mr-auto'
@@ -267,6 +328,19 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         /* Poll Message */
         <div className="relative max-w-sm">
           <PollBubble poll={message.poll} isOwnMessage={isOutgoing} />
+          <div className="flex items-center justify-end gap-1 text-[11px] mt-1 text-dfz-text-muted select-none">
+            <span>{formattedTime}</span>
+            {renderStatus()}
+          </div>
+        </div>
+      ) : message.type === ('LOCATION' as any) || (message.content && message.content.startsWith('📍')) ? (
+        /* Location Message */
+        <div className="relative max-w-sm">
+          <LocationBubble
+            metadata={(message as any).metadata?.location || (message as any).metadata}
+            content={message.content}
+            isOutgoing={isOutgoing}
+          />
           <div className="flex items-center justify-end gap-1 text-[11px] mt-1 text-dfz-text-muted select-none">
             <span>{formattedTime}</span>
             {renderStatus()}
@@ -375,7 +449,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           {/* Text Content with Inline Floating Timestamp */}
           {message.content && (
             <div className="whitespace-pre-wrap break-words leading-relaxed text-[13.5px]">
-              {message.content}
+              {renderFormattedContent(message.content)}
               <span className="float-right ml-2.5 mt-1.5 inline-flex items-center gap-1 select-none text-[11px] leading-none text-white/60">
                 {message.isEdited && <span className="text-[10px] italic opacity-70">изм.</span>}
                 <span>{formattedTime}</span>
@@ -386,6 +460,33 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
           {/* Safe Link Preview */}
           {detectedUrl && <LinkPreviewBubble url={detectedUrl} />}
+
+          {/* Bot Inline Keyboard Buttons */}
+          {(message as any).metadata?.inlineButtons && (
+            <div className="flex flex-col gap-1.5 mt-2.5 w-full">
+              {((message as any).metadata.inlineButtons as any[]).map((row: any[], rowIdx: number) => (
+                <div key={rowIdx} className="flex gap-1.5 w-full">
+                  {row.map((btn: any, btnIdx: number) => (
+                    <button
+                      key={btnIdx}
+                      type="button"
+                      onClick={() => {
+                        if (btn.url) {
+                          window.open(btn.url, '_blank');
+                        } else if (btn.callbackData) {
+                          useChatStore.getState().sendMessage(btn.text);
+                        }
+                      }}
+                      className="flex-1 py-1.5 px-3 rounded-lg bg-[var(--accent-primary)]/15 hover:bg-[var(--accent-primary)]/25 text-[var(--accent-primary)] border border-[var(--accent-primary)]/30 text-xs font-semibold transition-all text-center truncate"
+                    >
+                      {btn.text}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Reactions Pill List */}
           {message.reactions && message.reactions.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1.5 -mb-0.5">
