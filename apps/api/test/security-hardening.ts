@@ -49,6 +49,22 @@ async function main() {
   });
 
   await check('anonymous media rejected', async () => { assert.equal((await get(key)).status, 401); });
+  await check('uploads behind proxy return portable URLs and support cookie-authenticated ranges', async () => {
+    const form = new FormData();
+    form.append('file', new Blob([Buffer.from('89504e470d0a1a0a', 'hex')], { type: 'image/png' }), 'proxy.png');
+    const response = await fetch(`${base}/api/media/upload`, { method: 'POST', headers: { Cookie: `dfz_access_token=${a.accessToken}` }, body: form });
+    assert.equal(response.status, 201);
+    const { data } = await response.json() as any;
+    files.push(path.join(ENV.UPLOAD_DIR, data.storageKey));
+    assert.equal(data.url, `/api/media/files/${data.storageKey}`);
+    const download = await fetch(`${base}${data.url}`, { headers: { Cookie: `dfz_access_token=${a.accessToken}`, Range: 'bytes=0-3' } });
+    assert.equal(download.status, 206);
+    assert.equal(download.headers.get('content-range'), 'bytes 0-3/8');
+    assert.equal(download.headers.get('cache-control'), 'private, no-store');
+    assert.deepEqual(Buffer.from(await download.arrayBuffer()), Buffer.from('89504e47', 'hex'));
+    assert.equal((await fetch(`${base}${data.url}`)).status, 401);
+    assert.equal((await get(data.storageKey, c.accessToken)).status, 404);
+  });
   await check('URL bearer token rejected', async () => { assert.equal((await fetch(`${base}${url}?token=${a.accessToken}`)).status, 401); });
   await check('owner and chat recipient can read; private cache headers', async () => {
     for (const token of [a.accessToken, b.accessToken]) { const response = await get(key, token); assert.equal(response.status, 200); assert.equal(response.headers.get('cache-control'), 'private, no-store'); }

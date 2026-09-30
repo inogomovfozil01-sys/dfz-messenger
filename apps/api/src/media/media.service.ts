@@ -46,7 +46,7 @@ export class MediaService {
     }
   }
 
-  async processUploadedFile(file: Express.Multer.File, baseUrl: string, ownerId: string) {
+  async processUploadedFile(file: Express.Multer.File, _baseUrl: string, ownerId: string) {
     // 1. Server-side MIME validation
     const head = Buffer.alloc(Math.min(file.size, 4096));
     const fd = fs.openSync(file.path, 'r');
@@ -81,7 +81,8 @@ export class MediaService {
       fs.unlinkSync(targetPath);
       throw error;
     }
-    const fileUrl = `${baseUrl}/api/media/files/${safeKey}`;
+    // Resolve through the public API origin, never the proxy's internal Host.
+    const fileUrl = `/api/media/files/${safeKey}`;
 
     return {
       storageKey: safeKey,

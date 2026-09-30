@@ -89,7 +89,16 @@ export function resolveMediaUrl(url?: string | null): string {
   if (url.startsWith('blob:') || url.startsWith('data:')) {
     return url;
   }
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
+  const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
+  // Older uploads stored the internal API origin. Route these through the
+  // configured public API so protected requests carry the session cookies.
+  try {
+    const parsed = new URL(url, 'http://dfz.local/');
+    if (['http:', 'https:'].includes(parsed.protocol)) {
+      const match = parsed.pathname.match(/^\/(?:api\/media\/files|uploads)\/([a-zA-Z0-9_.-]+)$/);
+      if (match && !match[1].includes('..')) return `${apiBase}/api/media/files/${match[1]}`;
+    }
+  } catch { /* Preserve non-URL sources below. */ }
   if (url.startsWith('/api/')) {
     return apiBase ? `${apiBase}${url}` : url;
   }

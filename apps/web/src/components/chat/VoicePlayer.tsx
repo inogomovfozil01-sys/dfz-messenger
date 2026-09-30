@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause } from 'lucide-react';
+import { resolveMediaUrl } from '../../lib/api';
 
 interface VoicePlayerProps {
   url: string;
@@ -72,7 +73,7 @@ export const VoicePlayer: React.FC<VoicePlayerProps> = ({
 
   return (
     <div className="flex items-center gap-2.5 py-1 min-w-[200px] max-w-[280px]">
-      <audio ref={audioRef} src={url} preload="metadata" onLoadedMetadata={() => { const d=audioRef.current?.duration; if(d && Number.isFinite(d)) setMeasuredDuration(d); }} />
+      <audio ref={audioRef} src={resolveMediaUrl(url)} preload="metadata" onLoadedMetadata={() => { const d=audioRef.current?.duration; if(d && Number.isFinite(d)) setMeasuredDuration(d); }} />
 
       {/* Play/Pause Button */}
       <button

@@ -16,6 +16,7 @@ import { useChatStore } from '../../stores/chatStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useEconomyStore } from '../../stores/economyStore';
 import { ReportModal } from '../modals/ReportModal';
+import { resolveMediaUrl } from '../../lib/api';
 
 const renderFormattedContent = (content: string) => {
   const regex = /(https?:\/\/[^\s]+)|(#[a-zA-Z0-9_а-яА-ЯёЁ]+)|(@[a-zA-Z0-9_]+)/g;
@@ -271,7 +272,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       {message.type === MessageType.STICKER ? (
         <div className="relative group max-w-xs select-none">
           <img
-            src={message.attachments?.[0]?.url || message.content}
+            src={resolveMediaUrl(message.attachments?.[0]?.url || message.content)}
             alt="Стикер"
             className="w-40 h-40 object-contain hover:scale-105 transition-transform duration-200 select-none pointer-events-none"
             loading="lazy"
@@ -286,7 +287,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         <div className="relative group max-w-xs select-none">
           <div className="w-52 h-52 rounded-full overflow-hidden border-2 border-dfz-accent shadow-md bg-black">
             <video
-              src={message.attachments?.[0]?.url || message.content}
+              src={resolveMediaUrl(message.attachments?.[0]?.url || message.content)}
               controls
               playsInline
               loop
@@ -384,11 +385,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   return (
                     <div
                       key={att.id || att.url}
-                      onClick={() => onOpenImage(att.url, att.originalName)}
+                      onClick={() => onOpenImage(resolveMediaUrl(att.url), att.originalName)}
                       className="relative cursor-pointer overflow-hidden rounded-dfz-md max-h-72 max-w-sm group/img"
                     >
                       <img
-                        src={att.url}
+                        src={resolveMediaUrl(att.url)}
                         alt={att.originalName}
                         className="w-full h-auto object-cover rounded-dfz-md transition-transform duration-200 group-hover/img:scale-[1.02]"
                       />
@@ -399,7 +400,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 if (att.mimeType.startsWith('video/')) {
                   return (
                     <div key={att.id || att.url} className="rounded-dfz-md overflow-hidden max-w-sm">
-                      <video controls src={att.url} className="w-full rounded-dfz-md" />
+                      <video controls src={resolveMediaUrl(att.url)} className="w-full rounded-dfz-md" />
                     </div>
                   );
                 }
@@ -432,7 +433,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                       <p className="text-[11px] opacity-75">{formatFileSize(att.sizeBytes)}</p>
                     </div>
                     <a
-                      href={att.url}
+                      href={resolveMediaUrl(att.url)}
                       download={att.originalName}
                       target="_blank"
                       rel="noreferrer"

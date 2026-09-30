@@ -1,5 +1,11 @@
 # DFZ Messenger — audit and verification ledger
 
+## Protected media follow-up — 2026-09-30
+
+Uploads now return relative `/api/media/files/:key` URLs so a reverse proxy's internal Host is not saved as the public file address. The frontend resolves both relative paths and older absolute file/upload URLs against the public API configuration. Message images, image viewer links, video, video notes, stickers, voice playback and file downloads use the same resolver as avatars and stories. External image and local preview URLs remain supported.
+
+Verified: 18 security/concurrency scenarios passed against local `dfz_rebuild_qa`, including a new HTTP multipart upload followed by cookie-authenticated byte-range download (206), private cache headers and anonymous/outsider denial. Client tests passed for same-origin/separate-API media URLs, legacy paths, previews and concurrent session refresh. API TypeScript and Next.js production builds passed; Next.js still reports webpack cache and metadataBase warnings. Redis used the local memory fallback. This does not verify production file persistence, actual browser playback or a deployment.
+
 ## Security follow-up — 2026-09-29
 
 Current code inspection found regressions relative to earlier notes: media GET was anonymous/publicly cached, refresh tokens were reusable, CONTACTS visibility accepted the viewer's own contact list, and platform admins bypassed group posting/story privacy.
